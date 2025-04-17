@@ -2,11 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import '../models/profile.dart';
 import '../providers/profile_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/colors.dart';
+import '../utils/platform_utils.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
 import '../widgets/animated_tap_feedback.dart';
@@ -56,7 +56,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // Refactored to use profileEditProvider and add cropping
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final ImageCropper cropper = ImageCropper(); // Create cropper instance
 
     try {
       // 1. Pick image
@@ -69,38 +68,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       if (pickedFile == null) return; // User cancelled picker
 
-      // 2. Crop image
-      final CroppedFile? croppedFile = await cropper.cropImage(
-        sourcePath: pickedFile.path,
-        aspectRatioPresets: [
-          CropAspectRatioPreset.square, // Common for profile pictures
-          CropAspectRatioPreset.ratio3x2,
-          CropAspectRatioPreset.original,
-          CropAspectRatioPreset.ratio4x3,
-          CropAspectRatioPreset.ratio16x9
-        ],
-        uiSettings: [
-          AndroidUiSettings(
-              toolbarTitle: 'Crop Image',
-              toolbarColor: AppColors.primary,
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: false),
-          IOSUiSettings(
-            title: 'Crop Image',
-             aspectRatioLockEnabled: false,
-            // TODO: Potentially add more iOS specific settings if needed
-          ),
-          WebUiSettings( // Basic web settings if needed
-            context: context,
-          ),
-        ],
-      );
+      // 2. Crop image using platform-safe method
+      final SimpleCroppedFile? croppedFile = await PlatformUtils.cropImage(pickedFile);
 
       if (croppedFile == null) return; // User cancelled cropper
 
       // 3. Update state with cropped image file
-      // Convert CroppedFile to XFile to match the notifier state type
       final XFile croppedXFile = XFile(croppedFile.path);
       ref.read(profileEditProvider.notifier).setPickedImage(croppedXFile);
 
