@@ -120,7 +120,27 @@ class ProfileService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        final List<dynamic> profilesJson = response.data['profiles'];
+        // Handle both array and object response formats
+        List<dynamic> profilesJson;
+        
+        if (response.data is List) {
+          // Direct array response
+          profilesJson = response.data;
+          _logger.debug('Response is a direct array of profiles');
+        } else if (response.data is Map && response.data['profiles'] != null) {
+          // Object with 'profiles' field
+          profilesJson = response.data['profiles'];
+          _logger.debug('Response contains profiles field with ${profilesJson.length} items');
+        } else {
+          // Unexpected format - log and return mock data
+          _logger.error('Unexpected response format: ${response.data.runtimeType}');
+          if (kDebugMode) {
+            _logger.debug('Returning mock profiles in debug mode');
+            return List.generate(10, (_) => _generateMockProfile());
+          }
+          return [];
+        }
+        
         final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
         _logger.info('Successfully retrieved ${profiles.length} discover profiles');
         return profiles;

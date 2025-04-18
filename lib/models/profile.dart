@@ -87,17 +87,49 @@ class Profile {
     // Handle photos which might be under 'photos' or 'photoUrls'
     List<String> photos = [];
     if (json['photos'] != null) {
-      photos = (json['photos'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ?? [];
+      try {
+        if (json['photos'] is List) {
+          final photosList = json['photos'] as List<dynamic>;
+          
+          // Handle different formats: simple string array or objects with url field
+          if (photosList.isNotEmpty) {
+            if (photosList[0] is String) {
+              // Direct array of strings
+              photos = photosList.map((e) => e.toString()).toList();
+            } else if (photosList[0] is Map) {
+              // Array of objects with url field
+              photos = photosList
+                  .map((photo) => photo is Map 
+                      ? (photo['url'] ?? '').toString() 
+                      : '')
+                  .where((url) => url.isNotEmpty)
+                  .toList();
+            }
+          }
+        }
+      } catch (e) {
+        print('Error parsing photos: $e');
+      }
     } else if (json['photoUrls'] != null) {
-      photos = (json['photoUrls'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ?? [];
+      try {
+        if (json['photoUrls'] is List) {
+          photos = (json['photoUrls'] as List<dynamic>)
+              .map((e) => e.toString())
+              .toList();
+        }
+      } catch (e) {
+        print('Error parsing photoUrls: $e');
+      }
     } else if (json['photo_urls'] != null) {
-      photos = (json['photo_urls'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ?? [];
+      try {
+        if (json['photo_urls'] is List) {
+          photos = (json['photo_urls'] as List<dynamic>)
+              .map((e) => e.toString())
+              .toList();
+        }
+      } catch (e) {
+        print('Error parsing photo_urls: $e');
+      }
     }
 
     // Handle interests which might be under different keys
