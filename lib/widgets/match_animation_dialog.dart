@@ -85,17 +85,17 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
     _matchTextAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
-    );
+    ).drive(Tween<double>(begin: 0.0, end: 1.0));
     
     _profilePhotosAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.2, 0.7, curve: Curves.easeOutBack),
-    );
+    ).drive(Tween<double>(begin: 0.0, end: 1.0));
     
     _buttonsAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.6, 1.0, curve: Curves.easeOut),
-    );
+    ).drive(Tween<double>(begin: 0.0, end: 1.0));
     
     _buttonsAnimation.addListener(() {
       if (_buttonsAnimation.value > 0.01 && _buttonsAnimation.value < 0.1) {
@@ -230,7 +230,9 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                     ),
                                   ],
                                   image: DecorationImage(
-                                    image: NetworkImage(widget.userProfile.photoUrls.first),
+                                    image: widget.userProfile.photoUrls.isNotEmpty 
+                                        ? NetworkImage(widget.userProfile.photoUrls.first)
+                                        : const AssetImage('assets/images/default_profile.png') as ImageProvider,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
@@ -256,7 +258,9 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                     ),
                                   ],
                                   image: DecorationImage(
-                                    image: NetworkImage(widget.matchProfile.photoUrls.first),
+                                    image: widget.matchProfile.photoUrls.isNotEmpty 
+                                        ? NetworkImage(widget.matchProfile.photoUrls.first)
+                                        : const AssetImage('assets/images/default_profile.png') as ImageProvider,
                                     fit: BoxFit.cover,
                                   ),
                                 ),

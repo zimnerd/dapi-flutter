@@ -1,23 +1,14 @@
-import '../services/api_config.dart';
+import '../config/app_config.dart';
 
+// Re-export all configuration from app_config.dart
+export '../config/app_config.dart';
+
+// Note: This file is kept for backward compatibility.
+// New code should import AppConfig directly from '../config/app_config.dart'
+
+// Config class for backward compatibility
 class Config {
-  // API endpoints
-  static String get apiUrl => ApiConfig.apiBaseUrl;
-  static String get socketUrl => ApiConfig.socketUrl;
-  static String get API_BASE_URL => ApiConfig.apiBaseUrl;
-  
-  // External API keys - Replace these with your actual keys in a real app
-  static const String giphyApiKey = 'pLURtkhVrUXr3KG25Gy5IvzziV5OrZGa'; // Public GIPHY beta key (use real key in prod)
-  
-  // App constants
-  static const String appName = 'Dating App';
-  static const String appVersion = '1.0.0';
-  
-  // Storage keys
-  static const String tokenKey = 'token';
-  static const String userKey = 'user';
-  
-  // Feature flags
-  static const bool enablePushNotifications = true;
-  static const bool enableOfflineMode = true;
+  static String get apiBaseUrl => AppConfig.apiBaseUrl;
+  static String get socketUrl => AppConfig.socketUrl;
+  static String get giphyApiKey => AppConfig.giphyApiKey;
 } 

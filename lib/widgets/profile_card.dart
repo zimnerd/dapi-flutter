@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import '../models/profile.dart';
 import '../utils/colors.dart';
 import '../screens/profile_details_screen.dart';
+import '../widgets/image_with_fallback.dart';
+import '../utils/logger.dart';
 
 class ProfileCard extends StatefulWidget {
   final Profile profile;
@@ -42,6 +44,7 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
   // Page controller for photos
   final PageController _photoController = PageController();
   int _currentPhotoIndex = 0;
+  final Logger _logger = Logger('ProfileCard');
   
   // State tracking
   bool _isDragging = false;
@@ -59,6 +62,17 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
   final double _swipeThreshold = 0.25; // Percentage of screen width
   final double _maxRotationAngle = 0.2; // ~11.5 degrees in radians
   final double _maxMovementFactor = 1.5; // Allow movement beyond screen boundaries
+  
+  // Safe getter for photo URLs to prevent range errors
+  String get _currentPhotoUrl {
+    final photoUrls = widget.profile.photoUrls;
+    if (photoUrls.isEmpty) {
+      return ''; // Return empty string for empty list
+    }
+    // Ensure index is within bounds
+    final safeIndex = _currentPhotoIndex.clamp(0, photoUrls.length - 1);
+    return photoUrls[safeIndex];
+  }
   
   @override
   void initState() {
@@ -127,13 +141,19 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
   void _onPhotoChange() {
     final page = _photoController.page?.round() ?? 0;
     if (page != _currentPhotoIndex) {
-      setState(() {
-        _currentPhotoIndex = page;
-      });
-      
-      // Add haptic feedback when changing photos
-      if (widget.interactive) {
-        HapticFeedback.selectionClick();
+      // Validate that the page index is within the valid range before updating state
+      final photoUrls = widget.profile.photoUrls;
+      if (photoUrls.isNotEmpty && page >= 0 && page < photoUrls.length) {
+        setState(() {
+          _currentPhotoIndex = page;
+        });
+        
+        // Add haptic feedback when changing photos
+        if (widget.interactive) {
+          HapticFeedback.selectionClick();
+        }
+      } else {
+        _logger.warn('Invalid photo index: $page, photoUrls length: ${photoUrls.length}');
       }
     }
   }
@@ -162,40 +182,50 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
     final maxDragY = screenSize.height * _maxMovementFactor;
     
     // Calculate new position with resistance - more resistance as it gets further from center
-    setState(() {
-      // Update position with resistance - increase initial smoothness by adjusting factor
-      final rawDelta = details.delta;
-      final dragDistanceRatio = (_dragPosition.distance / (screenSize.width * 0.5)).clamp(0.0, 1.0);
-      
-      // Smoother resistance curve - moves easily near center, harder at edges
-      final resistanceFactor = 0.9 - (math.pow(dragDistanceRatio, 2) * 0.4);
-      final delta = rawDelta * resistanceFactor;
-      _dragPosition += delta;
-      
-      // Apply smoother boundaries with elastic effect
-      if (_dragPosition.dx.abs() > maxDragX) {
-        _dragPosition = Offset(
-          _dragPosition.dx.sign * (maxDragX + (_dragPosition.dx.abs() - maxDragX) * 0.05),
-          _dragPosition.dy
-        );
-      }
-      
-      if (_dragPosition.dy.abs() > maxDragY) {
-        _dragPosition = Offset(
-          _dragPosition.dx,
-          _dragPosition.dy.sign * (maxDragY + (_dragPosition.dy.abs() - maxDragY) * 0.05)
-        );
-      }
-      
-      // Update rotation based on horizontal position with improved curve
-      // Use a nonlinear curve for more natural rotation that increases toward edges
-      final normalizedDx = (_dragPosition.dx / screenSize.width).clamp(-1.0, 1.0);
-      _currentRotation = normalizedDx * _maxRotationAngle * 
-          (0.8 + (normalizedDx.abs() * 0.3)); // Progressively stronger rotation near edges
-      
-      // Scale slightly when dragging for better interaction feedback
-      _currentScale = 1.0 - (dragDistanceRatio * 0.05);
-    });
+    // Using a single setState call instead of potentially multiple ones
+    final rawDelta = details.delta;
+    final dragDistanceRatio = (_dragPosition.distance / (screenSize.width * 0.5)).clamp(0.0, 1.0);
+    
+    // Smoother resistance curve - moves easily near center, harder at edges
+    final resistanceFactor = 0.9 - (math.pow(dragDistanceRatio, 2) * 0.4);
+    final delta = rawDelta * resistanceFactor;
+    final newDragPosition = _dragPosition + delta;
+    
+    // Apply smoother boundaries with elastic effect
+    Offset adjustedDragPosition = newDragPosition;
+    if (newDragPosition.dx.abs() > maxDragX) {
+      adjustedDragPosition = Offset(
+        newDragPosition.dx.sign * (maxDragX + (newDragPosition.dx.abs() - maxDragX) * 0.05),
+        newDragPosition.dy
+      );
+    }
+    
+    if (newDragPosition.dy.abs() > maxDragY) {
+      adjustedDragPosition = Offset(
+        adjustedDragPosition.dx,
+        newDragPosition.dy.sign * (maxDragY + (newDragPosition.dy.abs() - maxDragY) * 0.05)
+      );
+    }
+    
+    // Update rotation based on horizontal position with improved curve
+    // Use a nonlinear curve for more natural rotation that increases toward edges
+    final normalizedDx = (adjustedDragPosition.dx / screenSize.width).clamp(-1.0, 1.0);
+    final newRotation = normalizedDx * _maxRotationAngle * 
+        (0.8 + (normalizedDx.abs() * 0.3)); // Progressively stronger rotation near edges
+    
+    // Scale slightly when dragging for better interaction feedback
+    final newScale = 1.0 - (dragDistanceRatio * 0.05);
+    
+    // Only setState if values have significantly changed
+    if (((_dragPosition - adjustedDragPosition).distance > 0.5) ||
+        ((_currentRotation - newRotation).abs() > 0.01) ||
+        ((_currentScale - newScale).abs() > 0.005)) {
+      setState(() {
+        _dragPosition = adjustedDragPosition;
+        _currentRotation = newRotation;
+        _currentScale = newScale;
+      });
+    }
   }
   
   void _handleDragEnd(DragEndDetails details) {
@@ -466,56 +496,83 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
   }
   
   void _animateCardOffScreen(Offset direction, bool isLike) {
-    // Normalize direction vector for consistent distance regardless of direction
-    final normalized = direction.distance > 0 
-        ? Offset(direction.dx / direction.distance, direction.dy / direction.distance) 
-        : Offset.zero;
+    if (_isAnimating) return;
+    _isAnimating = true;
+    _logger.debug('Animating card off screen with direction: $direction, isLike: $isLike');
     
-    // Calculate final destination based on screen size
-    final size = MediaQuery.of(context).size;
-    final destinationX = normalized.dx * size.width * 1.2; // Ensure it's off screen
-    final destinationY = normalized.dy * size.height * 0.3; // Don't go too far vertically
+    // Calculate target position - move in direction past screen
+    final screenSize = MediaQuery.of(context).size;
+    final targetX = direction.dx * screenSize.width * 1.5;
+    final targetY = direction.dy * screenSize.height * 1.5;
     
-    // Set end position for animation
-    _dragPosition = Offset(destinationX, destinationY);
+    // Reset the controller
+    _swipeOutController.reset();
     
-    // Set final rotation based on horizontal movement direction
-    _currentRotation = direction.dx > 0 ? math.pi / 8 : -math.pi / 8;
+    // Update the animation values for position, rotation and scale
+    final distanceTween = Tween<double>(
+      begin: _dragPosition.distance,
+      end: Offset(targetX, targetY).distance,
+    );
     
-    // Flag that animation is in progress to prevent further interaction
-    setState(() {
-      _isAnimating = true;
-    });
+    final rotationTween = Tween<double>(
+      begin: _currentRotation,
+      end: direction.dx * _maxRotationAngle * 1.5, // Amplify rotation for dramatic effect
+    );
     
-    // Start the swipe out animation
-    _swipeOutController.forward().then((_) {
-      // Use post-frame callback to ensure the UI updates before we notify parent
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Callback based on direction
-        if (isLike) {
-          if (widget.onLike != null) widget.onLike!();
-        } else {
-          if (widget.onDislike != null) widget.onDislike!();
-        }
-        
-        // Set a delay before resetting to prevent flashing
-        Future.delayed(const Duration(milliseconds: 50), () {
-          // Check if widget is still mounted before updating state
-          if (mounted) {
-            setState(() {
-              // Reset state while card is hidden
-              _dragPosition = Offset.zero;
-              _currentRotation = 0.0;
-              _isDragging = false;
-              _isAnimating = false;
-              _currentScale = 1.0;
-              
-              // Reset controllers to prepare for potential reuse
-              _swipeOutController.reset();
-            });
-          }
-        });
+    // Define the animation
+    Animation<double> distanceAnimation = distanceTween.animate(
+      CurvedAnimation(parent: _swipeOutController, curve: Curves.easeOutQuint),
+    );
+    
+    Animation<double> rotationAnimation = rotationTween.animate(
+      CurvedAnimation(parent: _swipeOutController, curve: Curves.easeOutQuart),
+    );
+    
+    // Setup listener to update values
+    void updateValues() {
+      if (!mounted) {
+        _swipeOutController.removeListener(updateValues);
+        return;
+      }
+      
+      // Calculate normalized direction vector
+      final dirNorm = direction.distance > 0 
+          ? Offset(direction.dx / direction.distance, direction.dy / direction.distance) 
+          : Offset.zero;
+      
+      setState(() {
+        // Calculate new position using distance and direction
+        _dragPosition = Offset(
+          dirNorm.dx * distanceAnimation.value,
+          dirNorm.dy * distanceAnimation.value,
+        );
+        _currentRotation = rotationAnimation.value;
       });
+    }
+    
+    _swipeOutController.addListener(updateValues);
+    
+    // Start the animation
+    _swipeOutController.forward().then((_) {
+      _swipeOutController.removeListener(updateValues);
+      
+      // Call the appropriate callback
+      if (isLike && widget.onLike != null) {
+        widget.onLike!();
+      } else if (!isLike && widget.onDislike != null) {
+        widget.onDislike!();
+      }
+      
+      // Reset state
+      if (mounted) {
+        setState(() {
+          _isAnimating = false;
+          _isDragging = false;
+          _dragPosition = Offset.zero;
+          _currentRotation = 0.0;
+          _currentScale = 1.0;
+        });
+      }
     });
   }
   
@@ -657,7 +714,7 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
                       fit: StackFit.expand,
                       children: [
                         // Profile photo
-                        _buildPhotoSwitcher(),
+                        _buildPhotoCarousel(),
                         
                         // Gradient overlay
                         Positioned.fill(
@@ -731,7 +788,9 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
-                                          widget.profile.location ?? '',
+                                          widget.profile.location == null 
+                                            ? ''
+                                            : widget.profile.location.toString(),
                                           style: const TextStyle(
                                             fontSize: 16,
                                             color: Colors.white70,
@@ -860,58 +919,30 @@ class _ProfileCardState extends State<ProfileCard> with TickerProviderStateMixin
     );
   }
   
-  Widget _buildPhotoSwitcher() {
+  Widget _buildPhotoCarousel() {
+    final photoUrls = widget.profile.photoUrls;
+    
+    if (photoUrls.isEmpty) {
+      return ImageWithFallback(
+        imageUrl: '', // Empty URL will trigger fallback
+        width: double.infinity,
+        height: double.infinity,
+        fallbackAsset: 'assets/images/default_profile.png',
+      );
+    }
+    
     return PageView.builder(
       controller: _photoController,
-      itemCount: widget.profile.photoUrls.length,
-      physics: widget.interactive
-          ? const ClampingScrollPhysics()
-          : const NeverScrollableScrollPhysics(),
+      physics: widget.interactive ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics(),
+      itemCount: photoUrls.length,
       itemBuilder: (context, index) {
-        return GestureDetector(
-          onTap: _expandPhoto,
-          child: Hero(
-            tag: 'profile_photo_${widget.profile.id}_$index',
-            child: Image.network(
-              widget.profile.photoUrls[index],
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  color: Colors.grey[300],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
-                      size: 64,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        // Use the new ImageWithFallback widget
+        return ImageWithFallback(
+          imageUrl: photoUrls[index],
+          width: double.infinity,
+          height: double.infinity,
+          fallbackAsset: 'assets/images/default_profile.png',
         );
-      },
-      onPageChanged: (index) {
-        // Add subtle haptic feedback when changing photos
-        HapticFeedback.selectionClick();
-        setState(() {
-          _currentPhotoIndex = index;
-        });
       },
     );
   }

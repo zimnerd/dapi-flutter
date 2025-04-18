@@ -8,7 +8,7 @@ import '../providers/subscription_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/ai_suggestions_provider.dart';
 import 'package:giphy_picker/giphy_picker.dart';
-import '../utils/config.dart';
+import '../config/app_config.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -126,7 +126,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       gif = await GiphyPicker.pickGif(
         context: context,
-        apiKey: Config.giphyApiKey,
+        apiKey: AppConfig.giphyApiKey,
       );
     } catch (e) {
        print("Error picking GIF: $e");
@@ -308,7 +308,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     required String? participantAvatarUrl,
     required String conversationId,
   }) {
-    final isPremium = ref.watch(premiumStatusProvider);
+    // Temporarily hardcode this value until we fix the premium providers
+    final isPremium = false; // TODO: Fix premium provider reference
     final isFromCurrentUser = message.isFromCurrentUser;
     final bool showReactionsPicker = _reactingToMessageId == message.id;
     final List<String> availableReactions = ['❤️', '👍', '😂', '😢', '😮', '🔥'];

@@ -1,87 +1,144 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/profile.dart';
 import '../services/profile_service.dart';
-import '../services/dio_provider.dart';
+import '../utils/logger.dart';
+import 'providers.dart' show profileServiceProvider;
 
-// Enum for action status
-enum ProfileActionStatus { idle, loading, error, success }
+// Create logger instance
+final logger = Logger('ProfileAction');
 
-// State class for profile actions
+enum ProfileAction {
+  like,
+  dislike,
+  superlike,
+}
+
 class ProfileActionState {
-  final ProfileActionStatus status;
-  final String? errorMessage;
+  final bool isProcessing;
+  final String? error;
+  final Map<String, ProfileAction> recentActions;
 
-  ProfileActionState({this.status = ProfileActionStatus.idle, this.errorMessage});
+  const ProfileActionState({
+    this.isProcessing = false,
+    this.error,
+    this.recentActions = const {},
+  });
+
+  String? get errorMessage => error;
 
   ProfileActionState copyWith({
-    ProfileActionStatus? status,
-    String? errorMessage,
+    bool? isProcessing,
+    String? error,
+    Map<String, ProfileAction>? recentActions,
   }) {
     return ProfileActionState(
-      status: status ?? this.status,
-      errorMessage: errorMessage ?? this.errorMessage,
+      isProcessing: isProcessing ?? this.isProcessing,
+      error: error,
+      recentActions: recentActions ?? this.recentActions,
     );
   }
 }
 
-// StateNotifier for Profile Actions
 class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
-  final Ref _ref;
+  final ProfileService _profileService;
 
-  ProfileActionNotifier(this._ref) : super(ProfileActionState());
+  ProfileActionNotifier(this._profileService) : super(const ProfileActionState());
 
-  Future<bool> _performAction(Future<bool> Function() action) async {
-    state = state.copyWith(status: ProfileActionStatus.loading, errorMessage: null);
+  Future<bool> likeProfile(String profileId) async {
+    if (state.isProcessing) return false;
+    
+    state = state.copyWith(isProcessing: true, error: null);
+    
     try {
-      final result = await action();
-      state = state.copyWith(status: ProfileActionStatus.success);
-      return result;
+      await _profileService.likeProfile(profileId);
+      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
+        ..['$profileId'] = ProfileAction.like;
+      
+      state = state.copyWith(
+        isProcessing: false,
+        recentActions: updatedActions,
+      );
+      
+      logger.info('Successfully liked profile: $profileId');
+      return true;
     } catch (e) {
-      state = state.copyWith(status: ProfileActionStatus.error, errorMessage: e.toString());
+      logger.error('Error liking profile: $e');
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to like profile',
+      );
       return false;
     }
   }
 
-  Future<bool> likeProfile(int profileId) async {
-    return _performAction(() async {
-      try {
-        final dio = _ref.read(dioProvider);
-        final response = await dio.post('/profiles/$profileId/like');
-        return response.statusCode == 200;
-      } catch (e) {
-        print('Error liking profile: $e');
-        throw Exception('Failed to like profile');
-      }
-    });
+  Future<bool> dislikeProfile(String profileId) async {
+    if (state.isProcessing) return false;
+    
+    state = state.copyWith(isProcessing: true, error: null);
+    
+    try {
+      await _profileService.dislikeProfile(profileId);
+      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
+        ..['$profileId'] = ProfileAction.dislike;
+      
+      state = state.copyWith(
+        isProcessing: false,
+        recentActions: updatedActions,
+      );
+      
+      logger.info('Successfully disliked profile: $profileId');
+      return true;
+    } catch (e) {
+      logger.error('Error disliking profile: $e');
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to dislike profile',
+      );
+      return false;
+    }
   }
 
-  Future<bool> dislikeProfile(int profileId) async {
-    return _performAction(() async {
-      try {
-        final dio = _ref.read(dioProvider);
-        final response = await dio.post('/profiles/$profileId/dislike');
-        return response.statusCode == 200;
-      } catch (e) {
-        print('Error disliking profile: $e');
-        throw Exception('Failed to dislike profile');
-      }
-    });
+  Future<bool> superlikeProfile(String profileId) async {
+    if (state.isProcessing) return false;
+    
+    state = state.copyWith(isProcessing: true, error: null);
+    
+    try {
+      await _profileService.superlikeProfile(profileId);
+      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
+        ..['$profileId'] = ProfileAction.superlike;
+      
+      state = state.copyWith(
+        isProcessing: false,
+        recentActions: updatedActions,
+      );
+      
+      logger.info('Successfully superliked profile: $profileId');
+      return true;
+    } catch (e) {
+      logger.error('Error superliking profile: $e');
+      state = state.copyWith(
+        isProcessing: false,
+        error: 'Failed to superlike profile',
+      );
+      return false;
+    }
   }
 
-  Future<bool> superlikeProfile(int profileId) async {
-    return _performAction(() async {
-      try {
-        final dio = _ref.read(dioProvider);
-        final response = await dio.post('/profiles/$profileId/superlike');
-        return response.statusCode == 200;
-      } catch (e) {
-        print('Error superliking profile: $e');
-        throw Exception('Failed to superlike profile');
-      }
-    });
+  bool hasActedOnProfile(String profileId) {
+    return state.recentActions.containsKey(profileId);
+  }
+
+  ProfileAction? getProfileAction(String profileId) {
+    return state.recentActions['$profileId'];
+  }
+
+  void clearError() {
+    state = state.copyWith(error: null);
   }
 }
 
-// Provider for ProfileActionNotifier
 final profileActionProvider = StateNotifierProvider<ProfileActionNotifier, ProfileActionState>((ref) {
-  return ProfileActionNotifier(ref);
+  final profileService = ref.watch(profileServiceProvider);
+  return ProfileActionNotifier(profileService);
 }); 

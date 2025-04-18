@@ -401,7 +401,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _buildInfoRow(
         icon: Icons.person_outline,
         label: 'Gender',
-        value: widget.profile.gender,
+        value: widget.profile.gender ?? 'Not specified',
       ),
       
       const SizedBox(height: 12),
@@ -410,20 +410,22 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _buildInfoRow(
         icon: Icons.cake_outlined,
         label: 'Birth Date',
-        value: dateFormatter.format(widget.profile.birthDate),
+        value: widget.profile.birthDate != null 
+            ? dateFormatter.format(widget.profile.birthDate!)
+            : 'Not specified',
       ),
       
       const SizedBox(height: 12),
       
       // Location
-      if (widget.profile.location?.isNotEmpty == true)
+      if (widget.profile.location != null)
         _buildInfoRow(
           icon: Icons.location_on_outlined,
           label: 'Location',
-          value: widget.profile.location ?? '',
+          value: widget.profile.location.toString(),
         ),
       
-      if (widget.profile.location?.isNotEmpty == true)
+      if (widget.profile.location != null)
         const SizedBox(height: 12),
       
       // Additional profile preferences section
@@ -450,7 +452,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _buildInfoRow(
         icon: Icons.explore_outlined,
         label: 'Maximum Distance',
-        value: '${widget.profile.maxDistance.toInt()} km',
+        value: '${widget.profile.maxDistance?.toInt() ?? 0} km',
       ),
       
       const SizedBox(height: 12),

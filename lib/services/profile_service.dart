@@ -1,357 +1,443 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:math' as math;
 import 'dart:io'; // Import File for upload
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/profile.dart';
-import 'api_config.dart';
+import '../config/app_config.dart';
+import '../utils/exceptions.dart';
+import '../utils/dummy_data.dart';
 import 'auth_service.dart';
 import 'api_client.dart';
-import 'package:dating_app/utils/constants.dart';
+import '../utils/constants.dart';
+import '../services/storage_service.dart';
+import '../utils/logger.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileService {
   final Dio _dio;
+  final SharedPreferences _prefs;
+  final _logger = Logger('Profile');
   
-  ProfileService(this._dio);
-  
-  // Get profile by ID
-  Future<Profile> getProfile(int id) async {
+  ProfileService(this._dio, this._prefs);
+
+  Future<Profile?> getCurrentUserProfile() async {
+    _logger.debug('Getting current user profile');
     try {
-      final response = await _dio.get('/profiles/$id');
-      
+      final userId = _prefs.getString(AppStorageKeys.userId);
+      if (userId == null) {
+        _logger.warn('No user ID found when getting current profile');
+        return null;
+      }
+
+      _logger.debug('Fetching profile for user ID: $userId');
+      final response = await _dio.get(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.myProfile}',
+      );
+
       if (response.statusCode == 200 && response.data != null) {
-        final profileData = response.data;
-        return Profile.fromJson(profileData);
+        _logger.info('Successfully retrieved current user profile');
+        return Profile.fromJson(response.data);
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: 'Failed to load profile (status ${response.statusCode})',
-        );
+        _logger.warn('Failed to get profile: ${response.statusCode}');
+        return null;
       }
     } on DioException catch (e) {
-      print('⟹ [ProfileService] Get Profile Dio error: ${e.message}');
-       String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to load profile';
-       if (e.response?.statusCode == 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
+      _logger.error('Dio error getting current profile: ${e.message}');
+      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profile in debug mode');
+        return _generateMockProfile();
       }
-      throw Exception(errorMessage);
-    } catch (e) {
-      print('⟹ [ProfileService] Get Profile general error: $e');
-      throw Exception('Failed to load profile: ${e.toString()}');
+      return null;
+    } catch (e, stackTrace) {
+      _logger.error('Unexpected error getting current profile: $e');
+      _logger.error('Stack trace: $stackTrace');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profile in debug mode');
+        return _generateMockProfile();
+      }
+      return null;
     }
   }
-  
-  // Get profiles for discover screen
-  Future<List<Profile>> getDiscoverProfiles({Map<String, String>? queryParams}) async {
-    print('⟹ [ProfileService] Getting discover profiles...');
+
+  Future<Profile?> getProfile(String profileId) async {
+    _logger.debug('Getting profile by ID: $profileId');
     try {
       final response = await _dio.get(
-        '/profiles/discover', 
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profiles}/$profileId',
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        _logger.info('Successfully retrieved profile: $profileId');
+        return Profile.fromJson(response.data);
+      } else {
+        _logger.warn('Failed to get profile: ${response.statusCode}');
+        return null;
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error getting profile $profileId: ${e.message}');
+      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      return null;
+    } catch (e) {
+      _logger.error('Unexpected error getting profile $profileId: $e');
+      return null;
+    }
+  }
+
+  Future<List<Profile>> getDiscoverProfiles({
+    int limit = 10,
+    double? maxDistance,
+    List<String>? interests,
+    String? gender,
+    int? minAge,
+    int? maxAge,
+  }) async {
+    _logger.debug('Getting discover profiles with filters: limit=$limit, maxDistance=$maxDistance, interests=$interests, gender=$gender, age range=$minAge-$maxAge');
+    
+    try {
+      final queryParams = {
+        'limit': limit.toString(),
+        if (maxDistance != null) 'maxDistance': maxDistance.toString(),
+        if (gender != null) 'gender': gender,
+        if (minAge != null) 'minAge': minAge.toString(),
+        if (maxAge != null) 'maxAge': maxAge.toString(),
+      };
+      
+      if (interests != null && interests.isNotEmpty) {
+        queryParams['interests'] = interests.join(',');
+      }
+      
+      _logger.debug('Query params: $queryParams');
+      
+      final response = await _dio.get(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.discoverProfiles}',
         queryParameters: queryParams,
       );
-      
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        print('⟹ [ProfileService] Found ${data.length} profiles from API');
-        return data.map((json) => Profile.fromJson(json)).toList();
-      } else {
-         print('⟹ [ProfileService] Discover API failed or returned invalid data: ${response.statusCode}');
-         return _getMockDiscoverProfiles();
-      }
-    } on DioException catch (e) {
-      print('⟹ [ProfileService] Discover Dio error: ${e.message}');
-      print('⟹ [ProfileService] Falling back to mock data due to API error.');
-      return _getMockDiscoverProfiles(); 
-    } catch (e) {
-      print('⟹ [ProfileService] Discover general error: $e');
-      print('⟹ [ProfileService] Falling back to mock data due to general error.');
-      return _getMockDiscoverProfiles(); 
-    }
-  }
-  
-  // Generate mock profiles for development
-  List<Profile> _getMockDiscoverProfiles() {
-    print("⚠️ Using Mock Discover Profiles");
-    return List.generate(10, (index) {
-       final gender = index % 2 == 0 ? 'male' : 'female';
-       return Profile(
-        id: 1000 + index,
-        name: 'User ${index + 1}',
-        age: 20 + (index % 15),
-        gender: gender,
-        photoUrls: _getMultiplePhotos(index, gender),
-        interests: _getRandomInterests(index),
-        birthDate: DateTime.now().subtract(Duration(days: 365 * (20 + (index % 15)))),
-        bio: "Just a mock profile looking for connection! Love ${ _getRandomInterests(index).first.toLowerCase()} and exploring.",
-        location: "Mock City, MC",
-        distance: Random().nextDouble() * 50,
-        isVerified: index % 3 == 0,
-      );
-    });
-  }
-  
-  // Generate multiple photos for each profile
-  List<String> _getMultiplePhotos(int index, String gender) {
-    final photoCount = 2 + (index % 4);
-    final List<String> photos = [];
-    
-    for (int i = 1; i <= photoCount; i++) {
-      final photoId = ((index * 3 + i) % 99) + 1;
-      photos.add('https://randomuser.me/api/portraits/$gender/$photoId.jpg');
-    }
-    
-    return photos;
-  }
-  
-  List<String> _getRandomInterests(int seed) {
-    final allInterests = [
-      'Hiking', 'Reading', 'Cooking', 'Travel', 'Photography',
-      'Movies', 'Music', 'Sports', 'Art', 'Technology',
-      'Fitness', 'Dancing', 'Gaming', 'Yoga', 'Meditation',
-    ];
-    
-    final count = 3 + (seed % 3);
-    final selected = <String>[];
-    final random = Random(seed);
-    final available = List<String>.from(allInterests);
-    for (int i = 0; i < count; i++) {
-       if (available.isEmpty) break;
-       final randomIndex = random.nextInt(available.length);
-       selected.add(available.removeAt(randomIndex));
-    }
-    return selected;
-  }
-  
-  // Update profile
-  Future<Profile> updateProfile(int id, Map<String, dynamic> data) async {
-    print('⟹ [ProfileService] Updating profile $id...');
-    try {
-      final response = await _dio.patch(
-        '/profiles/$id',
-        data: data,
-      );
-      
+
       if (response.statusCode == 200 && response.data != null) {
-         print('⟹ [ProfileService] Profile $id updated successfully.');
-        return Profile.fromJson(response.data);
+        final List<dynamic> profilesJson = response.data['profiles'];
+        final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
+        _logger.info('Successfully retrieved ${profiles.length} discover profiles');
+        return profiles;
       } else {
-         throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: 'Failed to update profile (status ${response.statusCode})',
-        );
+        _logger.warn('Failed to get discover profiles: ${response.statusCode}');
+        
+        if (kDebugMode) {
+          _logger.debug('Returning mock profiles in debug mode');
+          return List.generate(10, (_) => _generateMockProfile());
+        }
+        return [];
       }
     } on DioException catch (e) {
-      print('⟹ [ProfileService] Update Profile Dio error: ${e.message}');
-       String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to update profile';
-       if (e.response?.statusCode == 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
+      _logger.error('Dio error getting discover profiles: ${e.message}');
+      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles in debug mode');
+        return List.generate(10, (_) => _generateMockProfile());
       }
-      throw Exception(errorMessage);
-    } catch (e) { 
-       print('⟹ [ProfileService] Update Profile general error: $e');
-       throw Exception('Failed to update profile: ${e.toString()}');
+      return [];
+    } catch (e) {
+      _logger.error('Unexpected error getting discover profiles: $e');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles in debug mode');
+        return List.generate(10, (_) => _generateMockProfile());
+      }
+      return [];
     }
   }
-  
-  // Create profile
-  Future<Profile> createProfile(Map<String, dynamic> profileData) async {
-     print('⟹ [ProfileService] Creating profile...');
+
+  Future<Profile?> createProfile(Map<String, dynamic> profileData) async {
+    _logger.debug('Creating new profile');
     try {
       final response = await _dio.post(
-        '/profiles',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profiles}',
         data: profileData,
       );
-      
+
       if (response.statusCode == 201 && response.data != null) {
-         print('⟹ [ProfileService] Profile created successfully with ID: ${response.data['id']}');
+        _logger.info('Successfully created profile');
         return Profile.fromJson(response.data);
       } else {
-         throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: 'Failed to create profile (status ${response.statusCode})',
-        );
+        _logger.warn('Failed to create profile: ${response.statusCode}');
+        return null;
       }
     } on DioException catch (e) {
-      print('⟹ [ProfileService] Create Profile Dio error: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to create profile';
-       if (e.response?.statusCode == 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      }
-      throw Exception(errorMessage);
+      _logger.error('Dio error creating profile: ${e.message}');
+      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      return null;
     } catch (e) {
-      print('⟹ [ProfileService] Create Profile general error: $e');
-      throw Exception('Failed to create profile: ${e.toString()}');
+      _logger.error('Unexpected error creating profile: $e');
+      return null;
     }
   }
 
-  // Method to get current user profile (might use AuthService or a dedicated endpoint)
-  Future<Profile> getCurrentUserProfile() async {
-     print('⟹ [ProfileService] Getting current user profile...');
-     try {
-       final response = await _dio.get('/profiles/me');
-       if (response.statusCode == 200 && response.data != null) {
-         return Profile.fromJson(response.data);
-       } else {
-          throw DioException(requestOptions: response.requestOptions, response: response);
-       }
-     } on DioException catch (e) {
-       print('⟹ [ProfileService] Get Current Profile Dio error: ${e.message}');
-       return _getMockCurrentUserProfile();
-     } catch (e) {
-       print('⟹ [ProfileService] Get Current Profile general error: $e');
-       return _getMockCurrentUserProfile();
-     }
-  }
-
-  // Mock current user profile for fallback
-  Profile _getMockCurrentUserProfile() {
-      print("⚠️ Using Mock Current User Profile");
-      return Profile(
-          id: 0,
-          name: 'Current User',
-          age: 28,
-          gender: 'non-binary',
-          photoUrls: ['https://randomuser.me/api/portraits/lego/1.jpg'],
-          interests: ['Flutter', 'Testing'],
-          birthDate: DateTime.now().subtract(const Duration(days: 365 * 28)),
-          bio: 'App developer creating this mock profile.',
-          location: 'Localhost',
-          isVerified: true,
-      );
-  }
-
-  // Fetch photos for a profile (if not included in main profile response)
-  Future<List<String>> _getProfilePhotos(int profileId) async {
-     print('⟹ [ProfileService] Getting photos for profile $profileId...');
-     try {
-       final response = await _dio.get('/photos', queryParameters: {'profile_id': profileId});
-       if (response.statusCode == 200 && response.data is List) {
-         return (response.data as List).map((photo) => photo['url'].toString()).toList();
-       }
-       return [];
-     } catch (e) {
-       print('Error fetching photos for $profileId: $e');
-       return [];
-     }
-  }
-
-  // Fetch interests for a profile (if not included)
-  Future<List<String>> _getProfileInterests(int profileId) async {
-     print('⟹ [ProfileService] Getting interests for profile $profileId...');
+  Future<Profile?> updateProfile(String profileId, Map<String, dynamic> profileData) async {
+    _logger.debug('Updating profile: $profileId');
     try {
-        final response = await _dio.get('/profile-interests', queryParameters: {'profile_id': profileId}); 
-       if (response.statusCode == 200 && response.data is List) {
-         return (response.data as List)
-                .map((item) => item?['interest']?['name']?.toString())
-                .where((name) => name != null)
-                .cast<String>()
-                .toList();
-       }
-       return [];
-     } catch (e) {
-       print('Error fetching interests for $profileId: $e');
-       return [];
-     }
-  }
-
-  // Fetch gender preferences (if needed separately)
-  Future<Map<String, dynamic>> _getGenderPreferences(int profileId) async {
-    return {};
-  }
-  
-  // Like/Dislike/Superlike actions
-
-  Future<void> likeProfile(int profileId) async {
-     print('⟹ [ProfileService] Liking profile $profileId...');
-     try {
-       await _dio.post('/profiles/$profileId/like');
-     } on DioException catch (e) {
-        print('⟹ [ProfileService] Like Profile Dio error: ${e.message}');
-        throw Exception(e.response?.data?['message'] ?? 'Failed to like profile');
-     } catch (e) {
-        print('⟹ [ProfileService] Like Profile general error: $e');
-        throw Exception('Failed to like profile');
-     }
-  }
-
-  Future<void> dislikeProfile(int profileId) async {
-     print('⟹ [ProfileService] Disliking profile $profileId...');
-     try {
-       await _dio.post('/profiles/$profileId/pass');
-     } on DioException catch (e) {
-       throw Exception(e.response?.data?['message'] ?? 'Failed to dislike profile');
-     } catch (e) {
-       throw Exception('Failed to dislike profile');
-     }
-  }
-
-  Future<void> superlikeProfile(int profileId) async {
-    print('⟹ [ProfileService] Superliking profile $profileId...');
-    try {
-      await _dio.post('/profiles/$profileId/superlike');
-    } on DioException catch (e) {
-       throw Exception(e.response?.data?['message'] ?? 'Failed to superlike profile');
-    } catch (e) {
-       throw Exception('Failed to superlike profile');
-    }
-  }
-
-  // Upload profile photo
-  Future<String?> uploadProfilePhoto(int profileId, File imageFile) async {
-    print('⟹ [ProfileService] Uploading photo for profile $profileId...');
-    try {
-      String fileName = imageFile.path.split('/').last;
-      FormData formData = FormData.fromMap({
-        // Adjust the field name ("photo", "file", "image", etc.) 
-        // based on your backend API requirements.
-        "photo": await MultipartFile.fromFile(
-          imageFile.path, 
-          filename: fileName
-        ),
-        // You might need to send the profile ID as part of the form data
-        // depending on the endpoint structure.
-        // "profile_id": profileId,
-      });
-
-      // Adjust the endpoint path ('/profiles/$profileId/photo', '/photos', etc.) 
-      // based on your API design.
-      final response = await _dio.post(
-        '/profiles/$profileId/photos', // Example endpoint
-        data: formData,
-        options: Options(
-           headers: {
-             // Ensure content-type is multipart/form-data
-             Headers.contentTypeHeader: Headers.multipartFormDataContentType,
-             // Add any other required headers like Authorization
-           }
-        )
+      final response = await _dio.patch(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profiles}/$profileId',
+        data: profileData,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Assuming the backend returns the URL of the uploaded photo
-        // Adjust the response parsing based on your actual API response structure.
-        final String? photoUrl = response.data?['url'];
-        print('⟹ [ProfileService] Photo uploaded successfully. URL: $photoUrl');
-        return photoUrl; 
+      if (response.statusCode == 200 && response.data != null) {
+        _logger.info('Successfully updated profile: $profileId');
+        return Profile.fromJson(response.data);
       } else {
-        print('⟹ [ProfileService] Photo upload failed with status ${response.statusCode}');
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: 'Failed to upload photo (status ${response.statusCode})',
-        );
+        _logger.warn('Failed to update profile: ${response.statusCode}');
+        return null;
       }
     } on DioException catch (e) {
-      print('⟹ [ProfileService] Photo Upload Dio error: ${e.response?.data ?? e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to upload photo';
-      throw Exception(errorMessage);
+      _logger.error('Dio error updating profile $profileId: ${e.message}');
+      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      return null;
     } catch (e) {
-      print('⟹ [ProfileService] Photo Upload general error: $e');
-      throw Exception('Failed to upload photo: ${e.toString()}');
+      _logger.error('Unexpected error updating profile $profileId: $e');
+      return null;
     }
+  }
+
+  Future<bool> likeProfile(String profileId) async {
+    _logger.debug("Liking profile: $profileId");
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        data: {
+          'targetProfileId': profileId,
+          'action': 'like',
+        },
+      );
+      
+      _logger.info("Successfully liked profile: $profileId");
+      return true;
+    } on DioException catch (e) {
+      _logger.error("Dio error liking profile $profileId: ${e.message}");
+      
+      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(Constants.networkError);
+      } else if (e.response?.statusCode == 401) {
+        throw Exception(Constants.authError);
+      } else if (e.response?.statusCode == 500) {
+        throw Exception(Constants.serverError);
+      } else {
+        _logger.error("Response: ${e.response?.statusCode} - ${e.response?.data}");
+        // Return error message from server or fallback to generic
+        final errorMessage = e.response?.data?['message'] ?? Constants.genericError;
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      _logger.error("General error liking profile $profileId: $e");
+      
+      if (kDebugMode) {
+        _logger.debug("Returning mock success in debug mode");
+        return true;
+      }
+      
+      throw Exception(Constants.genericError);
+    }
+  }
+
+  Future<bool> dislikeProfile(String profileId) async {
+    _logger.debug('Disliking profile: $profileId');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        data: {
+          'targetProfileId': profileId,
+          'action': 'dislike',
+        },
+      );
+
+      final success = response.statusCode == 200 || response.statusCode == 201;
+      if (success) {
+        _logger.info('Successfully disliked profile: $profileId');
+      } else {
+        _logger.warn('Failed to dislike profile: ${response.statusCode}');
+      }
+      return success;
+    } on DioException catch (e) {
+      _logger.error('Dio error disliking profile $profileId: ${e.message}');
+      return false;
+    } catch (e) {
+      _logger.error('Unexpected error disliking profile $profileId: $e');
+      return false;
+    }
+  }
+
+  Future<bool> superlikeProfile(String profileId) async {
+    _logger.debug('Superliking profile: $profileId');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        data: {
+          'targetProfileId': profileId,
+          'action': 'superlike',
+        },
+      );
+
+      final success = response.statusCode == 200 || response.statusCode == 201;
+      if (success) {
+        _logger.info('Successfully superliked profile: $profileId');
+      } else {
+        _logger.warn('Failed to superlike profile: ${response.statusCode}');
+      }
+      return success;
+    } on DioException catch (e) {
+      _logger.error('Dio error superliking profile $profileId: ${e.message}');
+      return false;
+    } catch (e) {
+      _logger.error('Unexpected error superliking profile $profileId: $e');
+      return false;
+    }
+  }
+
+  /// Checks the verification status of the profile
+  Future<Map<String, dynamic>> checkVerificationStatus() async {
+    try {
+      final response = await _dio.get(
+        AppEndpoints.profileVerification + '/status',
+      );
+
+      _logger.info('Verification status retrieved: ${response.data}');
+      return response.data;
+    } on DioException catch (e) {
+      _logger.error('Dio error checking verification status: ${e.message}');
+      // Return mock data for testing
+      return {
+        'status': 'pending',
+        'message': 'Your verification is being processed.',
+        'error': Constants.ERROR_VERIFICATION
+      };
+    } catch (e) {
+      _logger.error('Unexpected error checking verification status: $e');
+      return {
+        'status': 'error',
+        'message': Constants.ERROR_VERIFICATION
+      };
+    }
+  }
+
+  /// Requests profile verification
+  Future<Map<String, dynamic>> requestVerification() async {
+    try {
+      final response = await _dio.post(
+        AppEndpoints.profileVerification + '/request',
+      );
+
+      _logger.info('Verification requested successfully: ${response.data}');
+      return response.data;
+    } on DioException catch (e) {
+      _logger.error('Dio error requesting verification: ${e.message}');
+      // Return mock data for testing
+      return {
+        'status': 'requested',
+        'token': 'mock-verification-token',
+        'message': 'Verification has been requested successfully.',
+        'error': Constants.ERROR_VERIFICATION
+      };
+    } catch (e) {
+      _logger.error('Unexpected error requesting verification: $e');
+      return {
+        'status': 'error',
+        'message': Constants.ERROR_VERIFICATION
+      };
+    }
+  }
+
+  /// Completes the verification process
+  Future<Map<String, dynamic>> completeVerification(String verificationToken, String? selfieImagePath) async {
+    try {
+      Map<String, dynamic> data = {
+        'token': verificationToken,
+      };
+      
+      if (selfieImagePath != null) {
+        // Add logic to upload selfie if needed
+        data['selfie'] = selfieImagePath;
+      }
+      
+      final response = await _dio.post(
+        AppEndpoints.profileVerification + '/complete',
+        data: data,
+      );
+
+      _logger.info('Verification completed successfully: ${response.data}');
+      return response.data;
+    } on DioException catch (e) {
+      _logger.error('Dio error completing verification: ${e.message}');
+      // Return mock data for testing
+      return {
+        'status': 'error',
+        'message': Constants.ERROR_VERIFICATION,
+        'details': e.message
+      };
+    } catch (e) {
+      _logger.error('Unexpected error completing verification: $e');
+      return {
+        'status': 'error',
+        'message': Constants.ERROR_VERIFICATION
+      };
+    }
+  }
+
+  Profile _generateMockProfile() {
+    _logger.debug('Generating mock profile');
+    final random = math.Random();
+    final names = ['Alex', 'Jamie', 'Taylor', 'Jordan', 'Casey', 'Riley', 'Avery', 'Quinn', 'Morgan', 'Dakota'];
+    final interests = ['hiking', 'reading', 'movies', 'cooking', 'travel', 'music', 'art', 'sports', 'yoga', 'photography'];
+    
+    final name = names[random.nextInt(names.length)];
+    final id = 'mock-${random.nextInt(10000)}';
+    final age = 20 + random.nextInt(15);
+    
+    // Generate a date of birth to match the age
+    final now = DateTime.now();
+    final birthYear = now.year - age;
+    final birthMonth = 1 + random.nextInt(12);
+    final birthDay = 1 + random.nextInt(28);
+    final birthDate = DateTime(birthYear, birthMonth, birthDay);
+    
+    final userInterests = List.generate(
+      3 + random.nextInt(3),
+      (_) => interests[random.nextInt(interests.length)],
+    ).toSet().toList(); // Remove duplicates
+    
+    // Use more reliable image URLs that are less likely to 404
+    // Using Lorem Picsum with a seed for consistent images
+    final photoId = random.nextInt(1000) + 100; // Avoid low IDs that might not exist
+    final photo = 'https://picsum.photos/seed/$photoId/300/400';
+    final secondPhotoId = random.nextInt(1000) + 100;
+    final secondPhoto = 'https://picsum.photos/seed/$secondPhotoId/300/400';
+    
+    return Profile(
+      id: id,
+      name: name,
+      birthDate: birthDate,
+      bio: 'This is a mock profile for $name, age $age.',
+      interests: userInterests,
+      photoUrls: [photo, secondPhoto],
+      location: {'city': 'Mock City', 'country': 'Mockland'},
+      occupation: 'Professional Mock',
+      education: 'University of Mocking',
+      gender: random.nextBool() ? 'male' : 'female',
+      isVerified: false,
+      prompts: [
+        {'question': 'About me', 'answer': 'I am a mock profile'},
+        {'question': 'Looking for', 'answer': 'Someone to test this app with'},
+      ],
+      minAgePreference: 18,
+      maxAgePreference: 45,
+      maxDistance: 50,
+      genderPreference: 'all',
+    );
   }
 }
+
+// Provider is now defined in profile_service_provider.dart
+// Provider is now defined in profile_service_provider.dart

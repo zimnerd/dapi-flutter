@@ -1,204 +1,51 @@
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' as foundation;
+import 'package:flutter/foundation.dart' show immutable;
+import 'package:collection/collection.dart';
 
+@immutable
 class Profile {
-  final int id;
+  final String id;
+  final String? userId;
   final String name;
-  final int age;
-  final String gender;
-  final String? bio;
+  final DateTime? birthDate;
+  final String? gender;
   final List<String> photoUrls;
-  final String? profileImageUrl;
+  final List<String> interests;
+  final Map<String, dynamic>? location;
+  final double? distance;
   final String? occupation;
   final String? education;
-  final double? distance;
-  final List<String> interests;
-  final bool isOnline;
-  final DateTime birthDate;
-  final String? location;
-  final int minAgePreference;
-  final int maxAgePreference;
-  final double maxDistance;
+  final String? bio;
+  final bool isVerified;
+  final List<Map<String, String>> prompts;
+  final int? minAgePreference;
+  final int? maxAgePreference;
+  final int? maxDistance;
   final String? genderPreference;
-  final bool? isVerified;
-  final Map<String, String>? prompts;
-  final String? videoIntroUrl;
-  final String? audioIntroUrl;
 
-  Profile({
+  const Profile({
     required this.id,
+    this.userId,
     required this.name,
-    required this.age,
-    required this.gender,
-    this.bio,
+    this.birthDate,
+    this.gender,
     required this.photoUrls,
-    this.profileImageUrl,
+    required this.interests,
+    this.location,
+    this.distance,
     this.occupation,
     this.education,
-    this.distance,
-    required this.interests,
-    this.isOnline = false,
-    required this.birthDate,
-    this.location,
-    this.minAgePreference = 18,
-    this.maxAgePreference = 50,
-    this.maxDistance = 50.0,
+    this.bio,
+    this.isVerified = false,
+    this.prompts = const [],
+    this.minAgePreference,
+    this.maxAgePreference,
+    this.maxDistance,
     this.genderPreference,
-    this.isVerified,
-    this.prompts,
-    this.videoIntroUrl,
-    this.audioIntroUrl,
   });
 
-  factory Profile.fromJson(Map<String, dynamic> json) {
-    // Handle ID which could be an int or string
-    int id;
-    if (json['id'] is int) {
-      id = json['id'];
-    } else if (json['id'] is String) {
-      id = int.tryParse(json['id']) ?? 0;
-    } else {
-      id = 0;
-    }
-    
-    // Handle age
-    int age;
-    if (json['age'] is int) {
-      age = json['age'];
-    } else if (json['age'] is String) {
-      age = int.tryParse(json['age']) ?? 0;
-    } else if (json['birth_date'] != null) {
-      // Calculate age from birth date
-      final birthDate = DateTime.parse(json['birth_date']);
-      final today = DateTime.now();
-      age = today.year - birthDate.year;
-      if (today.month < birthDate.month || 
-          (today.month == birthDate.month && today.day < birthDate.day)) {
-        age--;
-      }
-    } else {
-      age = 0;
-    }
-    
-    // Handle photos, which could be a list or a single string, assign to photoUrls
-    List<String> photoUrls = [];
-    if (json['photos'] != null) {
-      if (json['photos'] is List) {
-        photoUrls = (json['photos'] as List).map((e) => e.toString()).toList();
-      } else if (json['photos'] is String) {
-        photoUrls = [json['photos']];
-      }
-    } else if (json['photoUrls'] != null) {
-       if (json['photoUrls'] is List) {
-        photoUrls = (json['photoUrls'] as List).map((e) => e.toString()).toList();
-      } else if (json['photoUrls'] is String) {
-        photoUrls = [json['photoUrls']];
-      }
-    }
-    
-    // Handle interests, which could be a list of strings or objects
-    List<String> interests = [];
-    if (json['interests'] != null) {
-      if (json['interests'] is List) {
-        interests = (json['interests'] as List).map((e) {
-          if (e is String) {
-            return e;
-          } else if (e is Map) {
-            return e['name']?.toString() ?? '';
-          }
-          return e.toString();
-        }).where((s) => s.isNotEmpty).toList().cast<String>();
-      }
-    }
-    
-    // Handle birth date
-    DateTime birthDate;
-    if (json['birth_date'] != null) {
-      try {
-        birthDate = DateTime.parse(json['birth_date']);
-      } catch (e) {
-        birthDate = DateTime.now().subtract(Duration(days: 365 * age));
-      }
-    } else {
-      birthDate = DateTime.now().subtract(Duration(days: 365 * age));
-    }
-    
-    // Handle distances
-    double? distance;
-    if (json['distance'] != null) {
-      if (json['distance'] is num) {
-        distance = (json['distance'] as num).toDouble();
-      } else if (json['distance'] is String) {
-        distance = double.tryParse(json['distance']);
-      }
-    }
-    
-    return Profile(
-      id: id,
-      name: json['name'] ?? 'Unknown',
-      age: age,
-      gender: json['gender'] ?? 'unknown',
-      bio: json['bio'],
-      photoUrls: photoUrls,
-      profileImageUrl: photoUrls.isNotEmpty ? photoUrls[0] : null,
-      occupation: json['occupation'],
-      education: json['education'],
-      distance: distance,
-      interests: interests,
-      isOnline: json['isOnline'] ?? false,
-      birthDate: birthDate,
-      location: json['location'],
-      minAgePreference: json['min_age_preference'] is int 
-          ? json['min_age_preference'] 
-          : (json['min_age_preference'] is String 
-              ? int.tryParse(json['min_age_preference']) ?? 18 
-              : 18),
-      maxAgePreference: json['max_age_preference'] is int 
-          ? json['max_age_preference'] 
-          : (json['max_age_preference'] is String 
-              ? int.tryParse(json['max_age_preference']) ?? 50 
-              : 50),
-      maxDistance: json['max_distance'] is num 
-          ? (json['max_distance'] as num).toDouble() 
-          : (json['max_distance'] is String 
-              ? double.tryParse(json['max_distance']) ?? 50.0 
-              : 50.0),
-      genderPreference: json['gender_preference'],
-      isVerified: json['is_verified'] ?? json['isVerified'] ?? false,
-      prompts: json['prompts'] as Map<String, String>?,
-      videoIntroUrl: json['videoIntroUrl'] as String?,
-      audioIntroUrl: json['audioIntroUrl'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'age': age,
-      'gender': gender,
-      'bio': bio,
-      'photoUrls': photoUrls,
-      'occupation': occupation,
-      'education': education,
-      'distance': distance,
-      'interests': interests,
-      'isOnline': isOnline,
-      'birth_date': birthDate.toIso8601String(),
-      'location': location,
-      'min_age_preference': minAgePreference,
-      'max_age_preference': maxAgePreference,
-      'max_distance': maxDistance,
-      'gender_preference': genderPreference,
-      'is_verified': isVerified,
-      'prompts': prompts,
-      'videoIntroUrl': videoIntroUrl,
-      'audioIntroUrl': audioIntroUrl,
-    };
-  }
-  
-  // Helper method to calculate age from birthDate
+  // Static method to calculate age from birthdate
   static int calculateAge(DateTime birthDate) {
     final now = DateTime.now();
     int age = now.year - birthDate.year;
@@ -207,5 +54,220 @@ class Profile {
       age--;
     }
     return age;
+  }
+
+  int? get age {
+    if (birthDate == null) return null;
+    return calculateAge(birthDate!);
+  }
+
+  // Factory constructor to create Profile from JSON
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    // Handle potential null/type variations from different API responses
+    final id = json['id']?.toString() ?? '';
+    
+    // Handle birthDate - can come as String or DateTime
+    DateTime? parsedBirthDate;
+    if (json['birth_date'] != null) {
+      // Try to parse the birth_date from string 
+      try {
+        parsedBirthDate = DateTime.parse(json['birth_date'].toString());
+      } catch (e) {
+        print('Error parsing birth_date: $e');
+      }
+    } else if (json['birthDate'] != null) {
+      // Try alternative key
+      try {
+        parsedBirthDate = DateTime.parse(json['birthDate'].toString());
+      } catch (e) {
+        print('Error parsing birthDate: $e');
+      }
+    }
+
+    // Handle photos which might be under 'photos' or 'photoUrls'
+    List<String> photos = [];
+    if (json['photos'] != null) {
+      photos = (json['photos'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+    } else if (json['photoUrls'] != null) {
+      photos = (json['photoUrls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+    } else if (json['photo_urls'] != null) {
+      photos = (json['photo_urls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+    }
+
+    // Handle interests which might be under different keys
+    List<String> parsedInterests = [];
+    if (json['interests'] != null) {
+      parsedInterests = (json['interests'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ?? [];
+    }
+
+    // Handle location - could be a string or a map
+    Map<String, dynamic>? locationMap;
+    if (json['location'] is Map) {
+      locationMap = json['location'] as Map<String, dynamic>;
+    } else if (json['location'] is String) {
+      locationMap = {'city': json['location'], 'country': ''};
+    }
+
+    // Handle prompts
+    List<Map<String, String>> promptsList = [];
+    if (json['prompts'] != null) {
+      try {
+        promptsList = (json['prompts'] as List<dynamic>?)
+            ?.map((e) => Map<String, String>.from(e as Map))
+            .toList() ?? [];
+      } catch (e) {
+        print('Error parsing prompts: $e');
+      }
+    }
+
+    return Profile(
+      id: id,
+      userId: json['user_id']?.toString() ?? json['userId']?.toString(),
+      name: json['name']?.toString() ?? '',
+      birthDate: parsedBirthDate,
+      gender: json['gender']?.toString(),
+      photoUrls: photos,
+      interests: parsedInterests,
+      location: locationMap,
+      distance: json['distance'] != null ? double.tryParse(json['distance'].toString()) : null,
+      occupation: json['occupation']?.toString(),
+      education: json['education']?.toString(),
+      bio: json['bio']?.toString(),
+      isVerified: json['is_verified'] == true || json['isVerified'] == true,
+      prompts: promptsList,
+      minAgePreference: json['min_age_preference'] != null ? int.tryParse(json['min_age_preference'].toString()) : 
+                         json['minAgePreference'] != null ? int.tryParse(json['minAgePreference'].toString()) : null,
+      maxAgePreference: json['max_age_preference'] != null ? int.tryParse(json['max_age_preference'].toString()) : 
+                         json['maxAgePreference'] != null ? int.tryParse(json['maxAgePreference'].toString()) : null,
+      maxDistance: json['max_distance'] != null ? int.tryParse(json['max_distance'].toString()) : 
+                    json['maxDistance'] != null ? int.tryParse(json['maxDistance'].toString()) : null,
+      genderPreference: json['gender_preference']?.toString() ?? json['genderPreference']?.toString(),
+    );
+  }
+
+  // Convert Profile to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'birth_date': birthDate?.toIso8601String(),
+      'gender': gender,
+      'photo_urls': photoUrls,
+      'interests': interests,
+      'location': location,
+      'distance': distance,
+      'occupation': occupation,
+      'education': education,
+      'bio': bio,
+      'is_verified': isVerified,
+      'prompts': prompts,
+      'min_age_preference': minAgePreference,
+      'max_age_preference': maxAgePreference,
+      'max_distance': maxDistance,
+      'gender_preference': genderPreference,
+    };
+  }
+
+  // Copy with method for immutable updates
+  Profile copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    DateTime? birthDate,
+    String? gender,
+    List<String>? photoUrls,
+    List<String>? interests,
+    Map<String, dynamic>? location,
+    double? distance,
+    String? occupation,
+    String? education,
+    String? bio,
+    bool? isVerified,
+    List<Map<String, String>>? prompts,
+    int? minAgePreference,
+    int? maxAgePreference,
+    int? maxDistance,
+    String? genderPreference,
+  }) {
+    return Profile(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      birthDate: birthDate ?? this.birthDate,
+      gender: gender ?? this.gender,
+      photoUrls: photoUrls ?? this.photoUrls,
+      interests: interests ?? this.interests,
+      location: location ?? this.location,
+      distance: distance ?? this.distance,
+      occupation: occupation ?? this.occupation,
+      education: education ?? this.education,
+      bio: bio ?? this.bio,
+      isVerified: isVerified ?? this.isVerified,
+      prompts: prompts ?? this.prompts,
+      minAgePreference: minAgePreference ?? this.minAgePreference,
+      maxAgePreference: maxAgePreference ?? this.maxAgePreference,
+      maxDistance: maxDistance ?? this.maxDistance,
+      genderPreference: genderPreference ?? this.genderPreference,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    final listEquals = const DeepCollectionEquality().equals;
+    final mapEquals = const DeepCollectionEquality().equals;
+    
+    return other is Profile &&
+        other.id == id &&
+        other.userId == userId &&
+        other.name == name &&
+        other.birthDate == birthDate &&
+        other.gender == gender &&
+        listEquals(other.photoUrls, photoUrls) &&
+        listEquals(other.interests, interests) &&
+        mapEquals(other.location, location) &&
+        other.distance == distance &&
+        other.occupation == occupation &&
+        other.education == education &&
+        other.bio == bio &&
+        other.isVerified == isVerified &&
+        listEquals(other.prompts, prompts) &&
+        other.minAgePreference == minAgePreference &&
+        other.maxAgePreference == maxAgePreference &&
+        other.maxDistance == maxDistance &&
+        other.genderPreference == genderPreference;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      id,
+      userId,
+      name,
+      birthDate,
+      gender,
+      Object.hashAll(photoUrls),
+      Object.hashAll(interests),
+      location,
+      distance,
+      occupation,
+      education,
+      bio,
+      isVerified,
+      Object.hashAll(prompts),
+      minAgePreference,
+      maxAgePreference,
+      maxDistance,
+      genderPreference,
+    );
   }
 }

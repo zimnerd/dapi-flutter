@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../widgets/empty_state.dart';
+import '../utils/logger.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class _EventsScreenState extends State<EventsScreen> {
   bool _isLoading = true;
   List<Event> _events = [];
   String _selectedFilter = 'All';
+  final _logger = Logger('EventsScreen');
   
   @override
   void initState() {
@@ -22,13 +24,30 @@ class _EventsScreenState extends State<EventsScreen> {
   
   Future<void> _loadEvents() async {
     // Simulate loading from API
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // In a real app, these would come from an API
-    setState(() {
-      _events = _getMockEvents();
-      _isLoading = false;
-    });
+    try {
+      _logger.debug('Loading events');
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // In a real app, these would come from an API
+      // Add mounted check before setState
+      if (mounted) {
+        setState(() {
+          _events = _getMockEvents();
+          _isLoading = false;
+          _logger.debug('Events loaded successfully: ${_events.length} events');
+        });
+      } else {
+        _logger.debug('Widget is no longer mounted, skipping setState');
+      }
+    } catch (e) {
+      _logger.error('Error loading events: $e');
+      // Add mounted check before setState
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
   
   List<Event> _getMockEvents() {

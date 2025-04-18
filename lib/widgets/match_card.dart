@@ -79,55 +79,60 @@ class MatchCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Info section at the bottom
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Name and age
-                    Text(
-                      "${profile.name}, ${profile.age}",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            // Info section at the bottom - more compact now
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min, // Use minimum space
+                children: [
+                  // Name and age
+                  Text(
+                    "${profile.name}, ${profile.age}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
-                    // Distance or other info
-                    if (profile.distance != null)
-                      Text(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // Distance or other info - smaller text with less vertical space
+                  if (profile.distance != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                      child: Text(
                         "${profile.distance!.round()} km away",
                         style: TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 14,
+                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    // Message button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: onTap,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
+                    ),
+                  // Message button - more compact
+                  SizedBox(
+                    width: double.infinity,
+                    height: 32, // Fixed height to prevent overflow
+                    child: ElevatedButton(
+                      onPressed: onTap,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 0), // Minimal padding
+                        minimumSize: const Size.fromHeight(30), // Ensure minimum height
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
                         ),
-                        child: const Text('Message'),
+                      ),
+                      child: const Text(
+                        'Message',
+                        style: TextStyle(fontSize: 13), // Smaller text
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

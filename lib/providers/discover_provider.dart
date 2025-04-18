@@ -1,33 +1,33 @@
 import 'package:flutter/foundation.dart'; // For immutable annotation
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/profile.dart';
-// Import the ProfileService class directly
-import '../services/profile_service.dart';
-// FIX: Import the profile service provider from profile_provider.dart
-import 'profile_provider.dart'; // Use profileServiceProvider defined here
-import 'subscription_provider.dart'; // For premium check later
+import '../services/profile_service.dart'; // Import ProfileService
+// Import providers from central providers file
+import 'providers.dart' show profileServiceProvider, premiumProvider;
 
-// --- State Definition ---
-@immutable
+// Define state class with immutable properties
 class DiscoverState {
-  final AsyncValue<List<Profile>> profiles; // Use AsyncValue to handle loading/error
-  final Profile? lastRemovedProfile; // Store the profile for undo
-
+  final AsyncValue<List<Profile>> profiles;
+  final Profile? lastRemovedProfile; // For premium undo feature
+  
   const DiscoverState({
     required this.profiles,
     this.lastRemovedProfile,
   });
-
-  // Initial state
-  const DiscoverState.initial()
-      : profiles = const AsyncValue.loading(),
-        lastRemovedProfile = null;
-
-  // CopyWith method
+  
+  // Initial state constructor
+  factory DiscoverState.initial() {
+    return const DiscoverState(
+      profiles: AsyncValue.loading(),
+      lastRemovedProfile: null,
+    );
+  }
+  
+  // CopyWith for immutable state updates
   DiscoverState copyWith({
     AsyncValue<List<Profile>>? profiles,
     Profile? lastRemovedProfile,
-    bool clearLastRemoved = false, // Flag to explicitly clear
+    bool clearLastRemoved = false, // Flag to clear lastRemovedProfile
   }) {
     return DiscoverState(
       profiles: profiles ?? this.profiles,
@@ -36,23 +36,22 @@ class DiscoverState {
   }
 }
 
-// --- State Notifier Definition ---
 class DiscoverNotifier extends StateNotifier<DiscoverState> {
   final ProfileService _profileService;
-  final Ref _ref; // Keep ref for reading other providers
-
-  DiscoverNotifier(this._profileService, this._ref) : super(const DiscoverState.initial()) {
-    _fetchProfiles(); // Fetch initial profiles on creation
+  final Ref _ref;
+  
+  DiscoverNotifier(this._profileService, this._ref) : super(DiscoverState.initial()) {
+    _fetchProfiles(); // Fetch profiles when created
   }
-
-  // Fetch profiles from the service
+  
+  // Method to fetch profiles from the service
   Future<void> _fetchProfiles() async {
     // Don't set loading if profiles already exist (refresh scenario)
     if (state.profiles is! AsyncData) {
        state = state.copyWith(profiles: const AsyncValue.loading());
     }
     try {
-      // TODO: Add filter parameters here if needed later
+      // Get filters from provider if needed
       final profileList = await _profileService.getDiscoverProfiles();
       state = state.copyWith(
           profiles: AsyncValue.data(profileList),
@@ -70,8 +69,6 @@ class DiscoverNotifier extends StateNotifier<DiscoverState> {
     await _fetchProfiles();
   }
 
-  // --- Placeholder Methods for Swipe Actions (to be implemented) ---
-
   // Called after a swipe action completes
   void removeFirstProfile() {
      state.profiles.whenData((profileList) {
@@ -88,39 +85,42 @@ class DiscoverNotifier extends StateNotifier<DiscoverState> {
 
   // Undo the last swipe (premium feature)
   Future<bool> undoLastSwipe() async {
-     final isPremium = _ref.read(premiumStatusProvider); // Use the correct provider name
-     final profileToRestore = state.lastRemovedProfile;
-
-     if (isPremium && profileToRestore != null) {
-       // Simulate network delay for effect?
-       await Future.delayed(const Duration(milliseconds: 200));
-
-       state.profiles.whenData((profileList) {
-          final updatedList = [profileToRestore, ...profileList];
-          state = state.copyWith(
-             profiles: AsyncValue.data(updatedList),
-             clearLastRemoved: true // Clear undo state after restoring
-          );
-       });
-       print("Undo successful for ${profileToRestore.name}");
-       return true; // Indicate success
-     } else if (!isPremium) {
-       print("Undo failed: User is not premium.");
-       // TODO: Trigger premium upsell prompt?
-       // ref.read(uiStateProvider.notifier).showPremiumUpsell('undo_swipe');
-       return false;
-     } else {
-        print("Undo failed: No profile to restore.");
-        return false; // Nothing to undo
-     }
+    // Check premium status
+    final isPremium = await _ref.read(premiumProvider.future);
+    final profileToRestore = state.lastRemovedProfile;
+    
+    if (!isPremium) {
+      print('Premium required for undo feature');
+      return false;
+    }
+    
+    if (profileToRestore == null) {
+      print('No profile to restore');
+      return false;
+    }
+    
+    // Get current profiles and add the last removed one back to the front
+    state.profiles.whenData((currentProfiles) {
+      final updatedProfiles = [profileToRestore, ...currentProfiles];
+      state = state.copyWith(
+        profiles: AsyncValue.data(updatedProfiles),
+        lastRemovedProfile: null
+      );
+    });
+    
+    return true;
   }
 }
 
-// --- StateNotifierProvider Definition ---
+// StateNotifierProvider for discover profiles
 final discoverProfilesProvider = StateNotifierProvider.autoDispose<DiscoverNotifier, DiscoverState>((ref) {
-  // Watch the correctly imported profileServiceProvider
   final profileService = ref.watch(profileServiceProvider);
   return DiscoverNotifier(profileService, ref);
+});
+
+// Convenience provider for direct ProfileService access
+final discoverServiceProvider = Provider<ProfileService>((ref) {
+  return ref.watch(profileServiceProvider);
 });
 
 // Removed the old FutureProvider
@@ -128,3 +128,8 @@ final discoverProfilesProvider = StateNotifierProvider.autoDispose<DiscoverNotif
 
 // TODO: Optionally, create a provider for filters if complex
 // final discoverFiltersProvider = StateNotifierProvider<...> ... 
+
+final discoverProvider = Provider<ProfileService>((ref) {
+  final profileService = ref.watch(profileServiceProvider); // Updated reference
+  return profileService;
+}); 

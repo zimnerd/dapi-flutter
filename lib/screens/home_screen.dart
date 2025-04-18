@@ -28,7 +28,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   
   Future<void> _loadUserData() async {
     setState(() {
-      _userName = ref.read(userNameProvider);
+      final userName = ref.read(userNameProvider);
+      _userName = userName ?? 'User';
       _isLoading = false;
     });
   }
@@ -48,7 +49,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   
   @override
   Widget build(BuildContext context) {
-    final currentUserName = ref.watch(userNameProvider);
+    final userName = ref.watch(userNameProvider);
+    final currentUserName = userName ?? 'User';
     
     return Scaffold(
       appBar: _selectedIndex != 0 && _selectedIndex != 4 ? AppBar(

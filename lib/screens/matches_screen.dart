@@ -62,12 +62,12 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
     return RefreshIndicator(
       onRefresh: _fetchMatches,
       child: GridView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
         ),
         itemCount: matches.length,
         itemBuilder: (context, index) {
@@ -95,16 +95,22 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
         padding: const EdgeInsets.all(16),
         itemCount: conversations.length,
         itemBuilder: (context, index) {
+          if (index >= conversations.length) {
+            print("⟹ [MatchesScreen] Index out of range in conversation list: $index/${conversations.length}");
+            return const SizedBox.shrink();
+          }
+          
+          final conversation = conversations[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: ConversationCard(
-              conversation: conversations[index],
+              conversation: conversation,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ConversationScreen(
-                      conversation: conversations[index],
+                      conversation: conversation,
                     ),
                   ),
                 ).then((_) => _fetchConversations());
@@ -117,38 +123,51 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
   }
 
   Widget _buildLikesTab() {
-    final isPremium = ref.watch(premiumProvider);
+    final isPremiumAsync = ref.watch(premiumProvider);
+    bool isPremium = false;
+    
+    // Extract the value from AsyncValue
+    isPremiumAsync.whenData((value) {
+      isPremium = value;
+    });
 
     if (!isPremium) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Icon(Icons.favorite_outline, size: 80, color: AppColors.primary.withOpacity(0.6)),
-              const SizedBox(height: 20),
-              Text(
-                'See Who Likes You!',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
+              Icon(Icons.favorite_outline, size: 70, color: AppColors.primary.withOpacity(0.6)),
               const SizedBox(height: 16),
               Text(
-                'Upgrade to Premium to see everyone who already liked your profile and match instantly.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
+                'See Who Likes You!',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.star_border_purple500_outlined),
-                label: const Text('Go Premium'),
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const PremiumScreen()));
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Text(
+                  'Upgrade to Premium to see everyone who already liked your profile and match instantly.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 200,
+                height: 44,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.star_border_purple500_outlined, size: 18),
+                  label: const Text('Go Premium'),
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PremiumScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
             ],

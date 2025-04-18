@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../services/api_config.dart';
+import '../config/app_config.dart';
+import 'package:dio/dio.dart';
+import '../models/message.dart';
 
 class MessageService {
   final storage = FlutterSecureStorage();
@@ -14,7 +16,7 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.apiBaseUrl}/conversations'),
+        Uri.parse('${AppConfig.apiBaseUrl}/conversations'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -40,7 +42,7 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.apiBaseUrl}/messages/$userId'),
+        Uri.parse('${AppConfig.apiBaseUrl}/messages/$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -66,7 +68,7 @@ class MessageService {
       }
 
       final response = await http.post(
-        Uri.parse('${ApiConfig.apiBaseUrl}/messages'),
+        Uri.parse('${AppConfig.apiBaseUrl}/messages'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -96,7 +98,7 @@ class MessageService {
       }
 
       final response = await http.patch(
-        Uri.parse('${ApiConfig.apiBaseUrl}/messages/$messageId/read'),
+        Uri.parse('${AppConfig.apiBaseUrl}/messages/$messageId/read'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -119,7 +121,7 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConfig.apiBaseUrl}/messages/unread/count'),
+        Uri.parse('${AppConfig.apiBaseUrl}/messages/unread/count'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

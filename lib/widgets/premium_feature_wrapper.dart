@@ -19,7 +19,13 @@ class PremiumFeatureWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPremium = ref.watch(premiumProvider);
+    final isPremiumAsync = ref.watch(premiumProvider);
+    bool isPremium = false;
+    
+    // Extract the value from AsyncValue
+    isPremiumAsync.whenData((value) {
+      isPremium = value;
+    });
     
     if (isPremium) {
       return child;

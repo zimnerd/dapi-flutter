@@ -1,78 +1,127 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math' as Math;
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
-import 'api_config.dart';
+import '../config/app_config.dart';
 import 'api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/logger.dart';
+import '../providers/providers.dart'; // Import providers.dart for reference to shared providers
+
+final authServiceProvider = Provider<AuthService>((ref) {
+  final dio = ref.watch(dioProvider);
+  final secureStorage = ref.watch(secureStorageProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return AuthService(dio, secureStorage, prefs);
+});
 
 class AuthService {
   final Dio _dio;
-  final _storage = const FlutterSecureStorage();
-  static const String _tokenKey = 'auth_token';
-  static const String _refreshTokenKey = 'refresh_token';
+  final FlutterSecureStorage _secureStorage;
+  final SharedPreferences _prefs;
+  final _logger = Logger('Auth');
 
-  AuthService(this._dio);
+  AuthService(this._dio, this._secureStorage, this._prefs);
 
   // Login user
   Future<Map<String, dynamic>> login(String email, String password) async {
-    print('⟹ [AuthService] Attempting login with email: $email');
+    _logger.debug('Attempting login for email: $email');
     try {
+      // Ensure the URL is properly constructed
+      String loginUrl = AppEndpoints.login;
+      if (loginUrl.startsWith('/') && AppConfig.apiBaseUrl.endsWith('/')) {
+        loginUrl = loginUrl.substring(1);
+      }
+      
       final response = await _dio.post(
-        '/auth/login',
+        '${AppConfig.apiBaseUrl}$loginUrl',
         data: {
-          'email': email,
-          'password': password,
+          AppRequestKeys.email: email,
+          AppRequestKeys.password: password,
         },
       );
-    
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        await _saveAuthData(response.data['data']);
-        return response.data['data'];
-      } else {
-        String errorMessage = response.data?['message'] ?? 'Failed to login';
-        print('⟹ [AuthService] Login failed: $errorMessage');
-        throw Exception(errorMessage);
-      }
+      
+      _logger.debug('Login success: ${response.statusCode}');
+      
+      await _handleAuthResponse(response.data);
+      
+      return {
+        'success': true,
+        'data': response.data,
+      };
     } on DioException catch (e) {
-      print('⟹ [AuthService] Login Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Login failed';
-      throw Exception(errorMessage);
+      String errorMessage = 'Login failed';
+      
+      if (e.response != null) {
+        _logger.error('Login failed: ${e.response?.statusCode} - ${e.response?.data}');
+        
+        // Extract error message from response if available
+        if (e.response?.data is Map) {
+          errorMessage = e.response?.data['message'] ?? 
+                        e.response?.data['error'] ?? 
+                        'Authentication failed';
+        }
+        
+        // Handle specific status codes
+        if (e.response?.statusCode == 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (e.response?.statusCode == 429) {
+          errorMessage = 'Too many login attempts. Please try again later.';
+        } else if (e.response?.statusCode == 403) {
+          errorMessage = 'Account locked or disabled. Please contact support.';
+        } else if (e.response?.statusCode == 404) {
+          errorMessage = 'Account not found with this email.';
+        }
+      } else {
+        _logger.error('Login failed: ${e.message}');
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      return {
+        'success': false,
+        'message': errorMessage,
+        'error': e,
+      };
     } catch (e) {
-      print('⟹ [AuthService] Login general exception: $e');
-      throw Exception('An unexpected error occurred during login.');
+      _logger.error('Unexpected error during login: $e');
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred',
+        'error': e,
+      };
     }
   }
   
   // Login with biometrics
   Future<Map<String, dynamic>> loginWithBiometrics(String email) async {
-    print('⟹ [AuthService] Attempting biometric login with email: $email');
+    _logger.info('Attempting biometric login with email: $email');
     try {
       final response = await _dio.post(
-        '/auth/biometric-login',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.biometricLogin}',
         data: {
-          'email': email,
-          'biometric_authenticated': true,
+          AppRequestKeys.email: email,
+          AppRequestKeys.biometricAuthenticated: true,
         },
       );
       
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        await _saveAuthData(response.data['data']);
-        return response.data['data'];
+      if (response.statusCode == AppStatusCodes.success && response.data != null) {
+        await _handleAuthResponse(response.data!);
+        return response.data!;
       } else {
-        String errorMessage = response.data?['message'] ?? 'Biometric login failed';
+        String errorMessage = response.data?[AppResponseKeys.message] ?? AppErrorMessages.biometricLoginFailed;
         throw Exception(errorMessage);
       }
     } on DioException catch (e) {
-      print('⟹ [AuthService] Biometric Login Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Biometric login failed';
+      _logger.error('Biometric Login Dio exception: ${e.message}');
+      String errorMessage = e.response?.data?[AppResponseKeys.message] ?? e.message ?? AppErrorMessages.biometricLoginFailed;
       throw Exception(errorMessage);
     } catch (e) {
-      print('⟹ [AuthService] Biometric Login general exception: $e');
-      throw Exception('An unexpected error occurred during biometric login.');
+      _logger.error('Biometric Login general exception: $e');
+      throw Exception(AppErrorMessages.unexpectedError);
     }
   }
   
@@ -84,165 +133,271 @@ class AuthService {
     String birthDate, 
     String gender
   ) async {
-    print('⟹ [AuthService] Attempting registration...');
+    _logger.info('Registering new user: $email');
     try {
       final response = await _dio.post(
-        '/auth/register',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.register}',
         data: {
-          'name': name,
-          'email': email,
-          'password': password,
-          'birthDate': birthDate,
-          'gender': gender,
+          AppRequestKeys.name: name,
+          AppRequestKeys.email: email,
+          AppRequestKeys.password: password,
+          AppRequestKeys.birthDate: birthDate,
+          AppRequestKeys.gender: gender,
         },
       );
       
-      if (response.statusCode == 201 && response.data['data'] != null) {
-        await _saveAuthData(response.data['data']);
-        return response.data['data'];
+      if (response.statusCode == AppStatusCodes.created && response.data != null) {
+        await _handleAuthResponse(response.data!);
+        _logger.info('Registration successful for: $email');
+        return response.data!;
       } else {
-        String errorMessage = response.data?['message'] ?? 'Failed to register';
+        String errorMessage = response.data?[AppResponseKeys.message] ?? AppErrorMessages.registrationFailed;
         throw Exception(errorMessage);
       }
     } on DioException catch (e) {
-      print('⟹ [AuthService] Registration Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Registration failed';
+      _logger.error('Registration Dio exception: ${e.message}');
+      String errorMessage = e.response?.data?[AppResponseKeys.message] ?? e.message ?? AppErrorMessages.registrationFailed;
       throw Exception(errorMessage);
     } catch (e) {
-      print('⟹ [AuthService] Registration general exception: $e');
-      throw Exception('An unexpected error occurred during registration.');
+      _logger.error('Registration general exception: $e');
+      throw Exception(AppErrorMessages.unexpectedError);
     }
   }
   
   // Logout user
   Future<void> logout() async {
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _refreshTokenKey);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-    await prefs.remove('userEmail');
-    await prefs.remove('userName');
-    await prefs.remove('profileId');
-    print('⟹ [AuthService] User logged out and data cleared.');
+    _logger.debug('Logging out user');
+    try {
+      await _secureStorage.delete(key: AppStorageKeys.accessToken);
+      await _secureStorage.delete(key: AppStorageKeys.refreshToken);
+      await _prefs.remove(AppStorageKeys.userId);
+      await _prefs.remove(AppStorageKeys.userEmail);
+      await _prefs.remove(AppStorageKeys.userName);
+      await _prefs.remove(AppStorageKeys.profileId);
+      _logger.info('User logged out successfully');
+    } catch (e) {
+      _logger.error('Error during logout: $e');
+      rethrow;
+    }
   }
   
-  // Check if user is logged in (by checking for token)
+  // Check if user is logged in
   Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    print('⟹ [AuthService] Checking isLoggedIn: ${token != null}');
-    return token != null;
+    try {
+      _logger.debug('Checking if user is logged in');
+      final token = await _secureStorage.read(key: AppStorageKeys.accessToken);
+      final result = token != null && token.isNotEmpty;
+      _logger.debug('User logged in status: $result');
+      return result;
+    } catch (e) {
+      _logger.error('Error checking login status: $e');
+      return false;
+    }
   }
   
   // Get current user id from SharedPreferences
   Future<String?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userId');
+    try {
+      _logger.debug('Getting user ID from preferences');
+      return _prefs.getString(AppStorageKeys.userId);
+    } catch (e) {
+      _logger.error('Error getting user ID: $e');
+      return null;
+    }
   }
 
   // Get current user email from SharedPreferences
   Future<String?> getUserEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userEmail');
+    return _prefs.getString(AppStorageKeys.userEmail);
   }
 
   // Get current user name from SharedPreferences
   Future<String?> getUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userName');
+    return _prefs.getString(AppStorageKeys.userName);
   }
 
-  // Get auth token from secure storage
-  Future<String?> getToken() async {
-    return await _storage.read(key: _tokenKey);
-  }
-
-  // Get refresh token from secure storage
-  Future<String?> getRefreshToken() async {
-    return await _storage.read(key: _refreshTokenKey);
-  }
-  
-  // Refresh token
-  Future<bool> refreshToken() async {
-    final refreshToken = await getRefreshToken();
-    print('⟹ [AuthService] Attempting token refresh (using http)...');
-    
-    if (refreshToken == null) {
-      print('⟹ [AuthService] Refresh failed: No refresh token found.');
-      return false;
-    }
-    
+  // Get access token
+  Future<String?> getAccessToken() async {
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.apiBaseUrl}/auth/refresh'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'refreshToken': refreshToken,
-        }),
-      );
+      _logger.debug('Getting access token from secure storage');
+      return await _secureStorage.read(key: AppStorageKeys.accessToken);
+    } catch (e) {
+      _logger.error('Error getting access token: $e');
+      return null;
+    }
+  }
+
+  // Get refresh token
+  Future<String?> getRefreshToken() async {
+    try {
+      _logger.debug('Getting refresh token from secure storage');
+      return await _secureStorage.read(key: AppStorageKeys.refreshToken);
+    } catch (e) {
+      _logger.error('Error getting refresh token: $e');
+      return null;
+    }
+  }
+
+  // Refresh token with enhanced error handling
+  Future<bool> refreshToken() async {
+    _logger.debug('Attempting to refresh token');
+    try {
+      final refreshToken = await _secureStorage.read(key: AppStorageKeys.refreshToken);
       
-      final responseData = jsonDecode(response.body);
-      print('⟹ [AuthService] Refresh response status: ${response.statusCode}');
-      
-      if (response.statusCode == 200 && responseData['data'] != null) {
-        await _storage.write(key: _tokenKey, value: responseData['data']['token']);
-        await _storage.write(key: _refreshTokenKey, value: responseData['data']['refreshToken']);
-        print('⟹ [AuthService] Token refreshed successfully (using http).');
-        return true;
-      } else {
-        print('⟹ [AuthService] Refresh failed (http): Server response indicated failure. ${responseData['message'] ?? ''}');
+      if (refreshToken == null || refreshToken.isEmpty) {
+        _logger.warn('No refresh token available - authentication required');
         return false;
       }
+      
+      // Create a new dio instance to avoid interceptor loops
+      final refreshDio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': AppHeaders.applicationJson,
+          'Accept': AppHeaders.applicationJson,
+        },
+      ));
+      
+      // Ensure the URL is properly constructed
+      String refreshUrl = AppEndpoints.refresh; // Use refresh instead of refreshToken
+      if (refreshUrl.startsWith('/') && refreshDio.options.baseUrl.endsWith('/')) {
+        refreshUrl = refreshUrl.substring(1);
+      }
+      
+      _logger.debug('Making refresh token request to: ${refreshDio.options.baseUrl}$refreshUrl');
+      
+      final response = await refreshDio.post(
+        refreshUrl,
+        data: {
+          // Use 'refreshToken' key as required by the server
+          'refreshToken': refreshToken,
+        },
+      );
+      
+      _logger.debug('Token refresh response status: ${response.statusCode}');
+      _logger.debug('Token refresh response data: ${response.data}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Map<String, dynamic> data = response.data;
+        
+        // Check for token in root or nested in data field
+        final newToken = data['accessToken'] ?? 
+                         data['token'] ?? 
+                         (data['data'] is Map ? data['data']['token'] : null);
+        
+        final newRefreshToken = data['refreshToken'] ?? 
+                               data['refresh_token'] ?? 
+                               (data['data'] is Map ? data['data']['refreshToken'] : null) ??
+                               refreshToken; // Fallback to same refresh token
+        
+        if (newToken != null) {
+          // Store new tokens
+          await _secureStorage.write(key: AppStorageKeys.token, value: newToken);
+          await _secureStorage.write(key: AppStorageKeys.accessToken, value: newToken);
+          
+          if (newRefreshToken != null) {
+            await _secureStorage.write(key: AppStorageKeys.refreshToken, value: newRefreshToken);
+          }
+          
+          _logger.info('Token refreshed successfully');
+          return true;
+        } else {
+          _logger.error('Missing token in refresh response: ${data}');
+          return false;
+        }
+      } else {
+        _logger.error('Invalid token refresh response: ${response.statusCode}');
+        return false;
+      }
+    } on DioException catch (e) {
+      // Handle specific error cases
+      if (e.response?.statusCode == 401) {
+        _logger.error('Refresh token is invalid or expired (401)');
+        // Clear tokens on 401 response
+        await _secureStorage.delete(key: AppStorageKeys.token);
+        await _secureStorage.delete(key: AppStorageKeys.accessToken);
+        await _secureStorage.delete(key: AppStorageKeys.refreshToken);
+      } else if (e.type == DioExceptionType.connectionTimeout || 
+                e.type == DioExceptionType.sendTimeout ||
+                e.type == DioExceptionType.receiveTimeout) {
+        _logger.error('Token refresh timeout: ${e.message}');
+      } else {
+        _logger.error('Token refresh Dio error: ${e.message}, status: ${e.response?.statusCode}');
+        _logger.error('Response data: ${e.response?.data}');
+      }
+      return false;
     } catch (e) {
-      print('⟹ [AuthService] Refresh exception (http): $e');
+      _logger.error('Unexpected error during token refresh: $e');
       return false;
     }
   }
   
-  // Save authentication data
-  Future<void> _saveAuthData(Map<String, dynamic> data) async {
-    print('⟹ [AuthService] Saving auth data...');
+  // Handle auth response and store tokens
+  Future<void> _handleAuthResponse(Map<String, dynamic> data) async {
+    _logger.debug('Handling auth response');
     
-    final token = data['token'] as String?;
-    final refreshToken = data['refreshToken'] as String?;
-    final userJson = data['user'] as Map<String, dynamic>?;
-    final profileJson = data['profile'] as Map<String, dynamic>?;
-
-    if (token == null || userJson == null) {
-      print('⟹ [AuthService] Error saving auth data: Token or User data missing.');
-      throw Exception('Invalid auth data received from server.');
+    // Extract tokens from response
+    String? token;
+    String? refreshToken;
+    Map<String, dynamic>? userData;
+    
+    // Check if the data is nested in a 'data' field
+    final Map<String, dynamic> dataToUse = data['data'] is Map ? 
+                                          data['data'] as Map<String, dynamic> : 
+                                          data;
+    
+    // Extract token - check multiple possible field names
+    token = dataToUse['token'] as String?;
+    if (token == null) {
+      token = dataToUse['accessToken'] as String?;
     }
-
-    await _storage.write(key: _tokenKey, value: token);
+    
+    // Extract refresh token - check multiple possible field names
+    refreshToken = dataToUse['refresh_token'] as String?;
+    if (refreshToken == null) {
+      refreshToken = dataToUse['refreshToken'] as String?;
+    }
+    
+    // Extract user data
+    userData = dataToUse['user'] as Map<String, dynamic>?;
+    
+    _logger.debug('Extracted token: ${token != null ? 'yes' : 'no'}');
+    _logger.debug('Extracted refresh token: ${refreshToken != null ? 'yes' : 'no'}');
+    _logger.debug('Extracted user data: ${userData != null ? 'yes' : 'no'}');
+    
+    if (token != null) {
+      await _secureStorage.write(key: AppStorageKeys.token, value: token);
+      await _secureStorage.write(key: AppStorageKeys.accessToken, value: token);
+      _logger.debug('Token stored in secure storage');
+    }
+    
     if (refreshToken != null) {
-      await _storage.write(key: _refreshTokenKey, value: refreshToken);
+      await _secureStorage.write(key: AppStorageKeys.refreshToken, value: refreshToken);
+      _logger.debug('Refresh token stored in secure storage');
     }
     
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userId', userJson['id'].toString());
-    await prefs.setString('userEmail', userJson['email'] as String);
-    await prefs.setString('userName', userJson['name'] as String);
-    
-    // Save profile ID from the profile object if it exists
-    if (profileJson != null && profileJson.containsKey('id')) {
-      await prefs.setString('profileId', profileJson['id'].toString());
+    if (userData != null) {
+      await _prefs.setString(AppStorageKeys.userId, userData['id'].toString());
+      await _prefs.setString(AppStorageKeys.userEmail, userData['email'].toString());
+      await _prefs.setString(AppStorageKeys.userName, userData['name']?.toString() ?? '');
+      _logger.debug('User data stored in preferences');
     }
-    
-    final tokenPreview = token.substring(0, Math.min(15, token.length));
-    print('⟹ [AuthService] Auth data saved successfully. Token: $tokenPreview...');
   }
 
   // Reset password
   Future<void> resetPassword(String email) async {
-    print('⟹ [AuthService] Requesting password reset for email: $email');
+    _logger.info('Requesting password reset for email: $email');
     try {
       final response = await _dio.post(
-        '/auth/reset-password',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.resetPassword}',
         data: {
-          'email': email,
+          AppRequestKeys.email: email,
         },
       );
       
-      if (response.statusCode != 200) {
+      if (response.statusCode != AppStatusCodes.success) {
         throw DioException(
           requestOptions: response.requestOptions,
           response: response,
@@ -251,22 +406,40 @@ class AuthService {
       }
       // Success
     } on DioException catch (e) {
-      print('⟹ [AuthService] Reset password Dio exception: ${e.message}');
+      _logger.error('Reset password Dio exception: ${e.message}');
       String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
       throw Exception(errorMessage);
     } catch (e) {
-      print('⟹ [AuthService] Reset password general exception: $e');
-      throw Exception('An unexpected error occurred during password reset.');
+      _logger.error('Reset password general exception: $e');
+      throw Exception(AppErrorMessages.unexpectedError);
     }
   }
 
   // Get current user data
   Future<User> getCurrentUser() async {
-    print('⟹ [AuthService] Getting current user...');
+    _logger.info('Getting current user...');
     try {
-      final response = await _dio.get('/user');
+      final token = await getAccessToken();
+      
+      if (token == null || token.isEmpty) {
+        _logger.error('No auth token available for getCurrentUser request');
+        throw Exception('Authentication required: No token available');
+      }
+      
+      _logger.debug('Making request to ${AppConfig.apiBaseUrl}/api/users/me with token: ${token.length > 15 ? token.substring(0, 15) + '...' : token}');
+      
+      // Add explicit headers for this specific request to ensure token is included
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      final response = await _dio.get('${AppConfig.apiBaseUrl}/api/users/me', options: options);
+      _logger.debug('Get user response status: ${response.statusCode}');
       
       if (response.statusCode == 200 && response.data['user'] != null) {
+        _logger.info('Successfully retrieved user: ${response.data['user']['email']}');
         return User.fromJson(response.data['user']);
       } else {
         throw DioException(
@@ -276,24 +449,26 @@ class AuthService {
         );
       }
     } on DioException catch (e) {
-      print('⟹ [AuthService] Get user Dio error: ${e.message}');
+      _logger.error('Get user Dio error: ${e.message}');
+      _logger.error('Error status code: ${e.response?.statusCode}');
+      
       String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to get user data';
       if (e.response?.statusCode == 401) {
         errorMessage = 'Authentication failed. Please log in again.';
       }
       throw Exception(errorMessage);
     } catch (e) {
-      print('⟹ [AuthService] Get user general error: $e');
-      throw Exception('Failed to get user data: ${e.toString()}');
+      _logger.error('Get user general error: $e');
+      throw Exception('Failed to get user data');
     }
   }
 
   // Update user profile
   Future<User> updateProfile(Map<String, dynamic> data) async {
-    print('⟹ [AuthService] Updating profile...');
+    _logger.info('Updating profile...');
     try {
       final response = await _dio.put(
-        '/user',
+        '/api/users/profile',
         data: data,
       );
 
@@ -307,14 +482,14 @@ class AuthService {
         );
       }
     } on DioException catch (e) {
-      print('⟹ [AuthService] Update profile Dio error: ${e.message}');
+      _logger.error('Update profile Dio error: ${e.message}');
       String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to update profile';
       if (e.response?.statusCode == 401) {
         errorMessage = 'Authentication failed. Please log in again.';
       }
       throw Exception(errorMessage);
     } catch (e) {
-      print('⟹ [AuthService] Update profile general error: $e');
+      _logger.error('Update profile general error: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
     }
   }

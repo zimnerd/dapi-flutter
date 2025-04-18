@@ -5,62 +5,114 @@ import '../models/user.dart';
 
 class DummyData {
   static List<Profile> getProfiles() {
-    return [
+    final List<Profile> dummyProfiles = [
       Profile(
-        id: 1,
-        name: 'Emma Johnson',
-        age: 27,
-        gender: 'Female',
-        bio: 'Adventure seeker and coffee lover. Love to travel and explore new places.',
-        photoUrls: ['assets/images/profile1.jpg', 'assets/images/profile1_2.jpg'],
-        occupation: 'Photographer',
-        location: 'New York, NY',
-        interests: ['Travel', 'Photography', 'Hiking'],
-        isOnline: true,
-        birthDate: DateTime.now().subtract(Duration(days: 365 * 27)),
-      ),
-      Profile(
-        id: 2,
-        name: 'Michael',
-        age: 28,
-        bio: 'Coffee enthusiast, dog lover',
-        occupation: 'Software Engineer',
-        birthDate: DateTime(1992, 9, 23),
-        gender: 'male',
-        location: 'New York',
-        interests: ['coding', 'coffee', 'dogs'],
-        photoUrls: ['assets/images/user_placeholder.png'],
-      ),
-      Profile(
-        id: 3,
-        name: 'Emma',
-        age: 25,
-        bio: 'Yoga instructor and foodie',
-        occupation: 'Yoga Instructor',
-        birthDate: DateTime(1995, 3, 18),
+        id: '1',
+        name: 'Sarah Johnson',
+        birthDate: DateTime.now().subtract(const Duration(days: 365 * 28)),
         gender: 'female',
-        location: 'Los Angeles',
-        interests: ['yoga', 'cooking', 'meditation'],
-        photoUrls: ['assets/images/user_placeholder.png'],
+        photoUrls: ['assets/images/profile1.jpg'],
+        interests: ['Travel', 'Photography', 'Coffee'],
+        location: {'city': 'New York', 'country': 'USA'},
+        bio: 'Adventure seeker and coffee lover',
+        prompts: [
+          {'question': 'Favorite place', 'answer': 'Paris, France'},
+          {'question': 'Perfect date', 'answer': 'Coffee and a walk in the park'},
+        ],
       ),
       Profile(
-        id: 4,
-        name: 'David',
-        age: 32,
-        bio: 'Music lover and amateur guitarist',
-        occupation: 'Music Producer',
-        birthDate: DateTime(1991, 11, 5),
+        id: '2',
+        name: 'James Smith',
+        birthDate: DateTime.now().subtract(const Duration(days: 365 * 32)),
         gender: 'male',
-        location: 'Austin',
-        interests: ['music', 'guitar', 'concerts'],
-        photoUrls: ['assets/images/user_placeholder.png'],
+        photoUrls: ['assets/images/profile2.jpg'],
+        interests: ['Music', 'Cooking', 'Hiking'],
+        location: {'city': 'Los Angeles', 'country': 'USA'},
+        bio: 'Music lover and foodie',
+        prompts: [
+          {'question': 'Favorite food', 'answer': 'Italian cuisine'},
+          {'question': 'Hobby', 'answer': 'Playing guitar'},
+        ],
       ),
+      // Add more dummy profiles as needed
     ];
+
+    return dummyProfiles;
   }
 
   static List<Conversation> getConversations() {
     final profiles = getProfiles();
     final DateTime now = DateTime.now();
+    
+    // Ensure we have enough profiles to create conversations
+    if (profiles.length < 4) {
+      print('⟹ [DummyData] Not enough profiles, adding dummy profiles');
+      // Add more dummy profiles if needed
+      profiles.addAll([
+        Profile(
+          id: 'dummy1',
+          name: 'Emma Williams',
+          birthDate: DateTime.now().subtract(const Duration(days: 365 * 27)),
+          gender: 'female',
+          photoUrls: ['assets/images/profile3.jpg'],
+          interests: ['Reading', 'Yoga', 'Art'],
+          location: {'city': 'Chicago', 'country': 'USA'},
+          bio: 'Bookworm and yoga enthusiast',
+          prompts: [
+            {'question': 'Favorite book', 'answer': 'Pride and Prejudice'},
+            {'question': 'Hobby', 'answer': 'Painting landscapes'},
+          ],
+        ),
+        Profile(
+          id: 'dummy2',
+          name: 'Michael Brown',
+          birthDate: DateTime.now().subtract(const Duration(days: 365 * 30)),
+          gender: 'male',
+          photoUrls: ['assets/images/profile4.jpg'],
+          interests: ['Running', 'Technology', 'Movies'],
+          location: {'city': 'San Francisco', 'country': 'USA'},
+          bio: 'Tech enthusiast and film buff',
+          prompts: [
+            {'question': 'Favorite movie', 'answer': 'The Shawshank Redemption'},
+            {'question': 'Hobby', 'answer': 'Building apps'},
+          ],
+        ),
+        Profile(
+          id: 'dummy3',
+          name: 'Olivia Davis',
+          birthDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
+          gender: 'female',
+          photoUrls: ['assets/images/profile5.jpg'],
+          interests: ['Music', 'Travel', 'Food'],
+          location: {'city': 'Seattle', 'country': 'USA'},
+          bio: 'Music lover and foodie',
+          prompts: [
+            {'question': 'Favorite cuisine', 'answer': 'Italian'},
+            {'question': 'Dream destination', 'answer': 'Japan'},
+          ],
+        ),
+        Profile(
+          id: 'dummy4',
+          name: 'William Johnson',
+          birthDate: DateTime.now().subtract(const Duration(days: 365 * 29)),
+          gender: 'male',
+          photoUrls: ['assets/images/profile6.jpg'],
+          interests: ['Fitness', 'Gaming', 'Cooking'],
+          location: {'city': 'Austin', 'country': 'USA'},
+          bio: 'Gym enthusiast and amateur chef',
+          prompts: [
+            {'question': 'Favorite game', 'answer': 'The Witcher 3'},
+            {'question': 'Specialty dish', 'answer': 'Homemade pasta'},
+          ],
+        ),
+      ]);
+    }
+    
+    // Safety check - ensure we have at least 4 profiles after adding dummies
+    if (profiles.isEmpty) {
+      print('⟹ [DummyData] ERROR: No profiles available for conversations');
+      return [];
+    }
     
     List<User> createParticipantsFromProfile(Profile profile) {
       return [
@@ -71,16 +123,26 @@ class DummyData {
         ),
         User(
           id: profile.id.toString(),
-          email: "${profile.name.toLowerCase()}@example.com",
+          email: "${profile.name.toLowerCase().replaceAll(' ', '.')}@example.com",
           name: profile.name,
         )
       ];
     }
     
+    // Get safe profiles - use modulo to ensure we never go out of bounds
+    final int profileCount = profiles.length;
+    print('⟹ [DummyData] Creating conversations with $profileCount profiles');
+    
+    final Profile profile0 = profiles[0 % profileCount];
+    final Profile profile1 = profiles[1 % profileCount];
+    final Profile profile2 = profiles[2 % profileCount];
+    final Profile profile3 = profiles[3 % profileCount];
+    
+    // Create conversations
     return [
       Conversation(
         id: 'conv1',
-        participants: createParticipantsFromProfile(profiles[0]),
+        participants: createParticipantsFromProfile(profile0),
         lastMessage: Message(
           id: 'msg1',
           conversationId: 'conv1',
@@ -95,11 +157,11 @@ class DummyData {
       ),
       Conversation(
         id: 'conv2',
-        participants: createParticipantsFromProfile(profiles[1]),
+        participants: createParticipantsFromProfile(profile1),
         lastMessage: Message(
           id: 'msg2',
           conversationId: 'conv2',
-          senderId: profiles[1].id.toString(),
+          senderId: profile1.id.toString(),
           text: 'That hiking spot looks amazing!',
           timestamp: now.subtract(Duration(hours: 2)),
           status: MessageStatus.sent,
@@ -110,7 +172,7 @@ class DummyData {
       ),
       Conversation(
         id: 'conv3',
-        participants: createParticipantsFromProfile(profiles[2]),
+        participants: createParticipantsFromProfile(profile2),
         lastMessage: Message(
           id: 'msg3',
           conversationId: 'conv3',
@@ -125,11 +187,11 @@ class DummyData {
       ),
       Conversation(
         id: 'conv4',
-        participants: createParticipantsFromProfile(profiles[3]),
+        participants: createParticipantsFromProfile(profile3),
         lastMessage: Message(
           id: 'msg4',
           conversationId: 'conv4',
-          senderId: profiles[3].id.toString(),
+          senderId: profile3.id.toString(),
           text: 'Have you been to that new concert venue?',
           timestamp: now.subtract(Duration(days: 3)),
           status: MessageStatus.sent,

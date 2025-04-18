@@ -243,9 +243,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (!mounted) return; // Check mounted before accessing state/notifier
                 // Check if the notifier's initialProfile ID is different from the loaded profile ID
                 // This prevents re-initialization on every rebuild if the profile hasn't changed.
-                if (ref.read(profileEditProvider).initialProfile?.id != profile.id) {
+                if (ref.read(profileEditProvider).initialProfile?.id != profile?.id) {
                     // Read notifier again inside callback if needed
-                    ref.read(profileEditProvider.notifier).initialize(profile);
+                    if (profile != null) {
+                        ref.read(profileEditProvider.notifier).initialize(profile);
+                    }
                 }
 
                 // Update TextEditingControllers only if their text doesn't match the current edit state
@@ -307,8 +309,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ImageProvider? imageProvider;
                               if (editState.pickedImageFile != null) {
                                 imageProvider = FileImage(File(editState.pickedImageFile!.path));
-                              } else if (profile.photoUrls != null && profile.photoUrls!.isNotEmpty) {
-                                imageProvider = NetworkImage(profile.photoUrls!.first);
+                              } else if (profile?.photoUrls != null && profile!.photoUrls.isNotEmpty) {
+                                imageProvider = NetworkImage(profile.photoUrls.first);
                               }
 
                               if (imageProvider != null) {
@@ -345,8 +347,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               backgroundColor: AppColors.primaryLight.withOpacity(0.5),
                               backgroundImage: editState.pickedImageFile != null
                                   ? FileImage(File(editState.pickedImageFile!.path)) as ImageProvider // Show picked image
-                                  : (profile.photoUrls != null && profile.photoUrls!.isNotEmpty // Fallback to profile URL
-                                      ? NetworkImage(profile.photoUrls!.first)
+                                  : (profile?.photoUrls != null && profile!.photoUrls.isNotEmpty // Fallback to profile URL
+                                      ? NetworkImage(profile.photoUrls.first)
                                       : AssetImage('assets/images/placeholder_avatar.png')) as ImageProvider, // Fallback to placeholder
                             ),
                           ),

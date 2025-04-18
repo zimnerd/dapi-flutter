@@ -1,54 +1,53 @@
-import 'package:flutter/material.dart';
-import 'dart:convert'; // Keep only if used elsewhere
-import 'dart:math' as math;
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
-// Remove direct service imports if only used via providers
-// import '../services/auth_service.dart';
-// import '../services/chat_service.dart';
-// import '../services/profile_service.dart'; 
-import '../providers/auth_provider.dart'; // Keep for user/logout actions
-import '../providers/discover_provider.dart'; // Import discover provider
-import '../providers/profile_action_provider.dart'; // Import action provider (will create next)
-import '../models/profile.dart';
-import '../utils/colors.dart';
-import '../utils/config.dart'; // Keep for config if needed
-import '../models/conversation.dart'; // Keep if used directly
-import 'conversation_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/enhanced_profile_card.dart';
 import 'dart:math';
-import '../widgets/match_animation_dialog.dart';
-import 'chat_screen.dart';
-import '../services/chat_service.dart'; // Keep for chat service provider access
-import '../widgets/profile_card.dart';
-import '../widgets/loading_indicator.dart';
-import '../widgets/error_display.dart';
-import '../widgets/animated_tap_feedback.dart';
-import '../providers/providers.dart'; // Import for premiumProvider and profileServiceProvider
-import '../providers/subscription_provider.dart'; // <-- Import premium provider
-import 'package:flutter_card_swiper/flutter_card_swiper.dart'; // Use flutter_card_swiper instead of appinio_swiper
-import 'package:flutter/services.dart'; // Import for HapticFeedback
-import 'premium_screen.dart'; // FIX: Import PremiumScreen
-import '../widgets/premium_feature_wrapper.dart'; // Import PremiumFeatureWrapper
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 
-// Enum to represent swipe direction for clarity
+// Import required models
+import '../models/profile.dart';
+import '../models/profile_action.dart';
+
+// Import providers from central providers file
+import '../providers/providers.dart';
+import '../providers/discover_provider.dart';
+import '../providers/profile_action_provider.dart';
+import '../providers/profile_filters_provider.dart';
+
+// Import config and utils
+import '../config/app_config.dart';
+import '../utils/colors.dart';
+import '../utils/logger.dart';
+
+// Import screens and widgets
+import '../screens/chat_screen.dart';
+import '../widgets/animated_tap_feedback.dart';
+import '../widgets/match_animation_dialog.dart';
+import '../widgets/enhanced_profile_card.dart';
+import '../widgets/error_view.dart';
+
+// Define SwipeDirection enum 
 enum SwipeDirection { like, dislike, superLike }
 
-// Class to hold last swipe information
+// Define LastSwipeInfo class
 class LastSwipeInfo {
   final Profile profile;
   final SwipeDirection direction;
 
-  LastSwipeInfo({required this.profile, required this.direction});
+  const LastSwipeInfo({required this.profile, required this.direction});
 }
+
+// Create a logger instance for this screen
+final logger = Logger('DiscoverScreen');
+
+// CardSwiperDirection and CardSwiperController are provided by the flutter_card_swiper package
 
 // Change to ConsumerStatefulWidget
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({Key? key}) : super(key: key);
   
   @override
-  _DiscoverScreenState createState() => _DiscoverScreenState();
+  ConsumerState<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
 // Change to ConsumerState
@@ -62,14 +61,16 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   int _currentIndex = 0; // Keep track of swipe index locally
   // bool _isRefreshing = false; // Refresh handled by provider .refresh()
   
-  // Filter values (consider moving to a StateNotifier if complex)
-  double _maxDistance = 50;
-  RangeValues _ageRange = const RangeValues(18, 50);
+  // Update filter values to use AppConfig constants
+  double _maxDistance = AppConfig.maxDistance;
+  RangeValues _ageRange = RangeValues(AppConfig.minAge.toDouble(), AppConfig.maxAge.toDouble());
   String _genderPreference = 'All';
   
   // Animation controller can remain local UI state
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  
+  // Filter listener
   
   // Remove direct service instances
   // final AuthService _authService = AuthService(); 
@@ -80,39 +81,53 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   
   // NEW: State variable to store the last swiped profile info
   LastSwipeInfo? _lastSwipe;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    logger.info("DiscoverScreen initState called");
     
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
     );
     
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
     );
     
     // Load initial filters, but profile loading is handled by the provider
+    logger.info("Loading initial filters");
     _loadFilters();
-    // No need to call _loadProfiles() here
+    
+    // Listen for filter changes
+    Future.microtask(() {
+      if (mounted) {
+        logger.info("Scheduling auto-login with Future.microtask");
+        _autoLogin();
+      }
+    });
+    
+    logger.info("DiscoverScreen initialization complete");
   }
 
   @override
   void dispose() {
+    logger.info("DiscoverScreen dispose called");
     _animationController.dispose();
     _swipeController.dispose(); // Dispose the swipe controller
+    // Filter listener disposed automatically
     super.dispose();
   }
 
   // Keep filter loading/saving logic for now
   Future<void> _loadFilters() async {
+    logger.info("Loading filters from SharedPreferences");
     try {
       final prefs = await SharedPreferences.getInstance();
+      logger.info("SharedPreferences instance obtained");
       setState(() {
         _maxDistance = prefs.getDouble('maxDistance') ?? 50;
         _ageRange = RangeValues(
@@ -121,21 +136,44 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
         );
         _genderPreference = prefs.getString('genderPreference') ?? 'All';
       });
+      logger.info("Filters loaded: maxDistance=$_maxDistance, ageRange=${_ageRange.start}-${_ageRange.end}, gender=$_genderPreference");
     } catch (e) {
-      print('Error loading filters: $e');
+      logger.error("Error loading filters: $e");
     }
   }
 
   Future<void> _saveFilters() async {
-     try {
+    logger.info("Saving filters to SharedPreferences");
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble('maxDistance', _maxDistance);
       await prefs.setDouble('minAge', _ageRange.start);
       await prefs.setDouble('maxAge', _ageRange.end);
       await prefs.setString('genderPreference', _genderPreference);
+      logger.info("Filters saved to SharedPreferences");
+      
+      // Also update the provider state
+      logger.info("Updating profile filters provider");
+      ref.read(profileFiltersProvider.notifier).updateFilters(
+        maxDistance: _maxDistance,
+        ageRange: _ageRange,
+        genderPreference: _genderPreference,
+      );
     } catch (e) {
-      print('Error saving filters: $e');
+      logger.error("Error saving filters: $e");
     }
+  }
+
+  // Method to sync local state with provider state
+  void _syncFiltersWithProvider() {
+    logger.info("Syncing filters with provider state");
+    final filters = ref.read(profileFiltersProvider);
+    setState(() {
+      _maxDistance = filters.maxDistance;
+      _ageRange = filters.ageRange;
+      _genderPreference = filters.genderPreference;
+    });
+    logger.info("Filters synced: maxDistance=$_maxDistance, ageRange=${_ageRange.start}-${_ageRange.end}, gender=$_genderPreference");
   }
 
   // Remove _loadProfiles - Handled by discoverProfilesProvider
@@ -146,31 +184,45 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   // Future<List<String>> _getProfileInterests(String profileId) async { ... }
 
   void _refreshProfiles() {
+    logger.info("Refreshing discover profiles");
     setState(() {
       _currentIndex = 0;
       _lastSwipe = null;
     });
     ref.read(discoverProfilesProvider.notifier).refresh();
-    print("Called discover provider refresh");
+    logger.info("Discover provider refresh called");
   }
 
   // Update handlers to use services via ref and pass profile
   Future<void> _handleLike(Profile profile) async {
-    print("Handling Like for ${profile.name}");
+    logger.info("Handling Like for ${profile.name} (ID: ${profile.id})");
     // Use the action provider
-    final success = await ref.read(profileActionProvider.notifier).likeProfile(profile.id);
-    if (success && mounted) {
-      // Simulate match chance (can be removed if API handles matches)
-      final bool isMatch = Random().nextDouble() < 0.2;
-      if (isMatch) {
-        await _showMatchAnimation(profile);
+    try {
+      final success = await ref.read(profileActionProvider.notifier).likeProfile(profile.id);
+      logger.info("Like operation result: $success");
+      
+      if (success && mounted) {
+        // Simulate match chance (can be removed if API handles matches)
+        final bool isMatch = Random().nextDouble() < 0.2;
+        logger.info("Match simulation result: $isMatch");
+        if (isMatch) {
+          await _showMatchAnimation(profile);
+        }
+      } else if (!success && mounted) {
+        // Show error from the action provider state
+        final actionState = ref.read(profileActionProvider);
+        logger.error("Like failed: ${actionState.errorMessage}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(actionState.errorMessage ?? 'Failed to like profile')),
+        );
       }
-    } else if (!success && mounted) {
-      // Show error from the action provider state
-      final error = ref.read(profileActionProvider).errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'Failed to like profile')),
-      );
+    } catch (e) {
+      logger.error("Exception during like operation: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
   
@@ -178,77 +230,90 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
      print("Handling Dislike for ${profile.name}");
      final success = await ref.read(profileActionProvider.notifier).dislikeProfile(profile.id);
      if (!success && mounted) {
-       final error = ref.read(profileActionProvider).errorMessage;
+       final actionState = ref.read(profileActionProvider);
        ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text(error ?? 'Failed to dislike profile')),
+         SnackBar(content: Text(actionState.errorMessage ?? 'Failed to dislike profile')),
        );
      }
   }
 
   Future<void> _handleSuperLike(Profile profile) async {
     print("Handling Super Like for ${profile.name}");
-     final success = await ref.read(profileActionProvider.notifier).superlikeProfile(profile.id);
-     if (success && mounted) {
-       // Simulate match chance
-       final bool isMatch = Random().nextDouble() < 0.4;
-       if (isMatch) {
-         await _showMatchAnimation(profile);
-       }
-     } else if (!success && mounted) {
-       final error = ref.read(profileActionProvider).errorMessage;
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text(error ?? 'Failed to superlike profile')),
-       );
-     }
+    final success = await ref.read(profileActionProvider.notifier).superlikeProfile(profile.id);
+    if (success && mounted) {
+      // Simulate match chance
+      final bool isMatch = Random().nextDouble() < 0.4;
+      if (isMatch) {
+        await _showMatchAnimation(profile);
+      }
+    } else if (!success && mounted) {
+      final actionState = ref.read(profileActionProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(actionState.errorMessage ?? 'Failed to superlike profile')),
+      );
+    }
   }
 
   Future<void> _showMatchAnimation(Profile matchedProfile) async {
     final profileService = ref.read(profileServiceProvider);
     Profile? currentUserProfile;
+    
     try {
       // Fetch current user profile using the service
       currentUserProfile = await profileService.getCurrentUserProfile();
     } catch (e) {
-      print('⟹ [DiscoverScreen] Error getting current user profile for match: $e');
-      // Use a more robust fallback or handle error differently
-       currentUserProfile = Profile(
-         id: 0,
-         name: 'You',
-         age: 0,
-         gender: 'unknown',
-         photoUrls: [],
-         interests: [],
-         birthDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
-       );
+      logger.error('Error getting current user profile for match: $e');
+      // Use a more robust fallback with minimum required fields
+      currentUserProfile = Profile(
+        id: '0',
+        name: 'Guest User',
+        photoUrls: [],
+        interests: [],
+        isVerified: false,
+        prompts: [],
+      );
     }
     
     if (!mounted) return;
     
-    final chatService = ref.read(chatServiceProvider); // Get ChatService via provider
+    // Use null check to avoid exception
+    if (currentUserProfile == null) {
+      logger.error('Failed to get current user profile for match animation');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Match found! But could not display animation.')),
+      );
+      return;
+    }
+    
+    // Get ChatService via provider - no need to use it directly in this method
+    // final chatService = ref.read(chatServiceProvider);
 
-    return MatchAnimationDialog.show(
+    return showDialog(
       context: context,
-      userProfile: currentUserProfile!, // Ensure non-null
-      matchProfile: matchedProfile,
-      onContinue: () {
-        Navigator.of(context).pop(); // Close dialog
-      },
-      onMessage: () async {
-         Navigator.of(context).pop(); // Close dialog first
-         try {
-          // Pass profile to ChatScreen, it will handle conversation creation
-           Navigator.of(context).push(
-             MaterialPageRoute(
-               builder: (context) => ChatScreen(matchProfile: matchedProfile),
-             ),
-           );
-         } catch (e) {
-            print('Error navigating to chat: $e');
+      barrierDismissible: false,
+      builder: (context) => MatchAnimationDialog(
+        userProfile: currentUserProfile!, // Use non-null assertion since we already checked
+        matchProfile: matchedProfile,
+        onContinue: () {
+          Navigator.of(context).pop(); // Close dialog
+        },
+        onMessage: () async {
+          Navigator.of(context).pop(); // Close dialog first
+          try {
+            // Pass profile to ChatScreen, it will handle conversation creation
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(matchProfile: matchedProfile),
+              ),
+            );
+          } catch (e) {
+            logger.error('Error navigating to chat: $e');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Could not start chat: ${e.toString()}')),
             );
-         }
-      },
+          }
+        },
+      ),
     );
   }
 
@@ -265,7 +330,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   Widget build(BuildContext context) {
     // Watch the provider for discover profiles
     final discoverState = ref.watch(discoverProfilesProvider);
-    final isPremium = ref.watch(premiumProvider); // Watch premium status
+    final isPremiumAsync = ref.watch(premiumProvider);
+    
+    // Extract premium status using whenData
+    bool isPremium = false;
+    isPremiumAsync.whenOrNull(
+      data: (value) => isPremium = value,
+    );
     
     return Scaffold(
       appBar: AppBar(
@@ -280,37 +351,54 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
         elevation: 0,
         backgroundColor: Colors.transparent,
         actions: [
-          // Refresh button (optional, provider handles reload on state change/pull-to-refresh)
+          // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: _refreshProfiles,
+            onPressed: _isLoading ? null : _refreshProfiles,
+            tooltip: 'Refresh Profiles',
           ),
+          // Filter button 
           IconButton(
             icon: Icon(Icons.filter_list, color: AppColors.primary),
             onPressed: () {
               _showFilterDialog(context);
             },
+            tooltip: 'Filter Profiles',
           ),
         ],
       ),
       // Use AsyncValue.when to handle loading/error/data states
       body: Column(
         children: [
-          // --- Filter UI (Example - keep or replace with your filter UI) ---
+          // --- Profile Info Button Row ---
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Filters'), // Placeholder for filter button/display
-                IconButton(
-                  icon: Icon(Icons.filter_list),
-                  onPressed: () { /* TODO: Show filter dialog */ },
-                ),
-                IconButton( // Refresh Button
-                   icon: Icon(Icons.refresh),
-                   onPressed: _refreshProfiles,
-                   tooltip: 'Refresh Profiles',
+                // Add info button here
+                AnimatedTapFeedback(
+                  onTap: () {
+                    // Implement action to show detailed profile view
+                    final currentProfiles = ref.read(discoverProfilesProvider).profiles.valueOrNull;
+                    if (currentProfiles != null && 
+                        currentProfiles.isNotEmpty && 
+                        _currentIndex >= 0 && 
+                        _currentIndex < currentProfiles.length) {
+                      final currentProfile = currentProfiles[_currentIndex];
+                      _showProfileDetails(context, currentProfile);
+                    } else {
+                      logger.warn('Cannot show profile details: index $_currentIndex out of bounds (length: ${currentProfiles?.length ?? 0})');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No profile selected.')),
+                      );
+                    }
+                  },
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primaryLight.withOpacity(0.5),
+                    child: Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                  ),
                 ),
               ],
             ),
@@ -346,7 +434,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                       _handleSuperLike(profile);
                        setState(() => _currentIndex++); 
                     },
-                    showActions: true,
+                    showActions: true, // Keep the card's action buttons
                     onStackFinished: () {
                       print("Stack finished");
                       // Optionally trigger a refresh when stack is empty
@@ -380,88 +468,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                  print("Error loading profiles: $error\n$stackTrace");
                  return _buildErrorView(error.toString()); // Pass error message
               },
-            ),
-          ),
-          // --- Action Buttons ---
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Undo Button - Wrapped with PremiumFeatureWrapper
-                AnimatedTapFeedback(
-                  onTap: discoverState.lastRemovedProfile != null
-                      ? _handleUndoSwipe // Enable only if there's something to undo
-                      : null,
-                  child: PremiumFeatureWrapper(
-                    featureName: 'Undo Last Swipe',
-                    description: 'Changed your mind? Go back to profiles you accidentally passed.',
-                    icon: Icons.undo,
-                    child: CircleAvatar(
-                      radius: 28,
-                      backgroundColor: discoverState.lastRemovedProfile != null
-                          ? AppColors.secondary.withOpacity(0.15)
-                          : Colors.grey.withOpacity(0.1),
-                      child: Icon(
-                        Icons.undo,
-                        color: discoverState.lastRemovedProfile != null
-                            ? AppColors.secondary
-                            : Colors.grey,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-                // Dislike Button
-                AnimatedTapFeedback(
-                  onTap: () => _swipeController.swipe(CardSwiperDirection.left),
-                  child: CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.redAccent.withOpacity(0.15),
-                    child: Icon(Icons.close, color: Colors.redAccent, size: 35),
-                  ),
-                ),
-                // Super Like Button - Wrapped with PremiumFeatureWrapper
-                AnimatedTapFeedback(
-                  onTap: () => _swipeController.swipe(CardSwiperDirection.top),
-                  child: PremiumFeatureWrapper(
-                    featureName: 'Super Like',
-                    description: 'Stand out from others by showing your special interest.',
-                    icon: Icons.star,
-                    child: CircleAvatar(
-                      radius: 28,
-                      backgroundColor: AppColors.accent.withOpacity(0.15),
-                      child: Icon(Icons.star, color: AppColors.accent, size: 28),
-                    ),
-                  ),
-                ),
-                // Like Button
-                AnimatedTapFeedback(
-                  onTap: () => _swipeController.swipe(CardSwiperDirection.right),
-                  child: CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.green.withOpacity(0.15),
-                    child: Icon(Icons.favorite, color: Colors.green, size: 35),
-                  ),
-                ),
-                // Info/Profile Details Button (Example)
-                AnimatedTapFeedback(
-                  onTap: () {
-                    // TODO: Implement action to show detailed profile view
-                    print("Info button tapped");
-                    final currentProfiles = ref.read(discoverProfilesProvider).profiles.valueOrNull;
-                    if (currentProfiles != null && currentProfiles.isNotEmpty && _currentIndex < currentProfiles.length) {
-                      final currentProfile = currentProfiles[_currentIndex];
-                      _showProfileDetails(context, currentProfile);
-                    }
-                  },
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primaryLight.withOpacity(0.5),
-                    child: Icon(Icons.info_outline, color: AppColors.primary, size: 28),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -608,7 +614,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   }
 
   void _showFilterDialog(BuildContext context) {
-    // Use the instance variables for the filters
+    // Start with current local values
     double distanceValue = _maxDistance;
     RangeValues ageRange = _ageRange;
     String selectedGender = _genderPreference;
@@ -616,14 +622,16 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppConfig.defaultBorderRadius * 2),
+        ),
       ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(AppConfig.defaultPadding),
               height: MediaQuery.of(context).size.height * 0.7,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,8 +668,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                         child: Slider(
                           value: distanceValue,
                           min: 1,
-                          max: 100,
-                          divisions: 99,
+                          max: AppConfig.maxDistance,
+                          divisions: AppConfig.maxDistance.toInt() - 1,
                           activeColor: AppColors.primary,
                           label: '${distanceValue.round()} km',
                           onChanged: (value) {
@@ -693,9 +701,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                       Expanded(
                         child: RangeSlider(
                           values: ageRange,
-                          min: 18,
-                          max: 100,
-                          divisions: 82,
+                          min: AppConfig.minAge.toDouble(),
+                          max: AppConfig.maxAge.toDouble(),
+                          divisions: 32, // Fixed integer value
                           activeColor: AppColors.primary,
                           labels: RangeLabels(
                             '${ageRange.start.round()}',
@@ -752,8 +760,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                       this._ageRange = ageRange;
                       this._genderPreference = selectedGender;
                       
-                      // Save filters to SharedPreferences
+                      // Update both SharedPreferences and provider
                       _saveFilters();
+                      
+                      // Also update the provider directly
+                      ref.read(profileFiltersProvider.notifier).updateFilters(
+                        maxDistance: distanceValue,
+                        ageRange: ageRange,
+                        genderPreference: selectedGender,
+                      );
                       
                       Navigator.pop(context);
                       // Apply filters and reload profiles
@@ -777,64 +792,82 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   void _swipeProfile(int index, CardSwiperDirection direction) {
     // Read the profiles list currently held by the provider
     final profiles = ref.read(discoverProfilesProvider).profiles.valueOrNull ?? [];
-    if (index >= profiles.length) return; // Safety check
+    
+    // Add bounds check to avoid RangeError
+    if (profiles.isEmpty || index < 0 || index >= profiles.length) {
+      logger.warn('Cannot process swipe: index $index out of bounds (length: ${profiles.length})');
+      return;
+    }
 
     final swipedProfile = profiles[index];
     SwipeDirection swipeDirection;
 
     switch (direction) {
       case CardSwiperDirection.right:
-         print("Swiped Right on ${swipedProfile.name}");
+         logger.info("Swiped Right on ${swipedProfile.name}");
          swipeDirection = SwipeDirection.like;
-         _handleLike(swipedProfile); // Keep existing handler call
+         _handleLike(swipedProfile);
         break;
       case CardSwiperDirection.left:
-         print("Swiped Left on ${swipedProfile.name}");
+         logger.info("Swiped Left on ${swipedProfile.name}");
          swipeDirection = SwipeDirection.dislike;
-         _handleDislike(swipedProfile); // Keep existing handler call
+         _handleDislike(swipedProfile);
         break;
       case CardSwiperDirection.top:
-         print("Swiped Top (Super Like) on ${swipedProfile.name}");
+         logger.info("Swiped Top (Super Like) on ${swipedProfile.name}");
           swipeDirection = SwipeDirection.superLike;
-         _handleSuperLike(swipedProfile); // Keep existing handler call
+         _handleSuperLike(swipedProfile);
         break;
       case CardSwiperDirection.bottom:
-         print("Swiped Bottom (not implemented)");
-         // If bottom swipe isn't used, we might not need to store it,
-         // or assign a specific direction if it represents an action.
+         logger.info("Swiped Bottom (not implemented)");
          return; // Don't store if it's not a primary action
       case CardSwiperDirection.none:
-         print("No swipe direction (not implemented)");
+         logger.info("No swipe direction (not implemented)");
          return; // Don't store if no direction
     }
 
     // Store the swipe info BEFORE the state potentially changes/profile removed
      setState(() {
        _lastSwipe = LastSwipeInfo(profile: swipedProfile, direction: swipeDirection);
-       print("Stored last swipe: ${_lastSwipe?.profile.name} - ${_lastSwipe?.direction}");
+       logger.info("Stored last swipe: ${_lastSwipe?.profile.name} - ${_lastSwipe?.direction}");
      });
-
-     // Note: The actual removal of the card from UI is handled by the swiper package
-     // and the backend interaction happens in the _handleLike/Dislike/SuperLike methods.
   }
 
    // Method to handle the undo action
    Future<void> _handleUndoSwipe() async {
-     final isPremium = ref.read(premiumProvider);
+     // Get premium status from the provider
+     final isPremiumAsync = ref.watch(premiumProvider);
+     
+     // Extract the premium status using whenData
+     bool isPremium = false;
+     isPremiumAsync.whenData((value) => isPremium = value);
+     
      if (!isPremium) {
-       // Premium check is now handled by PremiumFeatureWrapper
+       logger.info("Undo feature requires premium subscription");
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Undo requires premium subscription'), duration: Duration(seconds: 2)),
+       );
        return;
      }
      
-     final success = await ref.read(discoverProfilesProvider.notifier).undoLastSwipe();
-     if (success) {
-       // Trigger the swiper to go back one step
-       _swipeController.undo();
-       print("Undo successful, triggering swiper unswipe.");
-     } else if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('Nothing to undo.'), duration: Duration(seconds: 2)),
-       );
+     try {
+       final success = await ref.read(discoverProfilesProvider.notifier).undoLastSwipe();
+       if (success) {
+         // Trigger the swiper to go back one step
+         _swipeController.undo();
+         logger.info("Undo successful, triggering swiper unswipe.");
+       } else if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Nothing to undo.'), duration: Duration(seconds: 2)),
+         );
+       }
+     } catch (e) {
+       logger.error("Error during undo: $e");
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to undo: ${e.toString().split('\n').first}')),
+         );
+       }
      }
    }
 
@@ -875,5 +908,34 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
            );
         },
      );
+  }
+
+  Future<void> _autoLogin() async {
+    try {
+      logger.info('Checking authentication status');
+      final authState = ref.read(authStateProvider.notifier);
+      
+      // Check if already authenticated
+      final currentStatus = ref.read(authStateProvider).status;
+      if (currentStatus == AuthStatus.authenticated) {
+        logger.info('Already authenticated, loading discover profiles');
+        return;
+      } else {
+        logger.info('Not authenticated, redirecting to login screen');
+        if (mounted) {
+          // Navigate to login screen instead of auto-logging in with test credentials
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      }
+      
+      // Removed auto-login with test credentials for security
+    } catch (e) {
+      logger.error('Authentication check failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authentication check failed: ${e.toString().split('\n').first}'))
+        );
+      }
+    }
   }
 } 

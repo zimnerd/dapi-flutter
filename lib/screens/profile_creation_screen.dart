@@ -11,6 +11,9 @@ import 'home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
+import '../providers/providers.dart'; // Import centralized providers
+import '../services/storage_service.dart';
+import '../providers/profile_provider.dart';
 
 class ProfileCreationScreen extends ConsumerStatefulWidget {
   const ProfileCreationScreen({Key? key}) : super(key: key);
@@ -119,14 +122,14 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       int age = Profile.calculateAge(_selectedBirthDate!);
 
       final profile = Profile(
-        id: 0,
+        id: userId,
         name: _nameController.text,
-        age: age,
         gender: _selectedGender,
         birthDate: _selectedBirthDate!,
+        prompts: [],
         bio: _bioController.text,
-        photoUrls: [],
-        interests: [],
+        interests: _selectedInterests.toList(),
+        photoUrls: _selectedPhotos.map((photo) => photo.path).toList(),
       );
 
       final profileService = ref.read(profileServiceProvider);

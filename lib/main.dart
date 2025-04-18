@@ -16,26 +16,76 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/auth_provider.dart';
 import 'utils/theme.dart';
 import 'providers/theme_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'config/app_config.dart';
+import 'utils/logger.dart';
+import 'utils/mock_shared_preferences.dart';
+import 'providers/providers.dart'; // Import the centralized providers file
+import 'config/theme_config.dart';
 
-void main() {
-  // Ensure bindings are initialized for potential async work before runApp
-  // WidgetsFlutterBinding.ensureInitialized();
-  runApp(ProviderScope(child: MyApp()));
+final appLogger = Logger('App');
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  appLogger.info('Application starting...');
+  
+  // Add retry logic for SharedPreferences initialization
+  SharedPreferences? prefs;
+  int maxRetries = 3;
+  int retryCount = 0;
+  
+  while (prefs == null && retryCount < maxRetries) {
+    try {
+      prefs = await SharedPreferences.getInstance();
+      appLogger.debug('⟹ [Main] SharedPreferences initialized successfully');
+    } catch (e) {
+      retryCount++;
+      appLogger.warn('⟹ [Main] Error initializing SharedPreferences: $e (Attempt $retryCount/$maxRetries)');
+      await Future.delayed(Duration(milliseconds: 500)); // Wait before retry
+    }
+  }
+  
+  if (prefs == null) {
+    appLogger.warn('⟹ [Main] Failed to initialize SharedPreferences after $maxRetries attempts, using MockSharedPreferences as fallback');
+    // Use the mock implementation as a fallback
+    prefs = MockSharedPreferences();
+  }
+  
+  // Create a custom ProviderContainer to override the SharedPreferences provider
+  final container = ProviderContainer(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
+  );
+  
+  // Run the app within an UncontrolledProviderScope using our custom container
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MyApp(),
+    ),
+  );
+  appLogger.info('App successfully initialized and running');
 }
 
 class MyApp extends ConsumerWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    appLogger.debug('Building MyApp widget');
+    
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      title: 'HeartLink',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: _buildHome(authState),
+      home: _buildHome(ref, authState),
       routes: {
         '/welcome': (context) => WelcomeScreen(),
         '/login': (context) => LoginScreen(),
@@ -63,11 +113,21 @@ class MyApp extends ConsumerWidget {
     );
   }
 
-  Widget _buildHome(AuthState authState) {
+  Widget _buildHome(WidgetRef ref, AuthState authState) {
+    appLogger.debug('Building home screen based on auth state: ${authState.status}');
+    
     switch (authState.status) {
       case AuthStatus.authenticated:
+        appLogger.info('User is authenticated, showing HomeScreen');
         return HomeScreen();
+      case AuthStatus.authenticating:
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
       case AuthStatus.unauthenticated:
+        appLogger.info('User is unauthenticated, showing WelcomeScreen');
         return WelcomeScreen();
       case AuthStatus.unknown:
       default:

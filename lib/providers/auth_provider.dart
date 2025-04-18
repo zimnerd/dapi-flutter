@@ -1,11 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart'; // Assuming User model exists
 import '../models/login_response.dart'; // Import the new login response model
-import 'package:shared_preferences/shared_preferences.dart';
-import '../services/dio_provider.dart'; // Import the newly created dio_provider
+import '../services/api_client.dart';
+import '../utils/logger.dart';
+import '../config/app_config.dart';
+import 'providers.dart'; // Import providers.dart for access to dioProvider and secureStorageProvider
 
 // Enum for Authentication Status
 enum AuthStatus { unknown, authenticated, unauthenticated, authenticating }
+
+// Import secureStorageProvider from providers.dart rather than redefining it here
+// final secureStorageProvider is now imported from providers.dart
+
+// Import dioProvider from providers.dart rather than redefining it here
+// final dioProvider is now imported from providers.dart
 
 // State class for Authentication
 class AuthState {
@@ -36,104 +47,92 @@ class AuthState {
 // StateNotifier for Authentication
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
+  final _logger = Logger('Auth');
 
   AuthNotifier(this._ref) : super(const AuthState()) {
-    _checkInitialAuthStatus();
+    _logger.info('Initializing AuthNotifier');
+    checkInitialAuthStatus();
   }
 
-  Future<void> _checkInitialAuthStatus() async {
+  Future<void> checkInitialAuthStatus() async {
+    _logger.debug('Checking initial authentication status');
     try {
       final storage = _ref.read(secureStorageProvider);
-      final token = await storage.read(key: 'auth_token');
+      final token = await storage.read(key: AppStorageKeys.token);
+      
+      _logger.debug('Access token exists: ${token != null}');
       
       if (token != null) {
         // Optionally fetch user details here if needed upon app start
         final user = await _getCurrentUserFromPrefs();
+        _logger.info('User authenticated from stored token: ${user?.id}');
         state = AuthState(status: AuthStatus.authenticated, user: user);
       } else {
+        _logger.info('No token found, user is unauthenticated');
         state = AuthState(status: AuthStatus.unauthenticated);
       }
-    } catch (e) {
-      print("Error checking initial auth status: $e");
-      state = AuthState(status: AuthStatus.unauthenticated);
+    } catch (e, stackTrace) {
+      _logger.error('Error checking initial auth status: $e');
+      _logger.error('Stack trace: $stackTrace');
+      state = AuthState(
+        status: AuthStatus.unauthenticated, 
+        errorMessage: 'Failed to check authentication: $e'
+      );
     }
   }
 
   Future<User?> _getCurrentUserFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
-    final userEmail = prefs.getString('userEmail');
-    final userName = prefs.getString('userName');
-    final profileId = prefs.getString('profileId');
+    _logger.debug('Getting current user from preferences');
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      final userId = prefs.getString(AppStorageKeys.userId);
+      final userEmail = prefs.getString(AppStorageKeys.userEmail);
+      final userName = prefs.getString(AppStorageKeys.userName);
+      final profileId = prefs.getString('profileId');
 
-    if (userId != null && userEmail != null && userName != null) {
-      return User(
-        id: userId,
-        email: userEmail,
-        name: userName,
-        profileId: profileId,
-      );
+      _logger.debug('User info from prefs - userId: ${userId != null}, email: ${userEmail != null}, name: ${userName != null}, profileId: ${profileId != null}');
+
+      if (userId != null && userEmail != null && userName != null) {
+        _logger.debug('Successfully retrieved user from preferences');
+        return User(
+          id: userId,
+          email: userEmail,
+          name: userName,
+          profileId: profileId,
+        );
+      }
+      _logger.warn('Incomplete user data in preferences');
+      return null;
+    } catch (e, stackTrace) {
+      _logger.error('Error retrieving user from preferences: $e');
+      _logger.error('Stack trace: $stackTrace');
+      return null;
     }
-    return null;
   }
 
   Future<void> login(String email, String password) async {
+    _logger.debug('Attempting login for email: $email');
     state = state.copyWith(status: AuthStatus.authenticating);
     
     try {
       final dio = _ref.read(dioProvider);
-      final response = await dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-      });
+      final authService = _ref.read(authServiceProvider);
+      _logger.debug('Making login API request');
       
-      print('Login response: ${response.data}');
+      final response = await authService.login(email, password);
       
-      if (response.statusCode == 200 && response.data != null) {
-        try {
-          // Safely parse the response
-          final loginResponse = LoginResponse.fromJson(response.data);
-          
-          // Store tokens in secure storage
-          final storage = _ref.read(secureStorageProvider);
-          await storage.write(key: 'auth_token', value: loginResponse.data.token);
-          await storage.write(key: 'refresh_token', value: loginResponse.data.refreshToken);
-          
-          // Store user data in SharedPreferences for quick access
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userId', loginResponse.data.user.id);
-          await prefs.setString('userEmail', loginResponse.data.user.email);
-          await prefs.setString('userName', loginResponse.data.user.name);
-          await prefs.setString('profileId', loginResponse.data.profile.id);
-          
-          // Create User object from response data
-          final user = User(
-            id: loginResponse.data.user.id,
-            email: loginResponse.data.user.email,
-            name: loginResponse.data.user.name,
-            profileId: loginResponse.data.profile.id,
-          );
-          
-          // Update state with authenticated user
-          state = AuthState(
-            status: AuthStatus.authenticated,
-            user: user,
-            errorMessage: null,
-          );
-          
-          print('User logged in successfully: ${state.user?.name}');
-        } catch (parseError) {
-          print('Error parsing login response: $parseError');
-          state = state.copyWith(
-            status: AuthStatus.unauthenticated,
-            errorMessage: 'Error parsing login response: ${parseError.toString()}',
-          );
-        }
+      if (response['success'] == true) {
+        _logger.info('Login successful for: $email');
+        
+        // Refresh auth status to load user details
+        checkAuth();
       } else {
-        throw Exception('Login failed: ${response.statusCode}');
+        throw Exception(response['message'] ?? 'Login failed');
       }
-    } catch (e) {
-      print('Login error: $e');
+    } catch (e, stackTrace) {
+      _logger.error('Login error: $e');
+      _logger.error('Stack trace: $stackTrace');
+      
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: 'Login failed: ${e.toString()}',
@@ -142,49 +141,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> register(String name, String email, String password, [DateTime? birthDate, String? gender]) async {
+    _logger.debug('Attempting registration for email: $email');
     state = state.copyWith(status: AuthStatus.authenticating);
 
     try {
-      final dio = _ref.read(dioProvider);
-      final Map<String, dynamic> data = {
-        'name': name,
-        'email': email,
-        'password': password,
-      };
+      final authService = _ref.read(authServiceProvider);
       
-      // Add optional parameters if provided
+      String? formattedBirthDate;
       if (birthDate != null) {
-        data['birth_date'] = birthDate.toIso8601String();
+        formattedBirthDate = birthDate.toIso8601String();
       }
-      
-      if (gender != null) {
-        data['gender'] = gender;
-      }
-      
-      final response = await dio.post('/auth/register', data: data);
 
-      if (response.statusCode == 201) {
-        // Extract token and user data
-        final token = response.data['token'];
-        final userData = response.data['user'];
+      final response = await authService.register(
+        name, 
+        email, 
+        password, 
+        formattedBirthDate ?? '', 
+        gender ?? 'other'
+      );
+      
+      if (response['success'] == true) {
+        _logger.info('Registration successful for: $email');
         
-        // Store token in secure storage
-        final storage = _ref.read(secureStorageProvider);
-        await storage.write(key: 'auth_token', value: token);
-        
-        // Update state with user data
-        state = AuthState(
-          status: AuthStatus.authenticated,
-          user: User.fromJson(userData),
-          errorMessage: null,
-        );
-        
-        print('User registered successfully: ${state.user?.name}');
+        // Refresh auth status to load user details
+        checkAuth();
       } else {
-        throw Exception('Registration failed: ${response.statusCode}');
+        throw Exception(response['message'] ?? 'Registration failed');
       }
-    } catch (e) {
-      print('Registration error: $e');
+    } catch (e, stackTrace) {
+      _logger.error('Registration error: $e');
+      _logger.error('Stack trace: $stackTrace');
+      
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: 'Registration failed: ${e.toString()}',
@@ -193,53 +180,60 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> checkAuth() async {
-    final storage = _ref.read(secureStorageProvider);
-    final token = await storage.read(key: 'auth_token');
-
-    if (token == null) {
-      state = state.copyWith(status: AuthStatus.unauthenticated);
-      return;
-    }
-
+    _logger.debug('Checking authentication status');
     try {
-      final dio = _ref.read(dioProvider);
-      final response = await dio.get('/auth/me');
-      
-      if (response.statusCode == 200) {
-        state = AuthState(
+      final user = await _getCurrentUserFromPrefs();
+      if (user != null) {
+        _logger.info('User authenticated: ${user.id}');
+        state = state.copyWith(
           status: AuthStatus.authenticated,
-          user: User.fromJson(response.data),
+          user: user,
           errorMessage: null,
         );
       } else {
-        // Token might be invalid/expired
-        await storage.delete(key: 'auth_token');
-        state = state.copyWith(status: AuthStatus.unauthenticated);
+        _logger.warn('User not authenticated');
+        state = state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearUser: true,
+          errorMessage: null,
+        );
       }
-    } catch (e) {
-      print('Error checking auth: $e');
-      // On error, consider user as unauthenticated
-      await storage.delete(key: 'auth_token');
+    } catch (e, stackTrace) {
+      _logger.error('Error checking auth: $e');
+      _logger.error('Stack trace: $stackTrace');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        errorMessage: 'Authentication check failed',
+        clearUser: true,
+        errorMessage: 'Authentication check failed: ${e.toString()}',
       );
     }
   }
 
   Future<void> logout() async {
-    final storage = _ref.read(secureStorageProvider);
-    await storage.delete(key: 'auth_token');
-    
-    state = const AuthState(
-      status: AuthStatus.unauthenticated,
-      user: null,
-      errorMessage: null,
-    );
+    _logger.debug('Logging out user');
+    try {
+      final authService = _ref.read(authServiceProvider);
+      await authService.logout();
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        errorMessage: null,
+      );
+      _logger.info('User logged out successfully');
+    } catch (e, stackTrace) {
+      _logger.error('Error during logout: $e');
+      _logger.error('Stack trace: $stackTrace');
+      // Still set state to unauthenticated even if logout fails
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        errorMessage: 'Logout error: ${e.toString()}',
+      );
+    }
   }
 }
 
-// Provider for AuthNotifier
+// Main provider for auth state
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref);
 });
@@ -248,30 +242,28 @@ final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 
 // Provider to expose just the authentication status
 final authStatusProvider = Provider<AuthStatus>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.status;
+  return ref.watch(authStateProvider).status;
 });
 
-// Provider to expose the current User object (or null)
+// Provider to expose just the current user
 final currentUserProvider = Provider<User?>((ref) {
-   final authState = ref.watch(authStateProvider);
-   return authState.user;
+  return ref.watch(authStateProvider).user;
 });
 
-// Provider to expose the current user ID (or null)
-final userIdProvider = Provider<String?>((ref) {
-  final user = ref.watch(currentUserProvider);
-  return user?.id;
+// Provider to check if the user is authenticated
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).status == AuthStatus.authenticated;
 });
 
-// Provider to expose the current user email (or null)
-final userEmailProvider = Provider<String?>((ref) {
-   final user = ref.watch(currentUserProvider);
-   return user?.email;
+// Provider to check if the user is in the process of authenticating
+final isAuthenticatingProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).status == AuthStatus.authenticating;
 });
 
-// Provider to expose the current user name (or a default)
-final userNameProvider = Provider<String>((ref) {
-   final user = ref.watch(currentUserProvider);
-   return user?.name ?? 'User';
-}); 
+// Provider to expose auth error message
+final authErrorMessageProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).errorMessage;
+});
+
+// NOTE: We removed the duplicate sharedPreferencesProvider definition here
+// It is now only defined in providers.dart 

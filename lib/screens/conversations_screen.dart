@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/conversation.dart';
-import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../utils/colors.dart';
 import '../providers/providers.dart';

@@ -1,4 +1,5 @@
 // Login Response Models for the Dating App API
+import 'profile.dart'; // Import the main Profile model
 
 class LoginResponse {
   final String message;
@@ -31,8 +32,8 @@ class LoginData {
     return LoginData(
       user: UserData.fromJson(json['user'] as Map<String, dynamic>),
       profile: Profile.fromJson(json['profile'] as Map<String, dynamic>),
-      token: json['token'],
-      refreshToken: json['refreshToken'],
+      token: json['token'] ?? '',
+      refreshToken: json['refreshToken'] ?? json['refresh_token'] ?? '',
     );
   }
 }
@@ -51,9 +52,9 @@ class UserData {
   
   factory UserData.fromJson(Map<String, dynamic> json) {
     return UserData(
-      id: json['id'],
-      email: json['email'],
-      name: json['name'] ?? '',
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
     );
   }
 }
