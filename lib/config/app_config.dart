@@ -217,8 +217,8 @@ class AppConfig {
   static const String _prodApiBaseUrl = 'https://api.example.com';
   
   // WebSocket URLs for real-time features
-  static const String _devSocketUrl = 'ws://localhost:3000';
-  static const String _mockSocketUrl = 'ws://localhost:3000';
+  static const String _devSocketUrl = 'http://localhost:3001';
+  static const String _mockSocketUrl = 'http://localhost:3001';
   static const String _prodSocketUrl = 'wss://api.example.com';
   
   // Dynamic getters for environment-specific values

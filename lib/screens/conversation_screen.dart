@@ -14,7 +14,12 @@ import '../widgets/message_bubble.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
 import '../widgets/chat/typing_indicator.dart';
+import '../utils/connectivity/connectivity_provider.dart';
+import '../utils/date_formatter.dart';
 import '../utils/connectivity/network_manager.dart';
+import '../providers/offline_message_queue_provider.dart';
+import '../services/socket_service.dart';
+import '../providers/notification_provider.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -27,24 +32,32 @@ class ConversationScreen extends ConsumerStatefulWidget {
 
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final List<Message> _messages = [];
   final ScrollController _scrollController = ScrollController();
-  
-  User? _participant;
-  
+  bool _isLoading = true;
   bool _isSending = false;
+  Profile? _participant;
+  Timer? _typingTimer;
+  bool _isTyping = false;
   
   @override
   void initState() {
     super.initState();
+    _loadMessages();
     _loadParticipant();
     
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ChatMessageActions.markMessagesAsRead(ref, widget.conversation.id);
-      _scrollToBottom();
-    });
-    
-    // Set up message input listener for typing status
+    // Add focus listener for typing events
     _messageController.addListener(_onTypingChanged);
+    
+    // Start listening for new messages immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupSocketListeners();
+      
+      // Cancel any notifications for this conversation
+      ref.read(notificationManagerProvider).cancelConversationNotifications(
+        widget.conversation.id
+      );
+    });
   }
   
   @override
@@ -52,85 +65,429 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _messageController.removeListener(_onTypingChanged);
     _messageController.dispose();
     _scrollController.dispose();
+    _typingTimer?.cancel();
     
-    // Ensure typing is stopped when leaving screen
-    ChatMessageActions.stopTyping(ref, widget.conversation.id);
+    // Stop sending typing notifications when leaving the screen
+    _sendTypingNotification(false);
     
     super.dispose();
   }
   
+  void _setupSocketListeners() {
+    final socketService = ref.read(socketServiceProvider);
+    final conversationId = widget.conversation.id;
+    
+    // Join the conversation room
+    socketService.joinConversation(conversationId);
+    
+    // Listen for new messages
+    socketService.onMessageReceived((data) {
+      if (data != null && data['conversationId'] == conversationId) {
+        final newMessage = Message.fromJson(data);
+        setState(() {
+          _addMessage(newMessage);
+        });
+      }
+    });
+    
+    // Listen for typing events
+    socketService.onTypingStatusChanged((data) {
+      if (data != null && 
+          data['conversationId'] == conversationId && 
+          data['userId'] != ref.read(authServiceProvider).getUserId()) {
+        setState(() {
+          _isTyping = data['isTyping'] == true;
+        });
+      }
+    });
+    
+    // Send read receipts for this conversation
+    _sendReadReceipt();
+    
+    // Process offline queue if available
+    _processOfflineQueue();
+  }
+  
+  void _processOfflineQueue() {
+    final socketService = ref.read(socketServiceProvider);
+    final offlineQueue = ref.read(offlineMessageQueueProvider.notifier);
+    
+    if (socketService.isConnected) {
+      final queuedMessages = offlineQueue.getMessagesForConversation(widget.conversation.id);
+      
+      for (final message in queuedMessages) {
+        // Send queued message through socket
+        socketService.sendMessage(
+          conversationId: message.conversationId,
+          content: message.content,
+          senderId: message.senderId
+        );
+        
+        // Remove from queue after sending
+        offlineQueue.removeMessage(message.id);
+      }
+    }
+  }
+  
+  void _sendReadReceipt() {
+    final socketService = ref.read(socketServiceProvider);
+    final userId = ref.read(authServiceProvider).getUserId();
+    
+    if (socketService.isConnected) {
+      socketService.sendReadReceipt(
+        conversationId: widget.conversation.id,
+        userId: userId
+      );
+    }
+  }
+  
   void _onTypingChanged() {
-    if (_messageController.text.isNotEmpty) {
-      ChatMessageActions.handleTyping(ref, widget.conversation.id);
+    // If user is typing, send notification
+    if (_messageController.text.isNotEmpty && !_isTyping) {
+      _isTyping = true;
+      _sendTypingNotification(true);
+    }
+    
+    // Reset the timer that tracks when user stops typing
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), () {
+      if (_isTyping) {
+        _isTyping = false;
+        _sendTypingNotification(false);
+      }
+    });
+  }
+  
+  void _sendTypingNotification(bool isTyping) {
+    final socketService = ref.read(socketServiceProvider);
+    final userId = ref.read(authServiceProvider).getUserId();
+    
+    if (socketService.isConnected) {
+      socketService.sendTypingStatus(
+        conversationId: widget.conversation.id,
+        userId: userId,
+        isTyping: isTyping
+      );
+    }
+  }
+  
+  Future<void> _loadMessages() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final chatService = ref.read(chatServiceProvider);
+      final List<Message> messages = await chatService.getMessages(widget.conversation.id);
+      
+      setState(() {
+        _messages.clear();
+        _messages.addAll(messages);
+        _isLoading = false;
+      });
+      
+      // After loading messages, scroll to bottom
+      _scrollToBottom();
+    } catch (e) {
+      print('⟹ [ConversationScreen] Error loading messages: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
   
   Future<void> _loadParticipant() async {
     try {
-      _participant = widget.conversation.participants.first;
+      // Get the other participant (not the current user)
+      final userId = ref.read(authServiceProvider).getUserId();
+      final participantId = widget.conversation.participants
+          .firstWhere((p) => p != userId, orElse: () => '');
+      
+      if (participantId.isNotEmpty) {
+        final profileService = ref.read(profileServiceProvider);
+        final profile = await profileService.getProfile(participantId);
+        
+        setState(() {
+          _participant = profile;
+        });
+      }
     } catch (e) {
-      print('Error loading participant: $e');
+      print('⟹ [ConversationScreen] Error loading participant: $e');
     }
   }
   
-  Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+  void _addMessage(Message message) {
+    if (!_messages.any((m) => m.id == message.id)) {
+      setState(() {
+        _messages.add(message);
+      });
+      _scrollToBottom();
+    }
+  }
+  
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+  
+  bool _shouldShowAvatar(int index) {
+    // Show avatar only for the first message in a group
+    if (index == 0) return true;
+    
+    final currentMessage = _messages[index];
+    final previousMessage = _messages[index - 1];
+    
+    // Different sender means show avatar
+    if (currentMessage.senderId != previousMessage.senderId) return true;
+    
+    // If messages are more than 2 minutes apart, show avatar
+    final timeDifference = currentMessage.timestamp.difference(previousMessage.timestamp).inMinutes;
+    return timeDifference >= 2;
+  }
+  
+  bool _shouldShowTimestamp(int index) {
+    // Show timestamp for the first message
+    if (index == 0) return true;
+    
+    final currentMessage = _messages[index];
+    final previousMessage = _messages[index - 1];
+    
+    // If messages are from different senders, show timestamp
+    if (currentMessage.senderId != previousMessage.senderId) return true;
+    
+    // If messages are more than 5 minutes apart, show timestamp
+    final timeDifference = currentMessage.timestamp.difference(previousMessage.timestamp).inMinutes;
+    return timeDifference >= 5;
+  }
+  
+  Widget _buildMessageItem(Message message, bool isFromCurrentUser, bool showAvatar, bool showTime) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        mainAxisAlignment: isFromCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isFromCurrentUser && showAvatar)
+            CircleAvatar(
+              backgroundImage: _participant?.profilePictures?.isNotEmpty == true
+                  ? NetworkImage(_participant!.profilePictures!.first)
+                  : const AssetImage('assets/images/placeholder_user.png') as ImageProvider,
+              radius: 16,
+            )
+          else if (!isFromCurrentUser && !showAvatar)
+            const SizedBox(width: 32), // Space for avatar alignment
+            
+          const SizedBox(width: 8),
+          
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isFromCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (showTime)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      DateFormatter.formatTime(message.timestamp),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isFromCurrentUser ? Colors.blue[100] : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.content,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      if (isFromCurrentUser) 
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                message.status == MessageStatus.sent 
+                                  ? Icons.check 
+                                  : message.status == MessageStatus.delivered 
+                                    ? Icons.done_all
+                                    : message.status == MessageStatus.read
+                                      ? Icons.done_all
+                                      : Icons.access_time,
+                                size: 14,
+                                color: message.status == MessageStatus.read
+                                  ? Colors.blue
+                                  : Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(width: 8),
+          
+          if (isFromCurrentUser && showAvatar)
+            CircleAvatar(
+              backgroundImage: const AssetImage('assets/images/placeholder_user.png'),
+              radius: 16,
+            )
+          else if (isFromCurrentUser && !showAvatar)
+            const SizedBox(width: 32), // Space for avatar alignment
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, -1),
+            blurRadius: 5,
+            color: Colors.black.withOpacity(0.1),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.attach_file),
+              onPressed: () {
+                // Attachment functionality
+              },
+            ),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  border: InputBorder.none,
+                ),
+                maxLines: null,
+              ),
+            ),
+            _isSending
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _sendMessage,
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _sendMessage() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty) return;
     
     setState(() {
       _isSending = true;
     });
     
     _messageController.clear();
-    _scrollToBottom(jump: true);
     
-    try {
-      // Check network status
-      final networkStatus = ref.read(networkStatusProvider);
-      if (networkStatus == NetworkStatus.offline) {
-        // Show offline snackbar
-        NetworkManager.showOfflineSnackBar(context);
-      }
+    // Stop typing when sending a message
+    _isTyping = false;
+    _sendTypingNotification(false);
+    
+    final userId = ref.read(authServiceProvider).getUserId();
+    final userName = ref.read(authServiceProvider).getUserName() ?? 'You';
+    
+    // Create a temporary message with pending status
+    final newMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID
+      conversationId: widget.conversation.id,
+      senderId: userId,
+      senderName: userName,
+      content: message,
+      timestamp: DateTime.now(),
+      status: MessageStatus.pending
+    );
+    
+    // Add to UI immediately
+    setState(() {
+      _addMessage(newMessage);
+    });
+    
+    // Scroll to bottom
+    _scrollToBottom();
+    
+    final socketService = ref.read(socketServiceProvider);
+    
+    // Check if socket is connected
+    if (socketService.isConnected) {
+      // Send via socket for real-time delivery
+      socketService.sendMessage(
+        conversationId: widget.conversation.id,
+        content: message,
+        senderId: userId
+      );
+    } else {
+      // Add to offline queue if not connected
+      ref.read(offlineMessageQueueProvider.notifier).addMessage(newMessage);
       
-      // Send/queue the message
-      ChatMessageActions.addMessage(ref, widget.conversation.id, text);
-    } finally {
-      setState(() {
-        _isSending = false;
-      });
+      // Also try to send via HTTP fallback
+      try {
+        await ref.read(chatServiceProvider).sendMessage(
+          widget.conversation.id,
+          message
+        );
+      } catch (e) {
+        print('⟹ [ConversationScreen] Failed to send message via HTTP: $e');
+        // Message will be sent when connection is restored from queue
+      }
     }
+    
+    setState(() {
+      _isSending = false;
+    });
   }
   
   Widget _buildMessageList() {
-    final messages = ref.watch(chatMessagesProvider(widget.conversation.id));
-    final currentUserId = ref.watch(userIdProvider);
-
-    if (messages.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            "Start a conversation with ${_participant?.name ?? 'this person'}!",
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: messages.length,
+      padding: const EdgeInsets.all(8.0),
+      itemCount: _messages.length,
       itemBuilder: (context, index) {
-        final message = messages[index];
-        final isCurrentUser = message.senderId == currentUserId;
-        return MessageBubble(
-          message: message,
-          isFromCurrentUser: isCurrentUser,
-        );
+        final message = _messages[index];
+        final isFromCurrentUser = message.senderId == ref.read(authServiceProvider).getUserId();
+        
+        // Group messages by sender and time (within 2 minutes)
+        final bool showAvatar = _shouldShowAvatar(index);
+        final bool showTime = _shouldShowTimestamp(index);
+        
+        return _buildMessageItem(message, isFromCurrentUser, showAvatar, showTime);
       },
     );
   }
@@ -242,41 +599,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     );
   }
   
-  void _scrollToBottom({bool jump = false}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        final maxScroll = _scrollController.position.maxScrollExtent;
-        if (jump) {
-          _scrollController.jumpTo(maxScroll);
-        } else {
-          _scrollController.animateTo(
-            maxScroll,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      }
-    });
-  }
-  
   @override
   Widget build(BuildContext context) {
-    final participant = widget.conversation.participants.first;
-    
-    // Check if participant is online
-    final isParticipantOnline = false; // This would ideally come from a provider
-    
-    // Check if participant is typing
-    final typingUsers = ref.watch(typingUsersProvider);
-    final isParticipantTyping = typingUsers.containsKey(widget.conversation.id) && 
-                             typingUsers[widget.conversation.id]?.containsKey(participant.id) == true;
-    
-    // Check if we are connected
-    final networkStatus = ref.watch(networkStatusProvider);
-    final socketStatus = ref.watch(socketServiceProvider).status;
-    final isConnected = networkStatus == NetworkStatus.online && 
-                       (socketStatus == SocketConnectionStatus.connected || 
-                        socketStatus == SocketConnectionStatus.authenticated);
+    // Watch socket connection status for network indicator
+    final isSocketConnected = ref.watch(socketServiceProvider.select((s) => s.isConnected));
+    final isUserTyping = ref.watch(typingUsersProvider.select(
+      (typing) => typing.isUserTypingInConversation(widget.conversation.id)
+    ));
+    final typingUserName = ref.watch(typingUsersProvider.select(
+      (typing) => typing.getTypingUserNameForConversation(widget.conversation.id)
+    ));
     
     return Scaffold(
       appBar: AppBar(
@@ -289,8 +621,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundImage: participant.profilePictures?.isNotEmpty == true
-                  ? NetworkImage(participant.profilePictures!.first)
+              backgroundImage: _participant?.profilePictures?.isNotEmpty == true
+                  ? NetworkImage(_participant!.profilePictures!.first)
                   : const AssetImage('assets/images/placeholder_user.png') as ImageProvider,
               radius: 16,
             ),
@@ -301,7 +633,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    participant.name,
+                    _participant?.name ?? 'Chat',
                     style: const TextStyle(
                       color: Colors.black87,
                       fontSize: 16,
@@ -309,64 +641,39 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    isParticipantTyping 
-                      ? 'Typing...' 
-                      : (isParticipantOnline ? 'Online' : 'Offline'),
-                    style: TextStyle(
-                      color: isParticipantTyping 
-                        ? AppColors.primary 
-                        : AppColors.textSecondary,
-                      fontSize: 12,
+                  if (!isSocketConnected) 
+                    const Text(
+                      'Offline - Messages will be sent when reconnected',
+                      style: TextStyle(fontSize: 12, color: Colors.orange),
                     ),
-                  ),
                 ],
               ),
             ),
           ],
         ),
         actions: [
-          // Connection status indicator
-          if (!isConnected)
-            Container(
-              margin: EdgeInsets.only(right: 8),
-              child: Icon(
-                Icons.wifi_off,
-                color: Colors.orange,
-                size: 20,
-              ),
-            ),
           IconButton(
-            icon: Icon(
-              Icons.call,
-              color: AppColors.primary,
-            ),
+            icon: const Icon(Icons.info_outline),
             onPressed: () {
-              // TODO: Implement call functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Calling feature coming soon!'),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.more_vert,
-              color: Colors.black87,
-            ),
-            onPressed: () {
-              // TODO: Show conversation options
+              // Show profile info
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildOfflineIndicator(),
           Expanded(
-            child: _buildMessageList(),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMessageList(),
           ),
+          
+          // Typing indicator
+          TypingIndicator(
+            isTyping: isUserTyping,
+            userName: typingUserName,
+          ),
+          
           _buildMessageInput(),
         ],
       ),

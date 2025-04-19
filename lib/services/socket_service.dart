@@ -1,245 +1,371 @@
 import 'dart:async';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../config/app_config.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../utils/logger.dart';
-import '../providers/providers.dart';
+import '../services/auth_service.dart';
+import '../config/app_config.dart';
 
-final socketServiceProvider = Provider<SocketService>((ref) {
-  final secureStorage = ref.watch(secureStorageProvider);
-  return SocketService(secureStorage);
-});
-
+/// Connection status for the socket
 enum SocketConnectionStatus {
   disconnected,
   connecting,
   connected,
-  reconnecting,
   authenticated,
   error
 }
 
-class SocketService {
-  final FlutterSecureStorage _secureStorage;
-  final _logger = Logger('Socket');
+/// Provider for the socket service
+final socketServiceProvider = Provider<SocketService>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  final logger = Logger('SocketService');
+  return SocketService(authService, logger);
+});
+
+typedef SocketEventCallback = void Function(Map<String, dynamic>? data);
+typedef ConnectionStatusCallback = void Function(bool isConnected);
+
+/// Class to manage Socket.IO connections
+class SocketService extends ChangeNotifier {
+  final AuthService _authService;
+  final Logger _logger;
   
   IO.Socket? _socket;
-  SocketConnectionStatus _connectionStatus = SocketConnectionStatus.disconnected;
+  SocketConnectionStatus _status = SocketConnectionStatus.disconnected;
+  final Map<String, List<SocketEventCallback>> _eventHandlers = {};
   
-  // Stream controllers
-  final _connectionStatusController = StreamController<SocketConnectionStatus>.broadcast();
+  // Streams for emitting events
   final _messageReceivedController = StreamController<Map<String, dynamic>>.broadcast();
   final _typingStatusController = StreamController<Map<String, dynamic>>.broadcast();
-  final _readReceiptController = StreamController<Map<String, dynamic>>.broadcast();
+  final _connectionStatusController = StreamController<SocketConnectionStatus>.broadcast();
+  final _errorController = StreamController<String>.broadcast();
   
-  // Stream getters
-  Stream<SocketConnectionStatus> get connectionStatus => _connectionStatusController.stream;
+  /// Get current connection status
+  SocketConnectionStatus get status => _status;
+  
+  /// Stream of received messages
   Stream<Map<String, dynamic>> get messageReceived => _messageReceivedController.stream;
+  
+  /// Stream of typing status updates
   Stream<Map<String, dynamic>> get typingStatus => _typingStatusController.stream;
-  Stream<Map<String, dynamic>> get readReceipt => _readReceiptController.stream;
   
-  SocketService(this._secureStorage);
+  /// Stream of connection status changes
+  Stream<SocketConnectionStatus> get connectionStatus => _connectionStatusController.stream;
   
-  SocketConnectionStatus get status => _connectionStatus;
-  bool get isConnected => _connectionStatus == SocketConnectionStatus.connected || 
-                        _connectionStatus == SocketConnectionStatus.authenticated;
+  /// Stream of connection errors
+  Stream<String> get connectionError => _errorController.stream;
   
-  Future<void> connect() async {
+  /// Is the socket currently connected
+  bool get isConnected => _socket != null && 
+                        (_status == SocketConnectionStatus.connected || 
+                         _status == SocketConnectionStatus.authenticated);
+  
+  /// Constructor
+  SocketService(this._authService, this._logger);
+  
+  /// Connect to the socket server
+  void connect() async {
     if (_socket != null) {
-      _logger.debug('Socket already initialized. Current status: $_connectionStatus');
-      return;
+      _logger.info('Socket already exists, disconnecting first');
+      disconnect();
     }
     
-    _connectionStatus = SocketConnectionStatus.connecting;
-    _connectionStatusController.add(_connectionStatus);
+    _setStatus(SocketConnectionStatus.connecting);
     
     try {
-      final token = await _secureStorage.read(key: AppStorageKeys.accessToken);
+      // Get auth token for socket connection
+      final token = await _authService.getAccessToken();
       
       if (token == null || token.isEmpty) {
-        _logger.error('Failed to connect: No authentication token available');
-        _connectionStatus = SocketConnectionStatus.error;
-        _connectionStatusController.add(_connectionStatus);
+        _logger.error('No authentication token available for socket connection');
+        _setStatus(SocketConnectionStatus.error);
+        _errorController.add('Authentication required');
         return;
       }
       
-      _logger.info('Initializing socket connection to: ${AppConfig.socketUrl}');
-      
+      // Configure socket options
       _socket = IO.io(
         AppConfig.socketUrl,
         IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .enableForceNewConnection()
-          .setExtraHeaders({
-            'Authorization': 'Bearer $token'
-          })
-          .setAuth({
-            'token': token
-          })
-          .build()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .setAuth({'token': token})
+            .setExtraHeaders({'Authorization': 'Bearer $token'})
+            .setQuery({
+              'userId': _authService.userId,
+            })
+            .build()
       );
       
-      _setupSocketListeners();
+      // Set up event handlers
+      _setupEventHandlers();
+      
+      // Connect
       _socket!.connect();
       
+      _logger.info('Socket connection initiated');
     } catch (e) {
-      _logger.error('Socket connection error: $e');
-      _connectionStatus = SocketConnectionStatus.error;
-      _connectionStatusController.add(_connectionStatus);
+      _logger.error('Error connecting to socket: $e');
+      _setStatus(SocketConnectionStatus.error);
+      _errorController.add('Connection error: $e');
     }
   }
   
-  void _setupSocketListeners() {
+  /// Disconnect from the socket
+  void disconnect() {
+    _logger.info('Disconnecting socket');
+    
+    if (_socket != null) {
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
+    
+    _setStatus(SocketConnectionStatus.disconnected);
+  }
+  
+  /// Set up socket event handlers
+  void _setupEventHandlers() {
+    if (_socket == null) return;
+    
+    // Connection events
     _socket!.onConnect((_) {
       _logger.info('Socket connected');
-      _connectionStatus = SocketConnectionStatus.connected;
-      _connectionStatusController.add(_connectionStatus);
+      _setStatus(SocketConnectionStatus.connected);
     });
     
     _socket!.onConnectError((error) {
-      _logger.error('Socket connection error: $error');
-      _connectionStatus = SocketConnectionStatus.error;
-      _connectionStatusController.add(_connectionStatus);
+      _logger.error('Socket connect error: $error');
+      _setStatus(SocketConnectionStatus.error);
+      _errorController.add('Connect error: $error');
     });
     
     _socket!.onDisconnect((_) {
       _logger.info('Socket disconnected');
-      _connectionStatus = SocketConnectionStatus.disconnected;
-      _connectionStatusController.add(_connectionStatus);
-    });
-    
-    _socket!.onReconnecting((_) {
-      _logger.info('Socket reconnecting');
-      _connectionStatus = SocketConnectionStatus.reconnecting;
-      _connectionStatusController.add(_connectionStatus);
-    });
-    
-    _socket!.onReconnect((_) {
-      _logger.info('Socket reconnected');
-      _connectionStatus = SocketConnectionStatus.connected;
-      _connectionStatusController.add(_connectionStatus);
+      _setStatus(SocketConnectionStatus.disconnected);
     });
     
     _socket!.onError((error) {
       _logger.error('Socket error: $error');
-      _connectionStatus = SocketConnectionStatus.error;
-      _connectionStatusController.add(_connectionStatus);
+      _errorController.add('Socket error: $error');
     });
     
-    // Listen for authentication response
-    _socket!.on('authenticated', (_) {
+    // Auth events
+    _socket!.on('authenticated', (data) {
       _logger.info('Socket authenticated');
-      _connectionStatus = SocketConnectionStatus.authenticated;
-      _connectionStatusController.add(_connectionStatus);
+      _setStatus(SocketConnectionStatus.authenticated);
     });
     
-    // Listen for messages
-    _socket!.on('message_received', (data) {
-      _logger.debug('Message received: $data');
+    _socket!.on('unauthorized', (data) {
+      _logger.error('Socket unauthorized: $data');
+      _setStatus(SocketConnectionStatus.error);
+      _errorController.add('Authentication failed');
+    });
+    
+    // Chat events
+    _socket!.on('message', (data) {
+      _logger.debug('Received message event: $data');
       _messageReceivedController.add(data);
     });
     
-    // Listen for typing status
-    _socket!.on('chat:typing:start', (data) {
-      _logger.debug('Typing started: $data');
-      _typingStatusController.add({'typing': true, ...data});
-    });
-    
-    _socket!.on('chat:typing:stop', (data) {
-      _logger.debug('Typing stopped: $data');
-      _typingStatusController.add({'typing': false, ...data});
+    _socket!.on('typing', (data) {
+      _logger.debug('Received typing event: $data');
+      _typingStatusController.add(data);
     });
     
     // Listen for read receipts
-    _socket!.on('chat:read', (data) {
-      _logger.debug('Message read: $data');
-      _readReceiptController.add(data);
+    _socket!.on('read', (data) {
+      _logger.info('Read receipt: ${jsonEncode(data)}');
+      _notifyEventListeners('read', data);
     });
   }
   
-  void disconnect() {
-    _logger.info('Disconnecting socket');
-    _socket?.disconnect();
-    _connectionStatus = SocketConnectionStatus.disconnected;
-    _connectionStatusController.add(_connectionStatus);
+  /// Update and emit status changes
+  void _setStatus(SocketConnectionStatus newStatus) {
+    if (_status != newStatus) {
+      _status = newStatus;
+      _connectionStatusController.add(newStatus);
+    }
   }
   
-  void dispose() {
-    _logger.info('Disposing socket service');
-    _socket?.dispose();
-    _socket = null;
-    _connectionStatus = SocketConnectionStatus.disconnected;
-    
-    // Close stream controllers
-    _connectionStatusController.close();
-    _messageReceivedController.close();
-    _typingStatusController.close();
-    _readReceiptController.close();
-  }
-  
-  // Join a chat room
+  /// Join a conversation room
   void joinConversation(String conversationId) {
     if (!isConnected) {
-      _logger.warn('Cannot join conversation: Socket not connected');
+      _logger.warn('Cannot join conversation $conversationId: not connected');
       return;
     }
     
     _logger.info('Joining conversation: $conversationId');
-    _socket!.emit('chat:join', conversationId);
+    _socket!.emit('joinConversation', {
+      'conversationId': conversationId,
+      'userId': _authService.userId
+    });
   }
   
-  // Leave a chat room
+  /// Leave a conversation room
   void leaveConversation(String conversationId) {
-    if (!isConnected) {
-      _logger.warn('Cannot leave conversation: Socket not connected');
-      return;
-    }
+    if (!isConnected) return;
     
     _logger.info('Leaving conversation: $conversationId');
-    _socket!.emit('chat:leave', conversationId);
+    _socket!.emit('leaveConversation', {
+      'conversationId': conversationId,
+      'userId': _authService.userId
+    });
   }
   
-  // Send a message
-  void sendMessage(String conversationId, String message, {Map<String, dynamic>? extras}) {
+  /// Send a message to a conversation
+  void sendMessage(String conversationId, String text, {Map<String, dynamic>? extras}) {
     if (!isConnected) {
-      _logger.warn('Cannot send message: Socket not connected');
+      _logger.warn('Cannot send message to $conversationId: not connected');
       return;
     }
     
     _logger.info('Sending message to conversation: $conversationId');
-    _socket!.emit('chat:message', {
+    
+    final message = {
       'conversation_id': conversationId,
-      'message': message,
-      ...?extras
+      'message': text,
+      'timestamp': DateTime.now().toIso8601String(),
+      ...?extras,
+    };
+    
+    _socket!.emit('message', message);
+  }
+  
+  /// Mark a message as read
+  void markMessageRead(String conversationId, String messageId) {
+    if (!isConnected) return;
+    
+    _logger.info('Marking message $messageId as read');
+    _socket!.emit('read', {
+      'conversation_id': conversationId,
+      'message_id': messageId,
     });
   }
   
-  // Send typing indicator
+  /// Send typing start notification
   void sendTypingStart(String conversationId) {
     if (!isConnected) return;
     
     _logger.debug('Sending typing start for conversation: $conversationId');
-    _socket!.emit('chat:typing:start', conversationId);
+    _socket!.emit('typing', {
+      'conversation_id': conversationId,
+      'is_typing': true,
+    });
   }
   
-  // Stop typing indicator
+  /// Send typing stop notification
   void sendTypingStop(String conversationId) {
     if (!isConnected) return;
     
     _logger.debug('Sending typing stop for conversation: $conversationId');
-    _socket!.emit('chat:typing:stop', conversationId);
+    _socket!.emit('typing', {
+      'conversation_id': conversationId,
+      'is_typing': false,
+    });
   }
   
-  // Mark messages as read
-  void markMessageRead(String conversationId, String messageId) {
-    if (!isConnected) return;
-    
-    _logger.debug('Marking message $messageId as read in conversation: $conversationId');
-    _socket!.emit('chat:read', {
-      'conversation_id': conversationId,
-      'message_id': messageId
+  /// Cleanup resources
+  void dispose() {
+    disconnect();
+    _messageReceivedController.close();
+    _typingStatusController.close();
+    _connectionStatusController.close();
+    _errorController.close();
+    super.dispose();
+  }
+  
+  void _notifyEventListeners(String event, dynamic data) {
+    if (_eventHandlers.containsKey(event)) {
+      for (final handler in _eventHandlers[event]!) {
+        handler(data);
+      }
+    }
+  }
+  
+  // Register event handlers
+  void on(String event, SocketEventCallback callback) {
+    if (!_eventHandlers.containsKey(event)) {
+      _eventHandlers[event] = [];
+    }
+    _eventHandlers[event]!.add(callback);
+  }
+  
+  // Convenience methods for specific events
+  void onMessageReceived(SocketEventCallback callback) {
+    on('message', callback);
+  }
+  
+  void onTypingStatusChanged(SocketEventCallback callback) {
+    on('typing', callback);
+  }
+  
+  void onReadReceiptReceived(SocketEventCallback callback) {
+    on('read', callback);
+  }
+  
+  void onConnectionStatusChanged(ConnectionStatusCallback callback) {
+    addListener(() {
+      callback(isConnected);
     });
+  }
+  
+  // Reconnect if disconnected
+  void reconnect() {
+    if (!_isConnected && _socket != null) {
+      _logger.info('Attempting to reconnect');
+      _socket!.connect();
+    }
+  }
+  
+  // Send a new message
+  void sendMessage({
+    required String conversationId,
+    required String content,
+    required String senderId,
+  }) {
+    if (isConnected && _socket != null) {
+      _logger.info('Sending message to conversation: $conversationId');
+      _socket!.emit('message', {
+        'conversationId': conversationId,
+        'senderId': senderId,
+        'content': content,
+        'timestamp': DateTime.now().toIso8601String()
+      });
+    } else {
+      _logger.warn('Cannot send message: Socket not connected');
+    }
+  }
+  
+  // Send typing status
+  void sendTypingStatus({
+    required String conversationId,
+    required String userId,
+    required bool isTyping,
+  }) {
+    if (isConnected && _socket != null) {
+      _logger.info('Sending typing status: $isTyping');
+      _socket!.emit('typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+        'isTyping': isTyping
+      });
+    }
+  }
+  
+  // Send read receipt
+  void sendReadReceipt({
+    required String conversationId,
+    required String userId,
+  }) {
+    if (isConnected && _socket != null) {
+      _logger.info('Sending read receipt for conversation: $conversationId');
+      _socket!.emit('read', {
+        'conversationId': conversationId,
+        'userId': userId,
+        'timestamp': DateTime.now().toIso8601String()
+      });
+    }
   }
 } 

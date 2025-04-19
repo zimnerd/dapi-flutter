@@ -24,7 +24,9 @@ import 'utils/logger.dart';
 import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
-import 'providers/socket_connection_provider.dart';
+import 'services/notification_service.dart';
+import 'utils/connectivity/network_manager.dart';
+import 'providers/notification_provider.dart';
 
 final appLogger = Logger('App');
 
@@ -54,10 +56,15 @@ void main() async {
     prefs = MockSharedPreferences();
   }
   
+  // Initialize notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  
   // Create a custom ProviderContainer to override the SharedPreferences provider
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      notificationServiceProvider.overrideWithValue(notificationService),
     ],
   );
   
@@ -65,25 +72,69 @@ void main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: const MyApp(),
+      child: const App(),
     ),
   );
   appLogger.info('App successfully initialized and running');
 }
 
-class MyApp extends ConsumerWidget {
-  const MyApp({Key? key}) : super(key: key);
+/// Main app widget
+class App extends ConsumerStatefulWidget {
+  const App({Key? key}) : super(key: key);
+  
+  @override
+  _AppState createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+  
+  Future<void> _initializeApp() async {
+    // Initialize services
+    await ref.read(sharedPreferencesProvider.future);
+    await ref.read(secureStorageProvider.future);
+    
+    // Initialize notifications
+    // This will set up listeners for socket events
+    ref.read(notificationManagerProvider);
+    
+    // Check auth state
+    final authService = ref.read(authServiceProvider);
+    if (await authService.isAuthenticated()) {
+      // If user is authenticated, connect to socket
+      ref.read(socketServiceProvider);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    appLogger.debug('Building MyApp widget');
+    appLogger.debug('Building App widget');
     
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
 
+    // Initialize network connectivity monitor
+    ref.watch(networkStatusProvider);
+
     // Auto-connect socket when user is authenticated
     // This activates the side effect provider to manage socket connections
     ref.watch(socketConnectionProvider);
+    
+    // Connect notification service to socket for message notifications
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    if (isAuthenticated) {
+      final socketService = ref.read(socketServiceProvider);
+      final notificationService = ref.read(notificationServiceProvider);
+      
+      // Set up notification service to listen to socket events
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notificationService.subscribeToSocketEvents(socketService);
+      });
+    }
 
     return MaterialApp(
       title: AppConfig.appName,

@@ -8,7 +8,7 @@ import '../services/socket_service.dart';
 import '../services/chat_service.dart';
 import '../providers/auth_provider.dart';
 import '../utils/logger.dart';
-import '../utils/connectivity/network_manager.dart';
+import '../utils/connectivity/connectivity_provider.dart';
 
 // State managed by the notifier: a list of messages
 typedef MessageListState = List<Message>;
