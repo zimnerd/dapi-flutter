@@ -76,6 +76,7 @@ class SocketService extends ChangeNotifier {
     try {
       // Get auth token for socket connection
       final token = await _authService.getAccessToken();
+      final userId = await _authService.getUserId();
       
       if (token == null || token.isEmpty) {
         _logger.error('No authentication token available for socket connection');
@@ -93,7 +94,7 @@ class SocketService extends ChangeNotifier {
             .setAuth({'token': token})
             .setExtraHeaders({'Authorization': 'Bearer $token'})
             .setQuery({
-              'userId': _authService.userId,
+              'userId': userId,
             })
             .build()
       );
@@ -190,27 +191,31 @@ class SocketService extends ChangeNotifier {
   }
   
   /// Join a conversation room
-  void joinConversation(String conversationId) {
+  void joinConversation(String conversationId) async {
     if (!isConnected) {
       _logger.warn('Cannot join conversation $conversationId: not connected');
       return;
     }
     
+    final userId = await _authService.getUserId() ?? '';
+    
     _logger.info('Joining conversation: $conversationId');
     _socket!.emit('joinConversation', {
       'conversationId': conversationId,
-      'userId': _authService.userId
+      'userId': userId
     });
   }
   
   /// Leave a conversation room
-  void leaveConversation(String conversationId) {
+  void leaveConversation(String conversationId) async {
     if (!isConnected) return;
+    
+    final userId = await _authService.getUserId() ?? '';
     
     _logger.info('Leaving conversation: $conversationId');
     _socket!.emit('leaveConversation', {
       'conversationId': conversationId,
-      'userId': _authService.userId
+      'userId': userId
     });
   }
   
@@ -233,6 +238,15 @@ class SocketService extends ChangeNotifier {
     _socket!.emit('message', message);
   }
   
+  /// Send a message with named parameters (overload for compatibility)
+  void sendMessageWithParams({
+    required String conversationId, 
+    required String content, 
+    String? senderId
+  }) {
+    sendMessage(conversationId, content, extras: senderId != null ? {'sender_id': senderId} : null);
+  }
+  
   /// Mark a message as read
   void markMessageRead(String conversationId, String messageId) {
     if (!isConnected) return;
@@ -244,26 +258,52 @@ class SocketService extends ChangeNotifier {
     });
   }
   
-  /// Send typing start notification
-  void sendTypingStart(String conversationId) {
+  /// Send read receipt for conversation (overload for compatibility)
+  void sendReadReceipt({required String conversationId, String? userId}) {
     if (!isConnected) return;
     
-    _logger.debug('Sending typing start for conversation: $conversationId');
-    _socket!.emit('typing', {
+    _logger.info('Sending read receipt for conversation: $conversationId');
+    _socket!.emit('read_receipt', {
       'conversation_id': conversationId,
-      'is_typing': true,
+      'user_id': userId,
+      'timestamp': DateTime.now().toIso8601String(),
     });
   }
   
-  /// Send typing stop notification
-  void sendTypingStop(String conversationId) {
+  /// Send typing status (overload for compatibility)
+  void sendTypingStatus({
+    required String conversationId, 
+    required String userId, 
+    required bool isTyping
+  }) {
     if (!isConnected) return;
     
-    _logger.debug('Sending typing stop for conversation: $conversationId');
+    _logger.info('Sending typing status for conversation: $conversationId, isTyping: $isTyping');
     _socket!.emit('typing', {
       'conversation_id': conversationId,
-      'is_typing': false,
+      'user_id': userId,
+      'is_typing': isTyping,
     });
+  }
+  
+  /// Send typing start notification (for simple API)
+  void sendTypingStart(String conversationId) async {
+    final userId = await _authService.getUserId() ?? '';
+    sendTypingStatus(
+      conversationId: conversationId,
+      userId: userId,
+      isTyping: true
+    );
+  }
+  
+  /// Send typing stop notification (for simple API)
+  void sendTypingStop(String conversationId) async {
+    final userId = await _authService.getUserId() ?? '';
+    sendTypingStatus(
+      conversationId: conversationId,
+      userId: userId,
+      isTyping: false
+    );
   }
   
   /// Cleanup resources
@@ -313,14 +353,14 @@ class SocketService extends ChangeNotifier {
   
   // Reconnect if disconnected
   void reconnect() {
-    if (!_isConnected && _socket != null) {
+    if (!isConnected && _socket != null) {
       _logger.info('Attempting to reconnect');
       _socket!.connect();
     }
   }
   
   // Send a new message
-  void sendMessage({
+  void sendSocketMessage({
     required String conversationId,
     required String content,
     required String senderId,
@@ -335,37 +375,6 @@ class SocketService extends ChangeNotifier {
       });
     } else {
       _logger.warn('Cannot send message: Socket not connected');
-    }
-  }
-  
-  // Send typing status
-  void sendTypingStatus({
-    required String conversationId,
-    required String userId,
-    required bool isTyping,
-  }) {
-    if (isConnected && _socket != null) {
-      _logger.info('Sending typing status: $isTyping');
-      _socket!.emit('typing', {
-        'conversationId': conversationId,
-        'userId': userId,
-        'isTyping': isTyping
-      });
-    }
-  }
-  
-  // Send read receipt
-  void sendReadReceipt({
-    required String conversationId,
-    required String userId,
-  }) {
-    if (isConnected && _socket != null) {
-      _logger.info('Sending read receipt for conversation: $conversationId');
-      _socket!.emit('read', {
-        'conversationId': conversationId,
-        'userId': userId,
-        'timestamp': DateTime.now().toIso8601String()
-      });
     }
   }
 } 

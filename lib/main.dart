@@ -27,6 +27,9 @@ import 'config/theme_config.dart';
 import 'services/notification_service.dart';
 import 'utils/connectivity/network_manager.dart';
 import 'providers/notification_provider.dart';
+import 'package:dating_app/config/routes.dart';
+import 'package:dating_app/screens/splash_screen.dart';
+import 'package:dating_app/providers/navigator_key_provider.dart';
 
 final appLogger = Logger('App');
 
@@ -95,8 +98,8 @@ class _AppState extends ConsumerState<App> {
   
   Future<void> _initializeApp() async {
     // Initialize services
-    await ref.read(sharedPreferencesProvider.future);
-    await ref.read(secureStorageProvider.future);
+    final prefs = ref.read(sharedPreferencesProvider);
+    final secureStorage = ref.read(secureStorageProvider);
     
     // Initialize notifications
     // This will set up listeners for socket events
@@ -111,7 +114,7 @@ class _AppState extends ConsumerState<App> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     appLogger.debug('Building App widget');
     
     final authState = ref.watch(authStateProvider);
@@ -124,17 +127,8 @@ class _AppState extends ConsumerState<App> {
     // This activates the side effect provider to manage socket connections
     ref.watch(socketConnectionProvider);
     
-    // Connect notification service to socket for message notifications
-    final isAuthenticated = ref.watch(isAuthenticatedProvider);
-    if (isAuthenticated) {
-      final socketService = ref.read(socketServiceProvider);
-      final notificationService = ref.read(notificationServiceProvider);
-      
-      // Set up notification service to listen to socket events
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notificationService.subscribeToSocketEvents(socketService);
-      });
-    }
+    // Get the global navigator key from the provider
+    final navigatorKey = ref.watch(navigatorKeyProvider);
 
     return MaterialApp(
       title: AppConfig.appName,
@@ -142,7 +136,8 @@ class _AppState extends ConsumerState<App> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: _buildHome(ref, authState),
+      navigatorKey: navigatorKey,
+      home: _buildHome(authState),
       routes: {
         '/welcome': (context) => WelcomeScreen(),
         '/login': (context) => LoginScreen(),
@@ -157,30 +152,11 @@ class _AppState extends ConsumerState<App> {
         '/settings': (context) => SettingsScreen(),
         '/reset-password-confirmation': (context) => ResetPasswordConfirmationScreen(),
       },
-      onGenerateRoute: (settings) {
-        if (settings.name == '/conversation') {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => ConversationScreen(
-              conversation: args['conversation'],
-            ),
-          );
-        }
-        if (settings.name == '/reset-password-confirmation') {
-          final args = settings.arguments as Map<String, dynamic>?;
-          return MaterialPageRoute(
-            builder: (context) => ResetPasswordConfirmationScreen(
-              email: args?['email'],
-              token: args?['token'],
-            ),
-          );
-        }
-        return null;
-      },
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 
-  Widget _buildHome(WidgetRef ref, AuthState authState) {
+  Widget _buildHome(AuthState authState) {
     appLogger.debug('Building home screen based on auth state: ${authState.status}');
     
     switch (authState.status) {

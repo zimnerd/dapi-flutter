@@ -3,15 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logger.dart';
 
-/// Network connectivity status
+/// Network status enum for web
 enum NetworkStatus {
   online,
   offline,
+  unknown
 }
 
-/// Provider for current network status (stub for web)
-final networkStatusProvider = StateNotifierProvider<NetworkStatusNotifier, NetworkStatus>((ref) {
-  return NetworkStatusNotifier();
+/// Provider for network status - simplified for web
+final networkStatusProvider = StateProvider<NetworkStatus>((ref) {
+  return NetworkStatus.online; // Default to online for web
 });
 
 /// Provider for whether messages should be queued for offline sending
@@ -70,33 +71,21 @@ class OfflineMessageQueueNotifier extends StateNotifier<List<Map<String, dynamic
   }
 }
 
-/// Network manager stub for web
+/// Web-compatible network manager 
 class NetworkManager {
-  static final NetworkManager _instance = NetworkManager._internal();
-  factory NetworkManager() => _instance;
-  NetworkManager._internal();
-
-  final _logger = Logger('NetworkManagerStub');
-  
-  /// Check if the device is currently online (always returns true for web)
-  static Future<bool> isOnline() async {
-    return true;
+  /// Starts monitoring network connectivity
+  static void startMonitoring() {
+    // No-op for web
   }
 
-  /// Show a snackbar when offline
-  static void showOfflineSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.signal_wifi_off, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Web stub: Always online in browser'),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ),
-    );
+  /// Stops monitoring network connectivity
+  static void stopMonitoring() {
+    // No-op for web
+  }
+
+  /// Returns the current network status
+  static NetworkStatus getCurrentStatus() {
+    // Default to online for web
+    return NetworkStatus.online;
   }
 } 

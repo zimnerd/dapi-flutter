@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../logger.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:dating_app/providers/providers.dart'; // For loggerProvider
 
 /// Network connectivity status
-enum NetworkStatus {
-  online,
-  offline,
-}
+enum NetworkStatus { checking, online, offline }
 
 /// Provider for current network status
 final networkStatusProvider = StateNotifierProvider<NetworkStatusNotifier, NetworkStatus>((ref) {
-  return NetworkStatusNotifier();
+  final logger = ref.watch(loggerProvider);
+  return NetworkStatusNotifier(logger);
 });
 
 /// Provider for whether messages should be queued for offline sending
@@ -25,44 +26,80 @@ final offlineMessageQueueProvider = StateNotifierProvider<OfflineMessageQueueNot
 
 /// Network status notifier
 class NetworkStatusNotifier extends StateNotifier<NetworkStatus> {
-  NetworkStatusNotifier() : super(NetworkStatus.online) {
-    _initConnectivity();
-    _setupConnectivityListener();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<InternetConnectionStatus>? _internetSubscription;
+  final Connectivity _connectivity = Connectivity();
+  final InternetConnectionChecker _internetChecker = InternetConnectionChecker();
+  final AppLogger _logger;
+
+  NetworkStatusNotifier(this._logger) : super(NetworkStatus.checking) {
+    _initialize();
   }
 
-  final _logger = Logger('Network');
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  Future<void> _initialize() async {
+    _logger.info('Initializing NetworkStatusNotifier');
+    await checkConnectivity(); // Initial check
+    _startListening();
+  }
 
-  Future<void> _initConnectivity() async {
+  Future<void> checkConnectivity() async {
+    if (mounted) {
+      state = NetworkStatus.checking;
+    }
     try {
-      final result = await Connectivity().checkConnectivity();
-      _updateConnectionStatus(result);
+      final result = await _connectivity.checkConnectivity();
+      await _updateConnectionStatus(result);
     } catch (e) {
-      _logger.error('Failed to check connectivity: $e');
+      _logger.severe('Error checking initial connectivity: $e');
+      if (mounted) {
+        state = NetworkStatus.offline; // Assume offline on error
+      }
     }
   }
 
-  void _setupConnectivityListener() {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+  void _startListening() {
+    // Listen to connectivity changes
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
+
+    // Listen to actual internet connection status
+    _internetSubscription = _internetChecker.onStatusChange.listen((status) {
+       _logger.info('Internet Connection Status changed: $status');
+      if (mounted) {
+          state = (status == InternetConnectionStatus.connected)
+              ? NetworkStatus.online
+              : NetworkStatus.offline;
+           _logger.info('NetworkStatus updated to: $state based on InternetChecker');
+       }
+    });
+     _logger.info('Started listening to network changes.');
   }
 
-  void _updateConnectionStatus(ConnectivityResult result) {
-    if (result == ConnectivityResult.none) {
-      if (state != NetworkStatus.offline) {
-        _logger.warn('Network connection lost');
+  // Updated to handle List<ConnectivityResult>
+  Future<void> _updateConnectionStatus(List<ConnectivityResult> result) async {
+    _logger.info('Connectivity changed: $result');
+    // Check if the list contains none or if it's empty (though unlikely for the stream)
+    if (result.contains(ConnectivityResult.none) || result.isEmpty) {
+       _logger.info('ConnectivityResult indicates no connection. Setting state to offline.');
+      if (mounted) {
         state = NetworkStatus.offline;
       }
     } else {
-      if (state != NetworkStatus.online) {
-        _logger.info('Network connection restored');
-        state = NetworkStatus.online;
+       _logger.info('ConnectivityResult indicates a connection. Verifying with InternetChecker...');
+      // Even if WiFi/Mobile is connected, check actual internet access
+      final isConnected = await _internetChecker.hasConnection;
+      _logger.info('InternetChecker result: $isConnected');
+      if (mounted) {
+        state = isConnected ? NetworkStatus.online : NetworkStatus.offline;
+         _logger.info('NetworkStatus updated to: $state based on ConnectivityResult + InternetChecker');
       }
     }
   }
 
   @override
   void dispose() {
+     _logger.info('Disposing NetworkStatusNotifier.');
     _connectivitySubscription?.cancel();
+    _internetSubscription?.cancel();
     super.dispose();
   }
 }

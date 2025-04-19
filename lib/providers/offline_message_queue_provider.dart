@@ -1,81 +1,258 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/message.dart';
+import '../providers/network_status_provider.dart';
+import '../providers/providers.dart';
+import '../services/socket_service.dart';
 import '../utils/logger.dart';
-import 'providers.dart';
 
-/// Provider for the offline message queue
-final offlineMessageQueueProvider = StateNotifierProvider<OfflineMessageQueueNotifier, List<Message>>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return OfflineMessageQueueNotifier(prefs);
+/// Message queue state
+class OfflineMessageQueueState {
+  final List<Map<String, dynamic>> pendingMessages;
+  final bool isSyncing;
+
+  const OfflineMessageQueueState({
+    this.pendingMessages = const [],
+    this.isSyncing = false,
+  });
+
+  OfflineMessageQueueState copyWith({
+    List<Map<String, dynamic>>? pendingMessages,
+    bool? isSyncing,
+  }) {
+    return OfflineMessageQueueState(
+      pendingMessages: pendingMessages ?? this.pendingMessages,
+      isSyncing: isSyncing ?? this.isSyncing,
+    );
+  }
+}
+
+/// Provider for managing offline message queue
+final offlineMessageQueueProvider = StateNotifierProvider<OfflineMessageQueueNotifier, OfflineMessageQueueState>((ref) {
+  final socketService = ref.watch(socketServiceProvider);
+  final sharedPrefs = ref.watch(sharedPreferencesProvider);
+  final networkStatus = ref.watch(networkStatusProvider);
+  final logger = Logger('OfflineMessageQueue');
+  
+  return OfflineMessageQueueNotifier(
+    socketService: socketService,
+    sharedPreferences: sharedPrefs,
+    isOnline: networkStatus == NetworkStatus.online,
+    logger: logger,
+    ref: ref,
+  );
 });
 
-/// Manages messages that are sent while the user is offline
-class OfflineMessageQueueNotifier extends StateNotifier<List<Message>> {
-  final SharedPreferences _prefs;
-  final Logger _logger = Logger('OfflineMessageQueue');
-  static const String _queueKey = 'offline_message_queue';
-
-  OfflineMessageQueueNotifier(this._prefs) : super([]) {
-    _loadQueue();
+/// Notifier that manages the offline message queue
+class OfflineMessageQueueNotifier extends StateNotifier<OfflineMessageQueueState> {
+  final SocketService _socketService;
+  final SharedPreferences _sharedPreferences;
+  final Logger _logger;
+  final Ref _ref;
+  
+  static const String _storageKey = 'offline_message_queue';
+  Timer? _syncTimer;
+  bool _isOnline;
+  
+  OfflineMessageQueueNotifier({
+    required SocketService socketService,
+    required SharedPreferences sharedPreferences,
+    required bool isOnline,
+    required Logger logger,
+    required Ref ref,
+  }) : _socketService = socketService,
+       _sharedPreferences = sharedPreferences,
+       _isOnline = isOnline,
+       _logger = logger,
+       _ref = ref,
+       super(const OfflineMessageQueueState()) {
+    _loadQueueFromStorage();
+    _setupNetworkListener();
   }
-
-  /// Load any queued messages from persistent storage
-  void _loadQueue() {
+  
+  /// Load queued messages from persistent storage
+  Future<void> _loadQueueFromStorage() async {
     try {
-      final queueJson = _prefs.getString(_queueKey);
+      final queueJson = _sharedPreferences.getString(_storageKey);
       if (queueJson != null) {
-        final List<dynamic> decodedList = jsonDecode(queueJson);
-        state = decodedList.map((item) => Message.fromJson(item)).toList();
-        _logger.info('Loaded ${state.length} messages from offline queue');
+        final List<dynamic> decoded = jsonDecode(queueJson);
+        final pendingMessages = decoded.cast<Map<String, dynamic>>();
+        
+        state = state.copyWith(pendingMessages: pendingMessages);
+        _logger.debug('⟹ [OfflineMessageQueue] Loaded ${pendingMessages.length} queued messages from storage');
+        
+        // Try to sync messages if we're online
+        if (_isOnline) {
+          _syncQueuedMessages();
+        }
       }
     } catch (e) {
-      _logger.error('Error loading offline message queue: $e');
-      // Reset the queue if there's an error loading it
-      _prefs.remove(_queueKey);
-      state = [];
+      _logger.error('Failed to load offline message queue: $e');
     }
   }
-
-  /// Save the current queue to persistent storage
-  void _saveQueue() {
+  
+  /// Save queue to persistent storage
+  Future<void> _saveQueueToStorage() async {
     try {
-      final queueJson = jsonEncode(state.map((message) => message.toJson()).toList());
-      _prefs.setString(_queueKey, queueJson);
+      await _sharedPreferences.setString(
+        _storageKey, 
+        jsonEncode(state.pendingMessages),
+      );
     } catch (e) {
-      _logger.error('Error saving offline message queue: $e');
+      _logger.error('Failed to save offline message queue: $e');
     }
   }
-
-  /// Add a message to the offline queue
-  void addMessage(Message message) {
-    _logger.info('Adding message to offline queue: ${message.id}');
-    state = [...state, message];
-    _saveQueue();
+  
+  /// Listen for network status changes
+  void _setupNetworkListener() {
+    _ref.listen<NetworkStatus>(
+      networkStatusProvider,
+      (previous, current) {
+        final wasOffline = previous == NetworkStatus.offline;
+        final isNowOnline = current == NetworkStatus.online;
+        
+        _isOnline = isNowOnline;
+        
+        // If we just came back online, try to sync messages
+        if (wasOffline && isNowOnline) {
+          _syncQueuedMessages();
+        }
+      },
+    );
   }
-
-  /// Remove a message from the offline queue
-  void removeMessage(String messageId) {
-    _logger.info('Removing message from offline queue: $messageId');
-    state = state.where((message) => message.id != messageId).toList();
-    _saveQueue();
+  
+  /// Add a Message object to the queue to be sent when back online
+  Future<void> addMessage(Message message) async {
+    final messageData = {
+      'id': message.id,
+      'conversation_id': message.conversationId,
+      'message': message.messageText,
+      'sender_id': message.senderId,
+      'sender_name': message.senderName,
+      'timestamp': message.timestamp.toIso8601String(),
+    };
+    
+    // Add to queue
+    final updatedQueue = [...state.pendingMessages, messageData];
+    state = state.copyWith(pendingMessages: updatedQueue);
+    
+    // Save to storage
+    await _saveQueueToStorage();
+    
+    _logger.debug('⟹ [OfflineMessageQueue] Message queued for conversation ${message.conversationId}');
+    
+    // Try to sync immediately if online
+    if (_isOnline) {
+      _syncQueuedMessages();
+    }
   }
-
-  /// Get all queued messages for a specific conversation
+  
+  /// Get messages for a specific conversation
   List<Message> getMessagesForConversation(String conversationId) {
-    return state.where((message) => message.conversationId == conversationId).toList();
+    return state.pendingMessages
+        .where((m) => m['conversation_id'] == conversationId)
+        .map((m) => Message(
+              id: m['id'] ?? '',
+              conversationId: m['conversation_id'] ?? '',
+              senderId: m['sender_id'] ?? '',
+              messageText: m['message'] ?? '',
+              timestamp: DateTime.parse(m['timestamp'] ?? DateTime.now().toIso8601String()),
+              senderName: m['sender_name'] ?? '',
+              status: MessageStatus.pending,
+            ))
+        .toList();
   }
-
-  /// Get all queued messages
-  List<Message> getAllMessages() {
-    return state;
+  
+  /// Remove a message from the queue
+  Future<void> removeMessage(String messageId) async {
+    final updatedQueue = state.pendingMessages
+        .where((m) => m['id'] != messageId)
+        .toList();
+    
+    state = state.copyWith(pendingMessages: updatedQueue);
+    await _saveQueueToStorage();
   }
-
-  /// Clear all messages from the queue
-  void clearQueue() {
-    _logger.info('Clearing offline message queue');
-    state = [];
-    _prefs.remove(_queueKey);
+  
+  /// Try to send all queued messages
+  Future<void> _syncQueuedMessages() async {
+    // If already syncing or no messages to sync, exit
+    if (state.isSyncing || state.pendingMessages.isEmpty) return;
+    
+    // If socket is not connected, wait for it
+    if (!_socketService.isConnected) {
+      _logger.debug('⟹ [OfflineMessageQueue] Socket not connected, will try sync later');
+      return;
+    }
+    
+    _logger.debug('⟹ [OfflineMessageQueue] Syncing ${state.pendingMessages.length} offline messages');
+    
+    // Mark as syncing
+    state = state.copyWith(isSyncing: true);
+    
+    try {
+      // Make a copy to avoid modifying during iteration
+      final messagesToSync = List<Map<String, dynamic>>.from(state.pendingMessages);
+      final successfulIds = <String>[];
+      
+      // Send each message
+      for (final messageData in messagesToSync) {
+        try {
+          final conversationId = messageData['conversation_id'] as String;
+          final text = messageData['message'] as String;
+          final id = messageData['id'] as String;
+          final senderId = messageData['sender_id'] as String? ?? '';
+          
+          await _socketService.sendMessageWithParams(
+            conversationId: conversationId,
+            content: text,
+            senderId: senderId,
+          );
+          
+          successfulIds.add(id);
+          _logger.debug('⟹ [OfflineMessageQueue] Successfully sent queued message $id');
+        } catch (e) {
+          _logger.error('Failed to send queued message: $e');
+          // Continue with next message
+        }
+      }
+      
+      // Remove successful messages from queue
+      if (successfulIds.isNotEmpty) {
+        final remainingMessages = state.pendingMessages
+            .where((m) => !successfulIds.contains(m['id']))
+            .toList();
+        
+        state = state.copyWith(
+          pendingMessages: remainingMessages,
+          isSyncing: false,
+        );
+        
+        // Save updated queue
+        await _saveQueueToStorage();
+      } else {
+        state = state.copyWith(isSyncing: false);
+      }
+    } catch (e) {
+      _logger.error('Error during queue sync: $e');
+      state = state.copyWith(isSyncing: false);
+    }
+  }
+  
+  /// Try to sync queued messages now (can be called manually)
+  Future<void> syncNow() async {
+    if (_isOnline) {
+      await _syncQueuedMessages();
+    }
+  }
+  
+  /// Get queue length
+  int get queueLength => state.pendingMessages.length;
+  
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 } 

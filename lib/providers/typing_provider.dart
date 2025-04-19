@@ -110,4 +110,25 @@ class TypingUsersNotifier extends StateNotifier<Map<String, Map<String, dynamic>
     _typingTimers.clear();
     super.dispose();
   }
+}
+
+/// Extension for backward compatibility
+extension TypingMapExtension on Map<String, Map<String, dynamic>> {
+  /// Check if user is typing in specific conversation
+  bool isUserTypingInConversation(String conversationId) {
+    return this.containsKey(conversationId) && 
+           (this[conversationId]?.isNotEmpty ?? false);
+  }
+  
+  /// Get name of typing user for display
+  String getTypingUserNameForConversation(String conversationId) {
+    if (isUserTypingInConversation(conversationId)) {
+      final userId = this[conversationId]?.keys.first;
+      if (userId != null) {
+        // Use generic name if we don't have the real name
+        return 'Someone';
+      }
+    }
+    return '';
+  }
 } 

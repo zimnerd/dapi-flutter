@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,6 +11,8 @@ import '../services/chat_service.dart';
 import '../services/profile_service.dart';
 import '../services/storage_service.dart';
 import '../services/socket_service.dart';
+import '../services/unsplash_service.dart';
+import '../services/notification_service.dart';
 import '../config/app_config.dart';
 
 // Import providers
@@ -20,6 +23,9 @@ import './chat_provider.dart';
 import './socket_connection_provider.dart';
 import './offline_message_provider.dart';
 import 'offline_message_queue_provider.dart';
+import './notification_provider.dart';
+import './network_status_provider.dart';
+import './message_provider.dart';
 
 // Export auth providers
 export './auth_provider.dart' show 
@@ -60,6 +66,18 @@ export 'offline_message_queue_provider.dart';
 // Export notification providers
 export 'notification_provider.dart';
 
+// Include the network status provider 
+export 'network_status_provider.dart';
+
+// Include the message provider
+export 'message_provider.dart';
+
+// Include the offline message queue provider
+export 'offline_message_queue_provider.dart';
+
+// Include the typing status provider
+export 'typing_provider.dart';
+
 // --- Core Services ---
 
 // Secure storage provider - moved up to break circular dependency
@@ -70,6 +88,11 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 // Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Initialize in main.dart before runApp');
+});
+
+// Provider for SharedPreferences Future (use this during startup)
+final sharedPreferencesFutureProvider = FutureProvider<SharedPreferences>((ref) async {
+  return await SharedPreferences.getInstance();
 });
 
 // Dio provider for HTTP client - with simpler interceptor to avoid circular dependency
@@ -203,6 +226,23 @@ final storageServiceProvider = Provider<StorageService>((ref) {
   final secureStorage = ref.watch(secureStorageProvider);
   final prefs = ref.watch(sharedPreferencesProvider);
   return StorageService(secureStorage, prefs);
+});
+
+// Unsplash Service Provider
+final unsplashServiceProvider = Provider<UnsplashService>((ref) {
+  final dio = ref.watch(dioProvider);
+  return UnsplashService(dio);
+});
+
+// Socket Service Provider (Singleton instance)
+final socketServiceProvider = Provider<SocketService>((ref) {
+  final storageService = ref.watch(storageServiceProvider);
+  return SocketService(storageService);
+});
+
+// Notification Service Provider
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
 });
 
 // --- App State Providers ---

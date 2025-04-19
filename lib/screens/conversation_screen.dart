@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/conversation.dart';
 import '../models/message.dart';
 import '../models/user.dart';
+import '../models/profile.dart';
 import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
@@ -20,6 +22,10 @@ import '../utils/connectivity/network_manager.dart';
 import '../providers/offline_message_queue_provider.dart';
 import '../services/socket_service.dart';
 import '../providers/notification_provider.dart';
+import '../providers/message_provider.dart';
+import '../providers/network_status_provider.dart';
+import '../widgets/chat/message_input.dart';
+import '../widgets/chat/message_list.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -34,17 +40,23 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode();
   bool _isLoading = true;
   bool _isSending = false;
   Profile? _participant;
   Timer? _typingTimer;
   bool _isTyping = false;
+  String? _currentUserId;
+  User? _otherUser;
+  Map<String, String> _participantNames = {};
   
   @override
   void initState() {
     super.initState();
     _loadMessages();
     _loadParticipant();
+    _getCurrentUserId();
+    _setupParticipantNames();
     
     // Add focus listener for typing events
     _messageController.addListener(_onTypingChanged);
@@ -65,10 +77,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _messageController.removeListener(_onTypingChanged);
     _messageController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     _typingTimer?.cancel();
     
     // Stop sending typing notifications when leaving the screen
     _sendTypingNotification(false);
+    
+    // Leave conversation room when screen is closed
+    if (_currentUserId != null) {
+      final socketService = ref.read(socketServiceProvider);
+      socketService.leaveConversation(widget.conversation.id);
+    }
     
     super.dispose();
   }
@@ -117,9 +136,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       
       for (final message in queuedMessages) {
         // Send queued message through socket
-        socketService.sendMessage(
+        socketService.sendMessageWithParams(
           conversationId: message.conversationId,
-          content: message.content,
+          content: message.messageText,
           senderId: message.senderId
         );
         
@@ -408,70 +427,73 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
   
   void _sendMessage() async {
-    final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    final String text = _messageController.text.trim();
+    if (text.isEmpty) return;
     
+    _messageController.clear();
+    _isTyping = false;
+    _sendTypingNotification(false);
+    
+    // Send message
     setState(() {
       _isSending = true;
     });
     
-    _messageController.clear();
-    
-    // Stop typing when sending a message
-    _isTyping = false;
-    _sendTypingNotification(false);
-    
-    final userId = ref.read(authServiceProvider).getUserId();
-    final userName = ref.read(authServiceProvider).getUserName() ?? 'You';
-    
-    // Create a temporary message with pending status
-    final newMessage = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID
-      conversationId: widget.conversation.id,
-      senderId: userId,
-      senderName: userName,
-      content: message,
-      timestamp: DateTime.now(),
-      status: MessageStatus.pending
-    );
-    
-    // Add to UI immediately
-    setState(() {
-      _addMessage(newMessage);
-    });
-    
-    // Scroll to bottom
-    _scrollToBottom();
-    
-    final socketService = ref.read(socketServiceProvider);
-    
-    // Check if socket is connected
-    if (socketService.isConnected) {
-      // Send via socket for real-time delivery
-      socketService.sendMessage(
-        conversationId: widget.conversation.id,
-        content: message,
-        senderId: userId
-      );
-    } else {
-      // Add to offline queue if not connected
-      ref.read(offlineMessageQueueProvider.notifier).addMessage(newMessage);
+    try {
+      // Get current user ID
+      final String userId = await _getCurrentUserId() ?? '';
       
-      // Also try to send via HTTP fallback
-      try {
-        await ref.read(chatServiceProvider).sendMessage(
-          widget.conversation.id,
-          message
-        );
-      } catch (e) {
-        print('⟹ [ConversationScreen] Failed to send message via HTTP: $e');
-        // Message will be sent when connection is restored from queue
+      if (userId.isEmpty) {
+        throw Exception('User ID not available');
       }
+      
+      final socketService = ref.read(socketServiceProvider);
+      final isOnline = ref.read(networkStatusProvider) == NetworkStatus.online;
+      
+      // Create a new message
+      final newMessage = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID
+        conversationId: widget.conversation.id,
+        senderId: userId,
+        messageText: text,
+        timestamp: DateTime.now(),
+        status: isOnline ? MessageStatus.sent : MessageStatus.pending,
+      );
+      
+      // Add message to UI
+      setState(() {
+        _addMessage(newMessage);
+        _isSending = false;
+      });
+      
+      if (isOnline && socketService.isConnected) {
+        // Send via socket if online
+        socketService.sendMessageWithParams(
+          conversationId: widget.conversation.id,
+          content: text,
+          senderId: userId
+        );
+      } else {
+        // Add to offline queue if offline
+        ref.read(offlineMessageQueueProvider.notifier).addMessage(newMessage);
+      }
+      
+      // Scroll to new message
+      _scrollToBottom();
+      
+    } catch (e) {
+      setState(() {
+        _isSending = false;
+      });
+      
+      // Show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send message: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    
-    setState(() {
-      _isSending = false;
-    });
   }
   
   Widget _buildMessageList() {
@@ -493,30 +515,44 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
   
   Widget _buildOfflineIndicator() {
-    final networkStatus = ref.watch(networkStatusProvider);
-    
-    if (networkStatus == NetworkStatus.offline) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        color: Colors.orange,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.wifi_off, color: Colors.white, size: 16),
-            SizedBox(width: 8),
-            Text(
-              'You are offline. Messages will be sent when you reconnect.',
+    return Container(
+      color: AppColors.error.withOpacity(0.1),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            Icons.wifi_off,
+            color: AppColors.error,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You\'re offline. Messages will be sent when you\'re back online.',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.error,
                 fontSize: 12,
               ),
             ),
-          ],
-        ),
-      );
-    } else {
-      return SizedBox.shrink();
-    }
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(networkStatusProvider.notifier).checkConnectivity();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Retry',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   Widget _buildTypingIndicator() {
@@ -610,6 +646,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       (typing) => typing.getTypingUserNameForConversation(widget.conversation.id)
     ));
     
+    // Watch network status
+    final networkStatus = ref.watch(networkStatusProvider);
+    final isOnline = networkStatus == NetworkStatus.online;
+    
+    // Watch offline message queue
+    final offlineQueueLength = ref.watch(
+      offlineMessageQueueProvider.select((state) => state.pendingMessages.length)
+    );
+    
+    // Watch this conversation's messages
+    final messagesState = ref.watch(messagesProvider);
+    final messages = messagesState.conversationMessages[widget.conversation.id] ?? [];
+    
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -641,7 +690,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (!isSocketConnected) 
+                  if (!isOnline) 
                     const Text(
                       'Offline - Messages will be sent when reconnected',
                       style: TextStyle(fontSize: 12, color: Colors.orange),
@@ -660,23 +709,265 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: _currentUserId == null
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Offline indicator
+                if (!isOnline)
+                  _buildOfflineIndicator(),
+                
+                // Queued messages indicator
+                if (offlineQueueLength > 0)
+                  _buildQueuedMessagesIndicator(offlineQueueLength),
+                
+                // Message list
+                Expanded(
+                  child: MessageList(
+                    conversationId: widget.conversation.id,
+                    currentUserId: _currentUserId!,
+                    participantNames: _participantNames,
+                    scrollController: _scrollController,
+                    isOnline: isOnline,
+                  ),
+                ),
+                
+                // Message input
+                MessageInput(
+                  conversationId: widget.conversation.id,
+                  focusNode: _inputFocusNode,
+                  isOnline: isOnline && isSocketConnected,
+                  onMessageSent: _scrollToBottom,
+                ),
+              ],
+            ),
+    );
+  }
+  
+  Future<String?> _getCurrentUserId() async {
+    if (_currentUserId != null) return _currentUserId;
+    
+    try {
+      final authService = ref.read(authServiceProvider);
+      _currentUserId = await authService.getUserId();
+      return _currentUserId;
+    } catch (e) {
+      debugPrint('⟹ [ConversationScreen] Error getting user ID: $e');
+      return null;
+    }
+  }
+  
+  Future<void> _setupParticipantNames() async {
+    try {
+      final participants = widget.conversation.participants;
+      final currentUserId = await _getCurrentUserId();
+      
+      if (participants.isEmpty || currentUserId == null) return;
+      
+      for (final participantId in participants) {
+        if (participantId == currentUserId) {
+          _participantNames[participantId] = 'You';
+        } else {
+          // Fetch other participant names
+          final chatService = ref.read(chatServiceProvider);
+          final user = await chatService.getUserProfile(participantId);
+          _participantNames[participantId] = user?.name ?? 'Unknown User';
+          
+          // Store the other user for profile display
+          _otherUser = user;
+        }
+      }
+      
+      setState(() {});
+    } catch (e) {
+      debugPrint('⟹ [ConversationScreen] Error setting up participant names: $e');
+    }
+  }
+  
+  Widget _buildQueuedMessagesIndicator(int count) {
+    return Container(
+      color: Colors.amber.withOpacity(0.1),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
+          Icon(
+            Icons.pending_actions,
+            color: Colors.amber.shade800,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildMessageList(),
+            child: Text(
+              '$count ${count == 1 ? 'message' : 'messages'} waiting to be sent.',
+              style: TextStyle(
+                color: Colors.amber.shade800,
+                fontSize: 12,
+              ),
+            ),
           ),
-          
-          // Typing indicator
-          TypingIndicator(
-            isTyping: isUserTyping,
-            userName: typingUserName,
-          ),
-          
-          _buildMessageInput(),
+          if (ref.watch(networkStatusProvider) == NetworkStatus.online)
+            ElevatedButton(
+              onPressed: () {
+                ref.read(offlineMessageQueueProvider.notifier).syncNow();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade800,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Send Now',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
+  }
+  
+  void _showConversationOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Delete Conversation'),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  _confirmDeleteConversation(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block),
+                title: const Text('Block User'),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  _confirmBlockUser(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.report),
+                title: const Text('Report User'),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  // TODO: Implement report functionality
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  void _confirmDeleteConversation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Conversation'),
+          content: const Text('Are you sure you want to delete this conversation? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                _deleteConversation();
+              },
+              child: Text(
+                'Delete',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  void _confirmBlockUser(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Block User'),
+          content: Text('Are you sure you want to block ${_otherUser?.name}? They will no longer be able to contact you.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                _blockUser();
+              },
+              child: Text(
+                'Block',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Future<void> _deleteConversation() async {
+    try {
+      final chatService = ref.read(chatServiceProvider);
+      await chatService.deleteConversation(widget.conversation.id);
+      
+      // Navigate back to conversations list
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print('Error deleting conversation: $e');
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete conversation: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _blockUser() async {
+    try {
+      // TODO: Implement block user functionality
+      // Navigate back to conversations list
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print('Error blocking user: $e');
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to block user: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 } 

@@ -444,11 +444,6 @@ class AuthService {
     }
   }
   
-  // For backward compatibility
-  Future<void> resetPassword(String email) async {
-    return sendPasswordResetEmail(email);
-  }
-  
   // Confirm password reset with token
   Future<void> confirmPasswordReset(String email, String token, String newPassword) async {
     _logger.info('Confirming password reset for email: $email');
@@ -558,5 +553,11 @@ class AuthService {
       _logger.error('Update profile general error: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
     }
+  }
+
+  /// Check if the user is authenticated
+  Future<bool> isAuthenticated() async {
+    final token = await getAccessToken();
+    return token != null && token.isNotEmpty;
   }
 }
