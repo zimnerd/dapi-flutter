@@ -14,6 +14,10 @@ import '../config/app_config.dart';
 // Import auth provider
 import './auth_provider.dart';
 
+// Import models
+import '../models/message.dart';
+import '../models/conversation.dart';
+
 // Export auth providers
 export './auth_provider.dart' show 
     AuthState, 
@@ -241,7 +245,68 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
 // Chat Service Provider
 final chatServiceProvider = Provider<ChatService>((ref) {
   final dio = ref.watch(dioProvider);
-  return ChatService(dio);
+  final authService = ref.watch(authServiceProvider);
+  return ChatService(dio, authService, ref);
+});
+
+// Provider for incoming messages stream
+final messageStreamProvider = StreamProvider.autoDispose<Message>((ref) {
+  final chatService = ref.watch(chatServiceProvider);
+  return chatService.messageStream;
+});
+
+// Provider for typing status changes stream
+// Data structure: Map<String, bool> where key is senderId and value is isTyping
+final typingStatusProvider = StreamProvider.autoDispose.family<Map<String, bool>, String>((ref, String conversationId) {
+  final chatService = ref.watch(chatServiceProvider);
+  return chatService.typingStatusStream.map((statusMap) {
+    final relevantStatus = <String, bool>{};
+    // Attempt to get participantId safely
+    final conversation = ref.read(conversationProvider(conversationId));
+    final currentUserId = ref.read(userIdProvider);
+    
+    // Find the participant ID if conversation and participants exist
+    String? participantId;
+    if (conversation != null && conversation.participants.isNotEmpty) {
+      try {
+        // Find participant who is NOT the current user
+        participantId = conversation.participants
+            .firstWhere((p) => p.id != currentUserId)
+            .id;
+      } catch (e) {
+        // Handle cases where current user might be the only participant listed, or list is malformed
+        print("Could not find other participant in conversation ${conversation.id}: $e");
+        // Optionally, take the first participant if only one exists
+        if (conversation.participants.length == 1 && conversation.participants.first.id != currentUserId) {
+           participantId = conversation.participants.first.id; 
+        }
+      }
+    }
+
+    if (participantId != null && statusMap.containsKey(participantId)) {
+      relevantStatus[participantId] = statusMap[participantId]!;
+    }
+    return relevantStatus;
+  });
+});
+
+// Provider to get a specific conversation (needed for typingStatusProvider filter)
+final conversationProvider = Provider.autoDispose.family<Conversation?, String>((ref, conversationId) {
+  final conversationsState = ref.watch(conversationsProvider);
+  return conversationsState.whenData((conversations) {
+    try {
+      // Ensure 'c' is treated as Conversation before accessing 'id'
+      return conversations.firstWhere((c) => (c as Conversation).id == conversationId);
+    } catch (e) {
+      return null;
+    }
+  }).value;
+});
+
+// Placeholder provider for all conversations - needs actual implementation
+final conversationsProvider = FutureProvider.autoDispose<List<Conversation>>((ref) async {
+  print("Warning: conversationsProvider is a placeholder.");
+  return ref.watch(chatServiceProvider).getConversations();
 });
 
 // Storage Service Provider

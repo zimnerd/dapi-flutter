@@ -386,8 +386,8 @@ class AuthService {
     }
   }
 
-  // Reset password
-  Future<void> resetPassword(String email) async {
+  // Request password reset email
+  Future<void> requestPasswordReset(String email) async {
     _logger.info('Requesting password reset for email: $email');
     try {
       final response = await _dio.post(

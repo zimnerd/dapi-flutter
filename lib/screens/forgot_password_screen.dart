@@ -69,7 +69,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
       try {
         // Get auth service from provider
         final authService = ref.read(authServiceProvider);
-        await authService.resetPassword(_emailController.text.trim());
+        await authService.requestPasswordReset(_emailController.text.trim());
         setState(() {
           _emailSent = true;
         });
