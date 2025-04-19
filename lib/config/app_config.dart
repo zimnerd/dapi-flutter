@@ -24,14 +24,8 @@ class AppEndpoints {
   static const String refreshToken = '$auth/refresh';        // POST: Alias for refresh endpoint
   static const String logout = '$auth/logout';               // POST: Logout user
   static const String verifyEmail = '$auth/verify-email';    // POST: Verify email address
-  
-  // Password reset endpoints - Using more consistent naming
-  static const String requestPasswordReset = '$auth/forgot-password'; // POST: Request password reset email
-  static const String passwordReset = '$auth/reset-password';         // POST: Reset user password with token
-  
-  // Aliases for backward compatibility
-  static const String forgotPassword = requestPasswordReset; // Alias for backward compatibility
-  static const String resetPassword = passwordReset;         // Alias for backward compatibility
+  static const String resetPassword = '$auth/reset-password'; // POST: Reset user password with token
+  static const String forgotPassword = '$auth/forgot-password'; // POST: Request password reset email
   
   // Profile endpoints - User profile management
   static const String profiles = '/api/profiles';
@@ -217,8 +211,8 @@ class AppConfig {
   static const String _prodApiBaseUrl = 'https://api.example.com';
   
   // WebSocket URLs for real-time features
-  static const String _devSocketUrl = 'http://localhost:3001';
-  static const String _mockSocketUrl = 'http://localhost:3001';
+  static const String _devSocketUrl = 'ws://localhost:3000';
+  static const String _mockSocketUrl = 'ws://localhost:3000';
   static const String _prodSocketUrl = 'wss://api.example.com';
   
   // Dynamic getters for environment-specific values

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../models/conversation.dart';
 import '../models/user.dart';
 import '../screens/conversation_screen.dart';
 import '../utils/colors.dart';
-import '../utils/date_formatter.dart';
-import '../providers/providers.dart';
 
-class ConversationListItem extends ConsumerWidget {
+class ConversationListItem extends StatelessWidget {
   final Conversation conversation;
   final String currentUserId;
 
@@ -18,16 +16,9 @@ class ConversationListItem extends ConsumerWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final otherUser = conversation.getOtherParticipant(currentUserId);
     final hasUnread = conversation.unreadCount > 0;
-    
-    // Check if the other user is typing
-    final isTyping = ref.watch(
-      typingUsersProvider.select((state) => 
-        state.isAnyoneTypingInConversation(conversation.id)
-      )
-    );
     
     return InkWell(
       onTap: () {
@@ -43,7 +34,6 @@ class ConversationListItem extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: hasUnread ? AppColors.primary.withOpacity(0.05) : null,
           border: Border(
             bottom: BorderSide(
               color: Colors.grey.withOpacity(0.2),
@@ -74,11 +64,7 @@ class ConversationListItem extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        DateFormatter.formatConversationDate(
-                          conversation.lastMessage?.timestamp ?? 
-                          conversation.updatedAt ?? 
-                          conversation.createdAt
-                        ),
+                        _formatDate(conversation.lastMessage?.timestamp),
                         style: TextStyle(
                           fontSize: 12,
                           color: hasUnread 
@@ -93,20 +79,18 @@ class ConversationListItem extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: isTyping 
-                          ? _buildTypingIndicator() 
-                          : Text(
-                              conversation.lastMessage?.text ?? 'Start a conversation!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: hasUnread 
-                                    ? AppColors.textPrimary 
-                                    : AppColors.textSecondary,
-                                fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        child: Text(
+                          conversation.lastMessage?.text ?? 'Start a conversation!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: hasUnread 
+                                ? AppColors.textPrimary 
+                                : AppColors.textSecondary,
+                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (hasUnread) _buildUnreadBadge(),
                     ],
@@ -117,51 +101,6 @@ class ConversationListItem extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Row(
-      children: [
-        Text(
-          'typing',
-          style: TextStyle(
-            fontStyle: FontStyle.italic,
-            fontSize: 14,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildTypingDots(),
-      ],
-    );
-  }
-
-  Widget _buildTypingDots() {
-    return Row(
-      children: List.generate(3, (index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 400 + (index * 200)),
-            curve: Curves.easeInOut,
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Container(
-                  width: 4,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      }),
     );
   }
 
@@ -215,5 +154,26 @@ class ConversationListItem extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) {
+      return '';
+    }
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateToCheck = DateTime(date.year, date.month, date.day);
+    
+    if (dateToCheck == today) {
+      return DateFormat('h:mm a').format(date);
+    } else if (dateToCheck == yesterday) {
+      return 'Yesterday';
+    } else if (now.difference(date).inDays < 7) {
+      return DateFormat('EEEE').format(date); // Day of week
+    } else {
+      return DateFormat('MM/dd/yyyy').format(date);
+    }
   }
 } 

@@ -24,12 +24,6 @@ import 'utils/logger.dart';
 import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
-import 'services/notification_service.dart';
-import 'utils/connectivity/network_manager.dart';
-import 'providers/notification_provider.dart';
-import 'package:dating_app/config/routes.dart';
-import 'package:dating_app/screens/splash_screen.dart';
-import 'package:dating_app/providers/navigator_key_provider.dart';
 
 final appLogger = Logger('App');
 
@@ -59,15 +53,10 @@ void main() async {
     prefs = MockSharedPreferences();
   }
   
-  // Initialize notification service
-  final notificationService = NotificationService();
-  await notificationService.initialize();
-  
   // Create a custom ProviderContainer to override the SharedPreferences provider
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      notificationServiceProvider.overrideWithValue(notificationService),
     ],
   );
   
@@ -75,60 +64,21 @@ void main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: const App(),
+      child: const MyApp(),
     ),
   );
   appLogger.info('App successfully initialized and running');
 }
 
-/// Main app widget
-class App extends ConsumerStatefulWidget {
-  const App({Key? key}) : super(key: key);
-  
-  @override
-  _AppState createState() => _AppState();
-}
-
-class _AppState extends ConsumerState<App> {
-  @override
-  void initState() {
-    super.initState();
-    _initializeApp();
-  }
-  
-  Future<void> _initializeApp() async {
-    // Initialize services
-    final prefs = ref.read(sharedPreferencesProvider);
-    final secureStorage = ref.read(secureStorageProvider);
-    
-    // Initialize notifications
-    // This will set up listeners for socket events
-    ref.read(notificationManagerProvider);
-    
-    // Check auth state
-    final authService = ref.read(authServiceProvider);
-    if (await authService.isAuthenticated()) {
-      // If user is authenticated, connect to socket
-      ref.read(socketServiceProvider);
-    }
-  }
+class MyApp extends ConsumerWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    appLogger.debug('Building App widget');
+  Widget build(BuildContext context, WidgetRef ref) {
+    appLogger.debug('Building MyApp widget');
     
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
-
-    // Initialize network connectivity monitor
-    ref.watch(networkStatusProvider);
-
-    // Auto-connect socket when user is authenticated
-    // This activates the side effect provider to manage socket connections
-    ref.watch(socketConnectionProvider);
-    
-    // Get the global navigator key from the provider
-    final navigatorKey = ref.watch(navigatorKeyProvider);
 
     return MaterialApp(
       title: AppConfig.appName,
@@ -136,8 +86,7 @@ class _AppState extends ConsumerState<App> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      navigatorKey: navigatorKey,
-      home: _buildHome(authState),
+      home: _buildHome(ref, authState),
       routes: {
         '/welcome': (context) => WelcomeScreen(),
         '/login': (context) => LoginScreen(),
@@ -152,11 +101,30 @@ class _AppState extends ConsumerState<App> {
         '/settings': (context) => SettingsScreen(),
         '/reset-password-confirmation': (context) => ResetPasswordConfirmationScreen(),
       },
-      onGenerateRoute: AppRoutes.generateRoute,
+      onGenerateRoute: (settings) {
+        if (settings.name == '/conversation') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => ConversationScreen(
+              conversation: args['conversation'],
+            ),
+          );
+        }
+        if (settings.name == '/reset-password-confirmation') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (context) => ResetPasswordConfirmationScreen(
+              email: args?['email'],
+              token: args?['token'],
+            ),
+          );
+        }
+        return null;
+      },
     );
   }
 
-  Widget _buildHome(AuthState authState) {
+  Widget _buildHome(WidgetRef ref, AuthState authState) {
     appLogger.debug('Building home screen based on auth state: ${authState.status}');
     
     switch (authState.status) {

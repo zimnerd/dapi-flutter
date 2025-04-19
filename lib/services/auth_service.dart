@@ -415,41 +415,12 @@ class AuthService {
     }
   }
   
-  // Send password reset email - renamed for clarity
-  Future<void> sendPasswordResetEmail(String email) async {
-    _logger.info('Requesting password reset for email: $email');
-    try {
-      final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.requestPasswordReset}',
-        data: {
-          AppRequestKeys.email: email,
-        },
-      );
-      
-      if (response.statusCode != AppStatusCodes.success) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: response.data?['message'] ?? 'Failed to request password reset'
-        );
-      }
-      // Success
-    } on DioException catch (e) {
-      _logger.error('Reset password Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Reset password general exception: $e');
-      throw Exception(AppErrorMessages.unexpectedError);
-    }
-  }
-  
   // Confirm password reset with token
   Future<void> confirmPasswordReset(String email, String token, String newPassword) async {
     _logger.info('Confirming password reset for email: $email');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.passwordReset}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.resetPassword}',
         data: {
           AppRequestKeys.email: email,
           AppRequestKeys.token: token,
@@ -553,11 +524,5 @@ class AuthService {
       _logger.error('Update profile general error: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
     }
-  }
-
-  /// Check if the user is authenticated
-  Future<bool> isAuthenticated() async {
-    final token = await getAccessToken();
-    return token != null && token.isNotEmpty;
   }
 }

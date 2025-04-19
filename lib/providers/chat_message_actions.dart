@@ -1,51 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'chat_provider.dart';
-import '../utils/logger.dart';
 
 // Utility class to handle message actions
 class ChatMessageActions {
-  static final _logger = Logger('ChatActions');
-
   // Add a new message (sent by the current user)
   static void addMessage(WidgetRef ref, String conversationId, String text) {
-    _logger.info("Adding message to conversation $conversationId");
+    // This would trigger a real API call in a production app
+    print("Adding message to conversation $conversationId: $text");
     
-    try {
-      // Get the chat messages notifier and send message
-      final chatNotifier = ref.read(chatMessagesProvider(conversationId).notifier);
-      chatNotifier.sendMessage(text);
-    } catch (e) {
-      _logger.error("Error sending message: $e");
-    }
+    // For now, we can't actually update the dummy messages since we're using a simple Stream.value
+    // In a real app with Firebase or similar, you would add to the collection which would
+    // automatically update the stream
   }
   
-  // Notify that user is typing
-  static void handleTyping(WidgetRef ref, String conversationId) {
-    try {
-      // Get the chat messages notifier and update typing status
-      final chatNotifier = ref.read(chatMessagesProvider(conversationId).notifier);
-      chatNotifier.handleTyping();
-    } catch (e) {
-      _logger.error("Error updating typing status: $e");
-    }
+  // Toggle a reaction on a specific message
+  static void toggleReaction(WidgetRef ref, String conversationId, String messageId, String emoji) {
+    // This would trigger a real API call in a production app
+    print("Toggling reaction $emoji on message $messageId in conversation $conversationId");
+    
+    // For now, we can't actually update the dummy data
   }
   
-  // Stop typing notification
-  static void stopTyping(WidgetRef ref, String conversationId) {
-    try {
-      // Get the chat messages notifier and update typing status
-      final chatNotifier = ref.read(chatMessagesProvider(conversationId).notifier);
-      chatNotifier.stopTyping();
-    } catch (e) {
-      _logger.error("Error stopping typing status: $e");
-    }
-  }
-  
-  // Mark messages as read
+  // Simulate marking messages as read
   static void markMessagesAsRead(WidgetRef ref, String conversationId) {
-    _logger.info("Marking messages as read in conversation $conversationId");
+    // This would trigger a real API call in a production app
+    print("Marking messages as read in conversation $conversationId");
     
-    // This now happens automatically when messages are received
-    // through the socket and in the _markMessagesAsRead method in the ChatMessagesNotifier
+    // For now, we can't actually update the dummy data
   }
 } 

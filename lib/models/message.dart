@@ -1,153 +1,86 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 
 @immutable
 class Message {
   final String id;
   final String conversationId;
   final String senderId;
-  final String senderName;
-  final String messageText;
+  final String text;
   final DateTime timestamp;
   final MessageStatus status;
-  final Map<String, String>? reactions;
+  final List<String>? reactions;
   bool get isFromCurrentUser => senderId == 'currentUserId'; // In real app, replace with actual currentUser check
 
   const Message({
     required this.id,
     required this.conversationId,
     required this.senderId,
-    required this.messageText,
+    required this.text,
     required this.timestamp,
-    this.senderName = '',
-    this.status = MessageStatus.sent,
+    required this.status,
     this.reactions,
   });
-
-  String get content => messageText;
-  
-  // Added for backward compatibility with code using message.text
-  String get text => messageText;
-
-  String get formattedTime {
-    return DateFormat('h:mm a').format(timestamp);
-  }
-
-  String get formattedDate {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(
-        timestamp.year, timestamp.month, timestamp.day);
-
-    if (messageDate == today) {
-      return 'Today';
-    } else if (messageDate == yesterday) {
-      return 'Yesterday';
-    } else {
-      return DateFormat('MMM d, yyyy').format(timestamp);
-    }
-  }
 
   Message copyWith({
     String? id,
     String? conversationId,
     String? senderId,
-    String? senderName,
-    String? messageText,
+    String? text,
     DateTime? timestamp,
     MessageStatus? status,
-    Map<String, String>? reactions,
+    List<String>? reactions,
   }) {
     return Message(
       id: id ?? this.id,
       conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
-      senderName: senderName ?? this.senderName,
-      messageText: messageText ?? this.messageText,
+      text: text ?? this.text,
       timestamp: timestamp ?? this.timestamp,
       status: status ?? this.status,
       reactions: reactions ?? this.reactions,
     );
   }
 
-  factory Message.fromJson(Map<String, dynamic> json) {
-    final String id = json['id'] ?? json['_id'] ?? json['messageId'] ?? '';
-    final String conversationId = json['conversationId'] ?? 
-                                  json['conversation_id'] ?? '';
-    final String senderId = json['senderId'] ?? 
-                            json['sender_id'] ?? 
-                            json['userId'] ?? '';
-    final String senderName = json['senderName'] ?? 
-                              json['sender_name'] ?? 
-                              json['userName'] ?? '';
-    
-    final String content = json['content'] ?? 
-                           json['message'] ?? 
-                           json['text'] ?? 
-                           json['messageText'] ?? '';
-    
-    DateTime timestamp;
-    try {
-      if (json['timestamp'] is String) {
-        timestamp = DateTime.parse(json['timestamp']);
-      } else if (json['timestamp'] is int) {
-        timestamp = DateTime.fromMillisecondsSinceEpoch(json['timestamp']);
-      } else if (json['created_at'] is String) {
-        timestamp = DateTime.parse(json['created_at']);
-      } else if (json['createdAt'] is String) {
-        timestamp = DateTime.parse(json['createdAt']);
-      } else {
-        timestamp = DateTime.now();
-      }
-    } catch (e) {
-      timestamp = DateTime.now();
-    }
-    
-    MessageStatus status;
-    if (json['status'] == 'pending') {
-      status = MessageStatus.pending;
-    } else if (json['status'] == 'sent') {
-      status = MessageStatus.sent;
-    } else if (json['status'] == 'delivered') {
-      status = MessageStatus.delivered;
-    } else if (json['status'] == 'read') {
-      status = MessageStatus.read;
-    } else if (json['status'] == 'failed') {
-      status = MessageStatus.failed;
-    } else {
-      status = MessageStatus.sent;
-    }
-    
-    Map<String, String>? reactions;
-    if (json['reactions'] != null) {
-      reactions = Map<String, String>.from(json['reactions']);
-    }
-    
+  factory Message.fromJson(String id, Map<String, dynamic> json) {
     return Message(
       id: id,
-      conversationId: conversationId,
-      senderId: senderId,
-      senderName: senderName,
-      messageText: content,
-      timestamp: timestamp,
-      status: status,
-      reactions: reactions,
+      conversationId: json['conversationId'] as String? ?? '',
+      senderId: json['senderId'] as String? ?? '',
+      text: json['text'] as String? ?? '',
+      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+      status: MessageStatus.values.firstWhere(
+        (e) => e.name == (json['status'] as String?),
+        orElse: () => MessageStatus.sent,
+      ),
+      reactions: (json['reactions'] as List<dynamic>? ?? []).cast<String>(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'conversationId': conversationId,
-      'senderId': senderId, 
-      'senderName': senderName,
-      'content': messageText,
+      'senderId': senderId,
+      'text': text,
       'timestamp': timestamp.toIso8601String(),
-      'status': status.toString().split('.').last,
+      'status': status.name,
       'reactions': reactions,
     };
+  }
+
+  // Helper factory for creating pending messages
+  factory Message.pending({
+    required String text,
+  }) {
+    return Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      conversationId: '',
+      senderId: 'currentUserId', // In real app, get from auth service
+      text: text,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sending,
+      reactions: null,
+    );
   }
 
   Message markAsRead() {
@@ -156,7 +89,7 @@ class Message {
 
   @override
   String toString() {
-    return 'Message(id: $id, conversationId: $conversationId, senderId: $senderId, text: $messageText, timestamp: $timestamp, status: $status, reactions: $reactions)';
+    return 'Message(id: $id, conversationId: $conversationId, senderId: $senderId, text: $text, timestamp: $timestamp, status: $status, reactions: $reactions)';
   }
 
   @override
@@ -167,44 +100,43 @@ class Message {
           id == other.id &&
           conversationId == other.conversationId &&
           senderId == other.senderId &&
-          messageText == other.messageText &&
+          text == other.text &&
           timestamp == other.timestamp &&
           status == other.status &&
-          mapEquals(reactions, other.reactions);
+          listEquals(reactions, other.reactions);
 
   @override
   int get hashCode => Object.hash(
         id,
         conversationId,
         senderId,
-        messageText,
+        text,
         timestamp,
         status,
-        Object.hashAll(reactions?.values.toList() ?? []),
+        Object.hashAll(reactions ?? []),
       );
 }
 
 enum MessageStatus {
-  pending,
+  sending,
   sent,
   delivered,
   read,
-  failed
+  error,
 }
 
 extension MessageStatusExtension on MessageStatus {
   static MessageStatus fromString(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return MessageStatus.pending;
-      case 'sent':
-        return MessageStatus.sent;
+    switch (status) {
+      case 'sending':
+        return MessageStatus.sending;
       case 'delivered':
         return MessageStatus.delivered;
       case 'read':
         return MessageStatus.read;
-      case 'failed':
-        return MessageStatus.failed;
+      case 'error':
+        return MessageStatus.error;
+      case 'sent':
       default:
         return MessageStatus.sent;
     }

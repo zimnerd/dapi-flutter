@@ -1,4 +1,3 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,22 +9,10 @@ import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/profile_service.dart';
 import '../services/storage_service.dart';
-import '../services/socket_service.dart';
-import '../services/unsplash_service.dart';
-import '../services/notification_service.dart';
 import '../config/app_config.dart';
 
-// Import providers
+// Import auth provider
 import './auth_provider.dart';
-import './typing_provider.dart';
-import './user_providers.dart';
-import './chat_provider.dart';
-import './socket_connection_provider.dart';
-import './offline_message_provider.dart';
-import 'offline_message_queue_provider.dart';
-import './notification_provider.dart';
-import './network_status_provider.dart';
-import './message_provider.dart';
 
 // Export auth providers
 export './auth_provider.dart' show 
@@ -37,47 +24,6 @@ export './auth_provider.dart' show
     userEmailProvider, 
     userNameProvider;
 
-// Export socket providers
-export './typing_provider.dart' show
-    typingUsersProvider;
-export '../services/socket_service.dart' show
-    socketServiceProvider,
-    SocketConnectionStatus;
-
-// Export user providers
-export './user_providers.dart' show
-    userProviders;
-
-// Export chat providers
-export './chat_provider.dart' show
-    chatServiceProvider;
-
-// Export socket connection provider
-export './socket_connection_provider.dart' show
-    socketConnectionProvider;
-
-// Export offline message provider
-export './offline_message_provider.dart' show
-    offlineMessageProvider;
-
-// Add offline message queue provider export
-export 'offline_message_queue_provider.dart';
-
-// Export notification providers
-export 'notification_provider.dart';
-
-// Include the network status provider 
-export 'network_status_provider.dart';
-
-// Include the message provider
-export 'message_provider.dart';
-
-// Include the offline message queue provider
-export 'offline_message_queue_provider.dart';
-
-// Include the typing status provider
-export 'typing_provider.dart';
-
 // --- Core Services ---
 
 // Secure storage provider - moved up to break circular dependency
@@ -87,86 +33,153 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 
 // Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('Initialize in main.dart before runApp');
-});
-
-// Provider for SharedPreferences Future (use this during startup)
-final sharedPreferencesFutureProvider = FutureProvider<SharedPreferences>((ref) async {
-  return await SharedPreferences.getInstance();
+  throw UnimplementedError('SharedPreferences must be initialized before use');
 });
 
 // Dio provider for HTTP client - with simpler interceptor to avoid circular dependency
 final dioProvider = Provider<Dio>((ref) {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(milliseconds: 10000),
-      receiveTimeout: const Duration(milliseconds: 10000),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ),
-  );
-
-  // Add logging interceptor
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-    logPrint: (object) => print('⟹ [HTTP] $object'),
-  ));
-
-  // Add auth token interceptor
+  final dio = Dio();
+  final secureStorage = ref.read(secureStorageProvider);
+  
+  // Set base URL for all requests
+  dio.options.baseUrl = AppConfig.apiBaseUrl;
+  
+  // Set default timeouts
+  dio.options.connectTimeout = Duration(milliseconds: AppConfig.networkTimeoutMs);
+  dio.options.receiveTimeout = Duration(milliseconds: AppConfig.networkTimeoutMs);
+  dio.options.sendTimeout = Duration(milliseconds: AppConfig.networkTimeoutMs);
+  
+  // Set default headers
+  dio.options.headers = {
+    AppHeaders.contentType: 'application/json',
+    AppHeaders.accept: 'application/json',
+  };
+  
+  // Request interceptor to add authentication token
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final secureStorage = ref.read(secureStorageProvider);
-        final token = await secureStorage.read(key: 'access_token');
-
-        if (token != null) {
+        // Try to get the token
+        final token = await secureStorage.read(key: AppStorageKeys.accessToken);
+        
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
-          print('⟹ [HTTP] Added token: ${maskToken(token)}');
+          print('⟹ [Dio] Adding auth token to request: ${maskToken(token)}');
         }
+        
+        // Fix double slashes in URL
+        if (options.path.startsWith('/') && options.baseUrl.endsWith('/')) {
+          options.path = options.path.substring(1);
+        }
+        
+        print('⟹ [Dio] Request URL: ${options.baseUrl}${options.path}');
         return handler.next(options);
       },
-      onError: (error, handler) async {
+      onError: (DioException error, handler) async {
         if (error.response?.statusCode == 401) {
-          print('⟹ [HTTP] 401 Unauthorized - attempting token refresh');
+          print('⟹ [Dio] Received 401 error for ${error.requestOptions.path}, attempting token refresh');
           
           try {
-            final authService = ref.read(authServiceProvider);
-            final refreshed = await authService.refreshToken();
+            // Get secure storage for tokens
+            final refreshToken = await secureStorage.read(key: AppStorageKeys.refreshToken);
             
-            if (refreshed) {
-              print('⟹ [HTTP] Token refreshed, retrying request');
+            if (refreshToken == null || refreshToken.isEmpty) {
+              print('⟹ [Dio] No refresh token available');
+              // Directly remove tokens from secure storage instead of calling logout
+              await secureStorage.delete(key: AppStorageKeys.accessToken);
+              await secureStorage.delete(key: AppStorageKeys.refreshToken);
+              await secureStorage.delete(key: AppStorageKeys.token);
+              print('⟹ [Dio] Tokens cleared from secure storage');
+              return handler.next(error);
+            }
+            
+            // Create a new Dio instance for token refresh to avoid interceptor loops
+            final refreshDio = Dio(BaseOptions(
+              baseUrl: AppConfig.apiBaseUrl,
+              connectTimeout: Duration(milliseconds: AppConfig.networkTimeoutMs),
+              receiveTimeout: Duration(milliseconds: AppConfig.networkTimeoutMs),
+              headers: {
+                'Content-Type': AppHeaders.applicationJson,
+                'Accept': AppHeaders.applicationJson,
+              },
+            ));
+            
+            // Attempt to refresh token - using the path from AppEndpoints
+            final refreshUrl = AppEndpoints.refresh;
+            print('⟹ [Dio] Making token refresh request to: ${refreshDio.options.baseUrl}$refreshUrl');
+            
+            final response = await refreshDio.post(
+              refreshUrl,
+              data: {
+                'refreshToken': refreshToken,
+              },
+            );
+            
+            print('⟹ [Dio] Token refresh response status: ${response.statusCode}');
+            
+            // Check response and handle all possible token formats
+            if (response.statusCode == 200 || response.statusCode == 201) {
+              Map<String, dynamic> data = response.data;
               
-              // Clone the request with the new token
-              final secureStorage = ref.read(secureStorageProvider);
-              final newToken = await secureStorage.read(key: 'access_token');
+              // Check for token in root or nested in data field
+              final newToken = data['accessToken'] ?? 
+                              data['token'] ?? 
+                              (data['data'] is Map ? data['data']['token'] : null);
+              
+              final newRefreshToken = data['refreshToken'] ?? 
+                                    data['refresh_token'] ?? 
+                                    (data['data'] is Map ? data['data']['refreshToken'] : null) ??
+                                    refreshToken; // Fallback to same refresh token
               
               if (newToken != null) {
+                // Store tokens
+                await secureStorage.write(key: AppStorageKeys.token, value: newToken);
+                await secureStorage.write(key: AppStorageKeys.refreshToken, value: newRefreshToken);
+                await secureStorage.write(key: AppStorageKeys.accessToken, value: newToken);
+                
+                print('⟹ [Dio] Token refresh successful, retrying request');
+                
+                // Clone the original request with the new token
+                error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+                
                 // Create a new request with the updated token
                 final opts = Options(
                   method: error.requestOptions.method,
-                  headers: {
-                    ...error.requestOptions.headers,
-                    'Authorization': 'Bearer $newToken',
-                  },
+                  headers: error.requestOptions.headers,
                 );
                 
-                // Clone request with the new token
-                final response = await dio.request(
+                final retryResponse = await dio.request(
                   error.requestOptions.path,
                   options: opts,
                   data: error.requestOptions.data,
                   queryParameters: error.requestOptions.queryParameters,
                 );
                 
-                return handler.resolve(response);
+                return handler.resolve(retryResponse);
+              } else {
+                print('⟹ [Dio] Token refresh failed - missing token in response');
+                print('⟹ [Dio] Response data keys: ${data.keys.toList()}');
               }
+            } else {
+              print('⟹ [Dio] Token refresh failed with status: ${response.statusCode}');
             }
+            
+            // If we reach here, token refresh failed - directly clean up tokens
+            await secureStorage.delete(key: AppStorageKeys.accessToken);
+            await secureStorage.delete(key: AppStorageKeys.refreshToken);
+            await secureStorage.delete(key: AppStorageKeys.token);
+            print('⟹ [Dio] Tokens cleared from secure storage after failed refresh');
           } catch (e) {
-            print('⟹ [HTTP] Token refresh failed: $e');
+            print('⟹ [Dio] Error during token refresh: $e');
+            // Also clean tokens on any error during refresh process
+            try {
+              await secureStorage.delete(key: AppStorageKeys.accessToken);
+              await secureStorage.delete(key: AppStorageKeys.refreshToken);
+              await secureStorage.delete(key: AppStorageKeys.token);
+              print('⟹ [Dio] Tokens cleared after refresh error');
+            } catch (cleanupError) {
+              print('⟹ [Dio] Error cleaning up tokens: $cleanupError');
+            }
           }
         }
         
@@ -175,18 +188,33 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
   
+  // Add logging interceptor
+  dio.interceptors.add(LogInterceptor(
+    request: true,
+    requestHeader: true,
+    requestBody: true,
+    responseHeader: false,
+    responseBody: true,
+    error: true,
+    logPrint: (object) => print('⟹ [Dio] $object'),
+  ));
+  
   return dio;
 });
 
 // Helper function to mask token for logging
 String maskToken(String token) {
-  if (token.length <= 10) {
-    return '*' * token.length;
+  if (token.length > 10) {
+    return '${token.substring(0, 5)}...${token.substring(token.length - 5)}';
   }
-  return '${token.substring(0, 5)}...${token.substring(token.length - 5)}';
+  return '***';
 }
 
-// --- Service providers ---
+// We need to first create a base API client without auth service
+final baseApiClientProvider = Provider<ApiClient>((ref) {
+  final dio = ref.watch(dioProvider);
+  return ApiClient(dio); // Create without auth service first
+});
 
 // Auth Service Provider
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -196,13 +224,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(dio, secureStorage, prefs);
 });
 
-// API Client provider
-final baseApiClientProvider = Provider<ApiClient>((ref) {
-  final dio = ref.watch(dioProvider);
-  return ApiClient(dio);
-});
-
-// API Client provider with auth service
+// Enhanced API Client provider with auth service
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = ref.watch(dioProvider);
   final authService = ref.watch(authServiceProvider);
@@ -211,38 +233,20 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 // Profile Service Provider
 final profileServiceProvider = Provider<ProfileService>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return ProfileService(apiClient);
+  final dio = ref.watch(dioProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return ProfileService(dio, prefs);
 });
 
 // Chat Service Provider
 final chatServiceProvider = Provider<ChatService>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return ChatService(apiClient);
+  final dio = ref.watch(dioProvider);
+  return ChatService(dio);
 });
 
 // Storage Service Provider
 final storageServiceProvider = Provider<StorageService>((ref) {
-  final secureStorage = ref.watch(secureStorageProvider);
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return StorageService(secureStorage, prefs);
-});
-
-// Unsplash Service Provider
-final unsplashServiceProvider = Provider<UnsplashService>((ref) {
-  final dio = ref.watch(dioProvider);
-  return UnsplashService(dio);
-});
-
-// Socket Service Provider (Singleton instance)
-final socketServiceProvider = Provider<SocketService>((ref) {
-  final storageService = ref.watch(storageServiceProvider);
-  return SocketService(storageService);
-});
-
-// Notification Service Provider
-final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
+  return StorageService();
 });
 
 // --- App State Providers ---
@@ -254,21 +258,21 @@ final premiumProvider = FutureProvider<bool>((ref) async {
   return false; // Default to non-premium
 });
 
-// Auto-connect socket when authenticated
-final socketConnectionProvider = Provider<void>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final socketService = ref.watch(socketServiceProvider);
-  
-  // Connect socket when authenticated
-  if (authState.status == AuthStatus.authenticated && !socketService.isConnected) {
-    socketService.connect();
-  }
-  
-  // Disconnect socket when not authenticated
-  if (authState.status != AuthStatus.authenticated && socketService.isConnected) {
-    socketService.disconnect();
-  }
-  
-  // No return value needed, this is just for the side effect
-  return;
-}); 
+// User ID Provider - convenience accessor
+final userIdProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).user?.id;
+});
+
+// User Email Provider - convenience accessor
+final userEmailProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).user?.email;
+});
+
+// User Name Provider - convenience accessor
+final userNameProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).user?.name;
+});
+
+// Note: Other specific feature providers (like chat, discover, profile edit)
+// should ideally remain in their own files (e.g., chat_provider.dart)
+// and import this file if they need core services or auth state. 
