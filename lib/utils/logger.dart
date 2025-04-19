@@ -9,44 +9,36 @@ import 'package:flutter/foundation.dart';
 /// It provides specialized methods for different features and log levels
 /// while also handling debug vs release mode appropriately.
 class Logger {
-  final String tag;
+  final String _tag;
   
   // Singleton instance for global access
   static final Logger _instance = Logger._internal('App');
   static Logger get instance => _instance;
   
   // Constructor that allows tag specification for backward compatibility
-  Logger([this.tag = 'App']);
+  Logger(this._tag);
   
   // Internal constructor for singleton
-  Logger._internal(this.tag);
+  Logger._internal(this._tag);
 
   /// Generic info log
   void log(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag] $message');
-    }
+    _log('INFO', message);
   }
 
   /// Info level logging
   void info(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][INFO] $message');
-    }
+    _log('INFO', message);
   }
   
   /// Debug level logging
   void debug(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][DEBUG] $message');
-    }
+    _log('DEBUG', message);
   }
   
   /// Warning alias for compatibility
   void warn(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][WARN] $message');
-    }
+    _log('WARN', message);
   }
   
   /// Warning method
@@ -55,110 +47,88 @@ class Logger {
   }
 
   /// Error logs with more visibility
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    print('⟹ [$tag][ERROR] $message');
-    if (error != null) {
-      print('⟹ [$tag][ERROR] Details: $error');
-    }
-    if (stackTrace != null && kDebugMode) {
-      print('⟹ [$tag][ERROR] Stack: $stackTrace');
-    }
+  void error(String message) {
+    _log('ERROR', message);
   }
 
   /// Log HTTP/Dio related events
   void dio(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][DIO] $message');
-    }
+    _log('DIO', message);
   }
 
   /// Log authentication related events
   void auth(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][AUTH] $message');
-    }
+    _log('AUTH', message);
   }
 
   /// Log chat/messaging related events
   void chat(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][CHAT] $message');
-    }
+    _log('CHAT', message);
   }
 
   /// Log profile related events
   void profile(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][PROFILE] $message');
-    }
+    _log('PROFILE', message);
   }
 
   /// Log navigation/route related events
   void navigation(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][NAV] $message');
-    }
+    _log('NAV', message);
   }
   
   /// Log network related events
   void network(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][NETWORK] $message');
-    }
+    _log('NETWORK', message);
   }
   
   /// Log storage related events
   void storage(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][STORAGE] $message');
-    }
+    _log('STORAGE', message);
   }
   
   /// Log UI related events
   void ui(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][UI] $message');
-    }
+    _log('UI', message);
   }
   
   /// Log analytics related events
   void analytics(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][ANALYTICS] $message');
-    }
+    _log('ANALYTICS', message);
   }
   
   /// Log verification related events
   void verification(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][VERIFICATION] $message');
-    }
+    _log('VERIFICATION', message);
   }
   
   /// Log match related events
   void match(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][MATCH] $message');
-    }
+    _log('MATCH', message);
   }
   
   /// Log settings related events
   void settings(String message) {
-    if (kDebugMode) {
-      print('⟹ [$tag][SETTINGS] $message');
-    }
+    _log('SETTINGS', message);
   }
   
   /// Log lifecycle related events
   void lifecycle(String message) {
+    _log('LIFECYCLE', message);
+  }
+
+  /// Internal logging implementation
+  void _log(String level, String message) {
+    final logMessage = '⟹ [$_tag] $message';
+    
     if (kDebugMode) {
-      print('⟹ [$tag][LIFECYCLE] $message');
+      developer.log(logMessage, name: level);
+      print(logMessage);
     }
   }
 }
 
 // Global logger instance
-final logger = Logger();
+final logger = Logger('App');
 
 // A simple logger utility that provides structured logging
 // Format: ⟹ [Service] Message

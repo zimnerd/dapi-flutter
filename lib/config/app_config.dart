@@ -24,7 +24,14 @@ class AppEndpoints {
   static const String refreshToken = '$auth/refresh';        // POST: Alias for refresh endpoint
   static const String logout = '$auth/logout';               // POST: Logout user
   static const String verifyEmail = '$auth/verify-email';    // POST: Verify email address
-  static const String resetPassword = '$auth/reset-password'; // POST: Reset user password
+  
+  // Password reset endpoints - Using more consistent naming
+  static const String requestPasswordReset = '$auth/forgot-password'; // POST: Request password reset email
+  static const String passwordReset = '$auth/reset-password';         // POST: Reset user password with token
+  
+  // Aliases for backward compatibility
+  static const String forgotPassword = requestPasswordReset; // Alias for backward compatibility
+  static const String resetPassword = passwordReset;         // Alias for backward compatibility
   
   // Profile endpoints - User profile management
   static const String profiles = '/api/profiles';
@@ -81,6 +88,7 @@ class AppRequestKeys {
   static const String birthDate = 'birth_date';
   static const String gender = 'gender';
   static const String refreshToken = 'refresh_token';
+  static const String token = 'token';
   static const String profileId = 'profile_id';
   static const String message = 'message';
   static const String photos = 'photos';

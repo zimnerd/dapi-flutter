@@ -9,10 +9,12 @@ import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/profile_service.dart';
 import '../services/storage_service.dart';
+import '../services/socket_service.dart';
 import '../config/app_config.dart';
 
-// Import auth provider
+// Import providers
 import './auth_provider.dart';
+import './typing_provider.dart';
 
 // Export auth providers
 export './auth_provider.dart' show 
@@ -23,6 +25,13 @@ export './auth_provider.dart' show
     userIdProvider, 
     userEmailProvider, 
     userNameProvider;
+
+// Export socket providers
+export './typing_provider.dart' show
+    typingUsersProvider;
+export '../services/socket_service.dart' show
+    socketServiceProvider,
+    SocketConnectionStatus;
 
 // --- Core Services ---
 
@@ -210,11 +219,7 @@ String maskToken(String token) {
   return '***';
 }
 
-// We need to first create a base API client without auth service
-final baseApiClientProvider = Provider<ApiClient>((ref) {
-  final dio = ref.watch(dioProvider);
-  return ApiClient(dio); // Create without auth service first
-});
+// --- Service providers ---
 
 // Auth Service Provider
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -224,11 +229,10 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(dio, secureStorage, prefs);
 });
 
-// Enhanced API Client provider with auth service
+// API Client provider
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = ref.watch(dioProvider);
-  final authService = ref.watch(authServiceProvider);
-  return ApiClient(dio, authService: authService);
+  return ApiClient(dio);
 });
 
 // Profile Service Provider
@@ -258,21 +262,21 @@ final premiumProvider = FutureProvider<bool>((ref) async {
   return false; // Default to non-premium
 });
 
-// User ID Provider - convenience accessor
-final userIdProvider = Provider<String?>((ref) {
-  return ref.watch(authStateProvider).user?.id;
-});
-
-// User Email Provider - convenience accessor
-final userEmailProvider = Provider<String?>((ref) {
-  return ref.watch(authStateProvider).user?.email;
-});
-
-// User Name Provider - convenience accessor
-final userNameProvider = Provider<String?>((ref) {
-  return ref.watch(authStateProvider).user?.name;
-});
-
-// Note: Other specific feature providers (like chat, discover, profile edit)
-// should ideally remain in their own files (e.g., chat_provider.dart)
-// and import this file if they need core services or auth state. 
+// Auto-connect socket when authenticated
+final socketConnectionProvider = Provider<void>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final socketService = ref.watch(socketServiceProvider);
+  
+  // Connect socket when authenticated
+  if (authState.status == AuthStatus.authenticated && !socketService.isConnected) {
+    socketService.connect();
+  }
+  
+  // Disconnect socket when not authenticated
+  if (authState.status != AuthStatus.authenticated && socketService.isConnected) {
+    socketService.disconnect();
+  }
+  
+  // No return value needed, this is just for the side effect
+  return;
+}); 

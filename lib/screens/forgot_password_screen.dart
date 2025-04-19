@@ -69,7 +69,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
       try {
         // Get auth service from provider
         final authService = ref.read(authServiceProvider);
-        await authService.resetPassword(_emailController.text.trim());
+        await authService.sendPasswordResetEmail(_emailController.text.trim());
         setState(() {
           _emailSent = true;
         });
@@ -417,6 +417,31 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
           ),
           child: Text(
             "Back to Login",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () => Navigator.pushNamed(
+            context, 
+            '/reset-password-confirmation',
+            arguments: {'email': _emailController.text.trim()}
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.primary,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppColors.primary),
+            ),
+            elevation: 0,
+          ),
+          child: Text(
+            "I Have a Reset Token",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

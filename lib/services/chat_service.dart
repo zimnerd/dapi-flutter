@@ -51,132 +51,123 @@ class ChatService {
     }
   }
   
-  // Get conversations list
+  /// Get all conversations for the current user
   Future<List<Conversation>> getConversations() async {
-    _logger.chat('Getting conversations...');
     try {
+      _logger.info('Fetching conversations');
       final response = await _dio.get(AppEndpoints.conversations);
       
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Conversation.fromJson(json)).toList();
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? response.data;
+        return data.map((item) => Conversation.fromJson(item)).toList();
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to load conversations (status ${response.statusCode})',
-        );
-      }
-    } on DioException catch (e) {
-      _logger.error('Get Conversations Dio error: ${e.message}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else {
-        throw Exception(Constants.ERROR_CHAT_LOAD);
+        throw Exception('Failed to load conversations: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.error('Get Conversations general error: $e');
-      throw Exception(Constants.ERROR_CHAT_LOAD);
+      _logger.error('Error fetching conversations: $e');
+      // Return empty list on error
+      return [];
     }
   }
   
-  // Get messages for a conversation
+  /// Get all messages for a specific conversation
   Future<List<Message>> getMessages(String conversationId) async {
-    _logger.chat('Getting messages for conversation $conversationId...');
     try {
-      final response = await _dio.get('/api/conversations/$conversationId/messages');
+      _logger.info('Fetching messages for conversation: $conversationId');
+      final response = await _dio.get('${AppEndpoints.messages}?conversation_id=$conversationId');
       
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Message.fromJson(conversationId, json)).toList();
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? response.data;
+        
+        // Convert each item to a Message object
+        return data.map((item) => Message(
+          id: item['id'].toString(),
+          conversationId: item['conversation_id'] ?? conversationId,
+          senderId: item['sender_id'] ?? '',
+          text: item['message'] ?? item['text'] ?? '',
+          timestamp: DateTime.tryParse(item['timestamp'] ?? '') ?? DateTime.now(),
+          status: item['read'] == true ? MessageStatus.read : MessageStatus.delivered,
+          reactions: item['reactions'] != null ? List<String>.from(item['reactions']) : [],
+        )).toList();
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to load messages (status ${response.statusCode})',
-        );
-      }
-    } on DioException catch (e) {
-      _logger.error('Get Messages Dio error: ${e.message}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Conversation not found');
-      } else {
-        throw Exception(Constants.ERROR_CHAT_LOAD);
+        throw Exception('Failed to load messages: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.error('Get Messages general error: $e');
-      throw Exception(Constants.ERROR_CHAT_LOAD);
+      _logger.error('Error fetching messages for conversation $conversationId: $e');
+      
+      // Return empty list on error - the user can still use socket for real-time
+      return [];
     }
   }
   
-  // Send a message
-  Future<Message> sendMessage(String conversationId, String text) async {
-    _logger.chat('Sending message to conversation $conversationId...');
+  /// Send a new message
+  /// Note: This is now primarily handled by the socket service
+  /// but we keep this as a fallback in case the socket is disconnected
+  Future<Message?> sendMessage(String conversationId, String text) async {
     try {
+      _logger.info('Sending message to conversation: $conversationId');
       final response = await _dio.post(
-        '/api/conversations/$conversationId/messages',
+        AppEndpoints.messages,
         data: {
-          'text': text,
+          'conversation_id': conversationId,
+          'message': text,
         },
       );
       
-      if (response.statusCode == 201 && response.data != null) {
-        return Message.fromJson(conversationId, response.data);
-      } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to send message (status ${response.statusCode})',
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'] ?? response.data;
+        
+        return Message(
+          id: data['id'].toString(),
+          conversationId: data['conversation_id'] ?? conversationId,
+          senderId: data['sender_id'] ?? '',
+          text: data['message'] ?? data['text'] ?? text,
+          timestamp: DateTime.tryParse(data['timestamp'] ?? '') ?? DateTime.now(),
+          status: MessageStatus.sent,
+          reactions: [],
         );
-      }
-    } on DioException catch (e) {
-      _logger.error('Send Message Dio error: ${e.message}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Conversation not found');
       } else {
-        throw Exception('Failed to send message. Please try again.');
+        throw Exception('Failed to send message: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.error('Send Message general error: $e');
-      throw Exception('Failed to send message. Please try again.');
+      _logger.error('Error sending message to conversation $conversationId: $e');
+      return null;
     }
   }
   
-  // Mark conversation as read
-  Future<void> markConversationAsRead(String conversationId) async {
-    _logger.chat('Marking conversation $conversationId as read...');
+  /// Mark a message as read
+  /// Note: This is now primarily handled by the socket service
+  /// but we keep this as a fallback in case the socket is disconnected
+  Future<bool> markMessageAsRead(String conversationId, String messageId) async {
     try {
-      final response = await _dio.post('/api/conversations/$conversationId/read');
+      _logger.info('Marking message $messageId as read');
+      final response = await _dio.post(
+        AppEndpoints.readMessages,
+        data: {
+          'conversation_id': conversationId,
+          'message_id': messageId,
+        },
+      );
       
-      if (response.statusCode != 200) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to mark conversation as read (status ${response.statusCode})',
-        );
-      }
-    } on DioException catch (e) {
-      _logger.error('Mark Read Dio error: ${e.message}');
-      // Not throwing here to prevent UI disruption over non-critical operation
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      _logger.error('Mark Read general error: $e');
-      // Not throwing here to prevent UI disruption over non-critical operation
+      _logger.error('Error marking message $messageId as read: $e');
+      return false;
+    }
+  }
+  
+  /// Delete a message
+  Future<bool> deleteMessage(String messageId) async {
+    try {
+      _logger.info('Deleting message: $messageId');
+      final response = await _dio.delete(
+        '${AppEndpoints.deleteMessage}/$messageId',
+      );
+      
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      _logger.error('Error deleting message $messageId: $e');
+      return false;
     }
   }
   

@@ -391,7 +391,7 @@ class AuthService {
     _logger.info('Requesting password reset for email: $email');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.resetPassword}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.forgotPassword}',
         data: {
           AppRequestKeys.email: email,
         },
@@ -411,6 +411,72 @@ class AuthService {
       throw Exception(errorMessage);
     } catch (e) {
       _logger.error('Reset password general exception: $e');
+      throw Exception(AppErrorMessages.unexpectedError);
+    }
+  }
+  
+  // Send password reset email - renamed for clarity
+  Future<void> sendPasswordResetEmail(String email) async {
+    _logger.info('Requesting password reset for email: $email');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.requestPasswordReset}',
+        data: {
+          AppRequestKeys.email: email,
+        },
+      );
+      
+      if (response.statusCode != AppStatusCodes.success) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: response.data?['message'] ?? 'Failed to request password reset'
+        );
+      }
+      // Success
+    } on DioException catch (e) {
+      _logger.error('Reset password Dio exception: ${e.message}');
+      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
+      throw Exception(errorMessage);
+    } catch (e) {
+      _logger.error('Reset password general exception: $e');
+      throw Exception(AppErrorMessages.unexpectedError);
+    }
+  }
+  
+  // For backward compatibility
+  Future<void> resetPassword(String email) async {
+    return sendPasswordResetEmail(email);
+  }
+  
+  // Confirm password reset with token
+  Future<void> confirmPasswordReset(String email, String token, String newPassword) async {
+    _logger.info('Confirming password reset for email: $email');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.passwordReset}',
+        data: {
+          AppRequestKeys.email: email,
+          AppRequestKeys.token: token,
+          AppRequestKeys.password: newPassword,
+        },
+      );
+      
+      if (response.statusCode != AppStatusCodes.success) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: response.data?['message'] ?? 'Failed to reset password'
+        );
+      }
+      _logger.info('Password reset successful for email: $email');
+      // Success
+    } on DioException catch (e) {
+      _logger.error('Confirm password reset Dio exception: ${e.message}');
+      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
+      throw Exception(errorMessage);
+    } catch (e) {
+      _logger.error('Confirm password reset general exception: $e');
       throw Exception(AppErrorMessages.unexpectedError);
     }
   }

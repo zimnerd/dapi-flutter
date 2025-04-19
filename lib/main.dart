@@ -11,6 +11,7 @@ import 'screens/matches_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/reset_password_confirmation_screen.dart';
 import 'utils/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/auth_provider.dart';
@@ -23,6 +24,7 @@ import 'utils/logger.dart';
 import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
+import 'providers/socket_connection_provider.dart';
 
 final appLogger = Logger('App');
 
@@ -79,6 +81,10 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
 
+    // Auto-connect socket when user is authenticated
+    // This activates the side effect provider to manage socket connections
+    ref.watch(socketConnectionProvider);
+
     return MaterialApp(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
@@ -98,6 +104,7 @@ class MyApp extends ConsumerWidget {
         '/discover': (context) => DiscoverScreen(),
         '/matches': (context) => MatchesScreen(),
         '/settings': (context) => SettingsScreen(),
+        '/reset-password-confirmation': (context) => ResetPasswordConfirmationScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/conversation') {
@@ -105,6 +112,15 @@ class MyApp extends ConsumerWidget {
           return MaterialPageRoute(
             builder: (context) => ConversationScreen(
               conversation: args['conversation'],
+            ),
+          );
+        }
+        if (settings.name == '/reset-password-confirmation') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (context) => ResetPasswordConfirmationScreen(
+              email: args?['email'],
+              token: args?['token'],
             ),
           );
         }
