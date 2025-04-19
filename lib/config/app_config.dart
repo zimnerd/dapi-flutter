@@ -21,7 +21,6 @@ class AppEndpoints {
   static const String biometricLogin = '$auth/biometric-login'; // POST: Login with biometric authentication
   static const String register = '$auth/register';           // POST: Register new user
   static const String refresh = '$auth/refresh';             // POST: Refresh auth token
-  static const String refreshToken = '$auth/refresh';        // POST: Alias for refresh endpoint
   static const String logout = '$auth/logout';               // POST: Logout user
   static const String verifyEmail = '$auth/verify-email';    // POST: Verify email address
   static const String resetPassword = '$auth/reset-password'; // POST: Reset user password with token
@@ -30,8 +29,6 @@ class AppEndpoints {
   // Profile endpoints - User profile management
   static const String profiles = '/api/profiles';
   static const String currentProfile = '$profiles/me';       // GET: Get current user's profile
-  static const String myProfile = '$profiles/me';            // GET: Alias for currentProfile
-  static const String discover = '$profiles/discover';       // GET: Legacy discover profiles endpoint
   static const String discoverProfiles = '$profiles/discover'; // GET: Get profiles for discovery
   static const String uploadPhoto = '$profiles/photo';       // POST: Upload profile photo
   static const String deletePhoto = '$profiles/photo/delete'; // DELETE: Delete profile photo
@@ -43,12 +40,11 @@ class AppEndpoints {
   // Match endpoints - Match management and interactions
   static const String matches = '/api/matches';
   static const String like = '$matches/like';                // POST: Like a profile
-  static const String likeWithBody = '$matches/like-body';   // POST: Like with request body
   static const String dislike = '$matches/dislike';          // POST: Dislike a profile
   static const String pass = '$matches/pass';                // POST: Pass on a profile
   static const String superlike = '$matches/superlike';      // POST: Superlike a profile
   static const String unmatch = '$matches/unmatch';          // POST: Unmatch from a user
-  static const String undoAction = '$matches/undo';          // POST: Undo last action
+  static const String undoAction = '$matches/undo';          // POST: Undo last action (Added)
   
   // Chat endpoints - Conversation and message management
   static const String conversations = '/api/conversations';  // GET: Get user conversations

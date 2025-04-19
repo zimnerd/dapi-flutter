@@ -34,7 +34,7 @@ class ProfileService {
 
       _logger.debug('Fetching profile for user ID: $userId');
       final response = await _dio.get(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.myProfile}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.currentProfile}',
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -403,6 +403,50 @@ class ProfileService {
         'status': 'error',
         'message': Constants.ERROR_VERIFICATION
       };
+    }
+  }
+
+  // Undo the last action (like/dislike/pass)
+  Future<Map<String, dynamic>> undoLastAction() async {
+    _logger.debug("Attempting to undo last action");
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}${AppEndpoints.undoAction}', // Use the correct endpoint constant
+      );
+
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        _logger.info("Successfully undone last action: ${response.data['message']}");
+        return {
+          'success': true,
+          'undoneAction': response.data['undoneAction'],
+          'profileId': response.data['profileId'],
+          'message': response.data['message'],
+        };
+      } else {
+        _logger.warn("Failed to undo last action: ${response.statusCode} - ${response.data?['message']}");
+        throw Exception(response.data?['message'] ?? 'Failed to undo action');
+      }
+    } on DioException catch (e) {
+      _logger.error("Dio error undoing last action: ${e.message}");
+      String errorMessage = Constants.genericError;
+      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = Constants.networkError;
+      } else if (e.response?.statusCode == 401) {
+        errorMessage = Constants.authError;
+      } else if (e.response?.statusCode == 403) {
+        errorMessage = e.response?.data?['message'] ?? 'Premium feature required'; // Use server message if available
+      } else if (e.response?.statusCode == 404) {
+        errorMessage = e.response?.data?['message'] ?? 'No action to undo';
+      } else if (e.response?.statusCode == 500) {
+        errorMessage = Constants.serverError;
+      } else {
+        errorMessage = e.response?.data?['message'] ?? Constants.genericError;
+      }
+      _logger.error("Undo action failed with message: $errorMessage");
+      throw Exception(errorMessage);
+    } catch (e) {
+      _logger.error("Unexpected error undoing last action: $e");
+      throw Exception(Constants.genericError);
     }
   }
 

@@ -834,39 +834,43 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   }
 
    // Method to handle the undo action
-   Future<void> _handleUndoSwipe() async {
-     // Get premium status from the provider
-     final isPremiumAsync = ref.watch(premiumProvider);
-     
-     // Extract the premium status using whenData
-     bool isPremium = false;
-     isPremiumAsync.whenData((value) => isPremium = value);
-     
-     if (!isPremium) {
-       logger.info("Undo feature requires premium subscription");
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('Undo requires premium subscription'), duration: Duration(seconds: 2)),
-       );
-       return;
-     }
-     
+   Future<void> _handleUndo() async {
+     logger.info("Handling Undo Action");
+     if (_isLoading) return; // Prevent multiple clicks
+
+     setState(() => _isLoading = true);
+
      try {
-       final success = await ref.read(discoverProfilesProvider.notifier).undoLastSwipe();
-       if (success) {
-         // Trigger the swiper to go back one step
-         _swipeController.undo();
-         logger.info("Undo successful, triggering swiper unswipe.");
-       } else if (mounted) {
+       final profileService = ref.read(profileServiceProvider); // Get the service
+       final result = await profileService.undoLastAction();
+
+       if (result['success'] == true && mounted) {
+         logger.info("Undo successful: ${result['message']}");
+         // Use the swiper controller to undo the visual swipe
+         _swipeController.undo(); 
          ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('Nothing to undo.'), duration: Duration(seconds: 2)),
+           SnackBar(content: Text(result['message'] ?? 'Last action undone')),
+         );
+         // Decrement current index if needed, handled by swiper controller?
+         // if (_currentIndex > 0) {
+         //   setState(() => _currentIndex--);
+         // }
+       } else if (mounted) {
+         logger.warn("Undo failed: ${result['message']}");
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text(result['message'] ?? 'Failed to undo action')),
          );
        }
      } catch (e) {
-       logger.error("Error during undo: $e");
+       logger.error("Exception during undo operation: $e");
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Failed to undo: ${e.toString().split('\n').first}')),
+           SnackBar(content: Text('Error: ${e.toString()}')),
          );
+       }
+     } finally {
+       if (mounted) {
+         setState(() => _isLoading = false);
        }
      }
    }

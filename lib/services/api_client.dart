@@ -53,7 +53,7 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // Handle 401 - try token refresh
     if (err.response?.statusCode == 401 && 
-        !err.requestOptions.path.contains(AppEndpoints.refreshToken) &&
+        !err.requestOptions.path.contains(AppEndpoints.refresh) &&
         !err.requestOptions.path.contains(AppEndpoints.login)) {
       _logger.debug('Received 401 error for ${err.requestOptions.path}, attempting token refresh');
       
