@@ -12,6 +12,7 @@ import '../models/profile.dart';
 import '../models/match.dart';
 import '../utils/logger.dart';
 import '../utils/constants.dart';
+import '../utils/exceptions.dart'; // Import custom exception
 import '../config/app_config.dart';
 import 'api_client.dart';
 import 'auth_service.dart'; // Import AuthService
@@ -170,26 +171,20 @@ class ChatService {
         final List<dynamic> data = response.data;
         return data.map((json) => Profile.fromJson(json)).toList();
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to load matches (status ${response.statusCode})',
+        // Throw specific ApiException for non-200 status
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorFailedToLoadMatches,
+          statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
-      _logger.error('Get Matches Dio error: ${e.message}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else {
-        throw Exception(Constants.ERROR_CHAT_LOAD);
-      }
-    } catch (e) {
-      _logger.error('Get Matches general error: $e');
-      throw Exception(Constants.ERROR_CHAT_LOAD);
+      _logger.error('Get Matches Dio error: ${e.message}', e);
+      _handleDioError(e); // Throws ApiException
+      // The following line is unreachable but satisfies the compiler
+      throw ApiException(Constants.errorUnknown);
+    } catch (e, s) {
+      _logger.error('Get Matches general error: $e', e, s);
+      throw ApiException(Constants.errorFailedToLoadMatches);
     }
   }
   
@@ -203,26 +198,20 @@ class ChatService {
         final List<dynamic> data = response.data;
         return data.map((json) => Conversation.fromJson(json)).toList();
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to load conversations (status ${response.statusCode})',
+        // Throw specific ApiException for non-200 status
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorFailedToLoadConversations,
+          statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
-      _logger.error('Get Conversations Dio error: ${e.message}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else {
-        throw Exception(Constants.ERROR_CHAT_LOAD);
-      }
-    } catch (e) {
-      _logger.error('Get Conversations general error: $e');
-      throw Exception(Constants.ERROR_CHAT_LOAD);
+      _logger.error('Get Conversations Dio error: ${e.message}', e);
+      _handleDioError(e); // Throws ApiException
+      // The following line is unreachable but satisfies the compiler
+      throw ApiException(Constants.errorUnknown);
+    } catch (e, s) {
+      _logger.error('Get Conversations general error: $e', e, s);
+      throw ApiException(Constants.errorFailedToLoadConversations);
     }
   }
   
@@ -230,40 +219,31 @@ class ChatService {
   Future<List<Message>> getMessages(String conversationId) async {
     _logger.chat('Getting messages for conversation $conversationId...');
     try {
-      // Use correct endpoint from AppConfig
-      final endpoint = '/api/conversations/$conversationId/messages'; 
+      // Use correct endpoint - dynamically build it
+      final endpoint = AppEndpoints.conversationMessages(conversationId);
       _logger.debug("Requesting messages from: ${AppConfig.apiBaseUrl}$endpoint");
       final response = await _dio.get(endpoint);
       
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> data = response.data;
-        // Make sure Message.fromJson can handle the structure
         // Pass conversationId if needed by fromJson
         return data.map((json) => Message.fromJson(conversationId, json)).toList(); 
       } else {
-         _logger.warn("Failed to load messages: Status ${response.statusCode}, Data: ${response.data}");
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to load messages (status ${response.statusCode})',
+        _logger.warn("Failed to load messages: Status ${response.statusCode}, Data: ${response.data}");
+        // Throw specific ApiException for non-200 status
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorFailedToLoadMessages,
+          statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
-      _logger.error('Get Messages Dio error: ${e.message}, Response: ${e.response?.data}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Conversation not found');
-      } else {
-        throw Exception(Constants.ERROR_CHAT_LOAD);
-      }
-    } catch (e) {
-      _logger.error('Get Messages general error: $e');
-      throw Exception(Constants.ERROR_CHAT_LOAD);
+      _logger.error('Get Messages Dio error: ${e.message}', e);
+      _handleDioError(e); // Throws ApiException
+      // The following line is unreachable but satisfies the compiler
+      throw ApiException(Constants.errorUnknown);
+    } catch (e, s) {
+      _logger.error('Get Messages general error: $e', e, s);
+      throw ApiException(Constants.errorFailedToLoadMessages);
     }
   }
   
@@ -340,40 +320,12 @@ class ChatService {
       }
     } on DioException catch (e) {
       _logger.error('Create Conversation Dio error: ${e.message}, Response: ${e.response?.data}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else if (e.response?.statusCode == 404) {
-        // Adjust error message if needed based on backend response
-        throw Exception('User not found or cannot start conversation'); 
-      } else if (e.response?.statusCode == 409) {
-         // Attempt to fetch existing conversation if backend returns 409
-         _logger.info("Conversation already exists (409). Attempting to fetch.");
-         try {
-           // This assumes the backend includes the existing conversation ID or details
-           // in the 409 response, or we need another way to find it.
-           // Example: if response.data contains {'existingConversationId': 'xyz'}
-           if (e.response?.data is Map && e.response!.data.containsKey('existingConversationId')) {
-              final existingId = e.response!.data['existingConversationId'];
-              // Need a method to get conversation details by ID
-              // return await getConversationDetails(existingId); 
-              throw Exception('Conversation already exists. Fetching details not implemented.');
-           } else {
-               throw Exception('Conversation already exists');
-           }
-         } catch (fetchError) {
-            _logger.error("Error fetching existing conversation after 409: $fetchError");
-            throw Exception('Conversation already exists, but failed to fetch details.');
-         }
-      } else {
-        throw Exception('Failed to create conversation. Please try again.');
-      }
-    } catch (e) {
-      _logger.error('Create Conversation general error: $e');
-      throw Exception('Failed to create conversation. Please try again.');
+      // Use _handleDioError for consistency
+      _handleDioError(e); 
+      rethrow; // Rethrow the ApiException
+    } catch (e, s) {
+      _logger.error('Create Conversation general error: $e', e, s); // Add stack trace
+      throw ApiException(Constants.errorGeneric); // Throw generic ApiException
     }
   }
   
@@ -386,30 +338,81 @@ class ChatService {
       
       if (response.statusCode != 200 && response.statusCode != 204) {
          _logger.warn("Failed to delete conversation: Status ${response.statusCode}, Data: ${response.data}");
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to delete conversation (status ${response.statusCode})',
+        // Throw specific ApiException for non-200 status
+        throw ApiException(
+          response.data?['message'] ?? 'Failed to delete conversation',
+          statusCode: response.statusCode,
         );
       }
        _logger.info("Conversation $conversationId deleted successfully.");
     } on DioException catch (e) {
       _logger.error('Delete Conversation Dio error: ${e.message}, Response: ${e.response?.data}');
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception(Constants.ERROR_NETWORK);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
-      } else if (e.response?.statusCode == 404) {
-        throw Exception('Conversation not found');
-      } else {
-        throw Exception('Failed to delete conversation. Please try again.');
-      }
-    } catch (e) {
-      _logger.error('Delete Conversation general error: $e');
-      throw Exception('Failed to delete conversation. Please try again.');
+      // Use _handleDioError for consistency
+      _handleDioError(e);
+      rethrow; // Rethrow the ApiException
+    } catch (e, s) {
+      _logger.error('Delete Conversation general error: $e', e, s); // Add stack trace
+      throw ApiException(Constants.errorGeneric); // Throw generic ApiException
     }
+  }
+
+  // Helper method to handle Dio errors and throw ApiException
+  void _handleDioError(DioException e) {
+    final String message;
+    int? statusCode = e.response?.statusCode;
+
+    // Prefer server message if available
+    final serverMessage = e.response?.data?['message'];
+    if (serverMessage != null && serverMessage is String && serverMessage.isNotEmpty) {
+        message = serverMessage;
+    } else {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          message = Constants.errorNetworkTimeout;
+          break;
+        case DioExceptionType.badResponse:
+          switch (statusCode) {
+            case 400:
+              message = Constants.errorBadRequest;
+              break;
+            case 401:
+              message = Constants.errorUnauthorized;
+              break;
+            case 403:
+              message = Constants.errorForbidden;
+              break;
+            case 404:
+              message = Constants.errorNotFound;
+              break;
+            case 429:
+               message = Constants.errorRateLimit;
+               break;
+            case 500:
+            case 502:
+            case 503:
+            case 504:
+              message = Constants.errorServer;
+              break;
+            default:
+              message = Constants.errorResponseFormat; // Or a more generic server error
+          }
+          break;
+        case DioExceptionType.cancel:
+          message = Constants.errorRequestCancelled;
+          break;
+        case DioExceptionType.connectionError:
+           message = Constants.errorNetwork;
+           break;
+        case DioExceptionType.unknown:
+        default:
+          message = Constants.errorUnknown; // Or specific unknown error message
+      }
+    }
+
+    _logger.error('API Error: ($statusCode) $message');
+    throw ApiException(message, statusCode: statusCode);
   }
 }
 

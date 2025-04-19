@@ -42,26 +42,16 @@ class ProfileService {
         return Profile.fromJson(response.data);
       } else {
         _logger.warn('Failed to get profile: ${response.statusCode}');
-        return null;
+        throw ApiException(Constants.errorFailedToLoadProfile, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting current profile: ${e.message}');
-      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
-      
-      if (kDebugMode) {
-        _logger.debug('Returning mock profile in debug mode');
-        return _generateMockProfile();
-      }
-      return null;
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      rethrow;
     } catch (e, stackTrace) {
       _logger.error('Unexpected error getting current profile: $e');
       _logger.error('Stack trace: $stackTrace');
-      
-      if (kDebugMode) {
-        _logger.debug('Returning mock profile in debug mode');
-        return _generateMockProfile();
-      }
-      return null;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -76,16 +66,20 @@ class ProfileService {
         _logger.info('Successfully retrieved profile: $profileId');
         return Profile.fromJson(response.data);
       } else {
-        _logger.warn('Failed to get profile: ${response.statusCode}');
-        return null;
+        _logger.warn('Failed to get profile $profileId: ${response.statusCode}');
+        if (response.statusCode == 404) {
+          throw ApiException(Constants.errorProfileNotFound, statusCode: response.statusCode);
+        } else {
+          throw ApiException(Constants.errorFailedToLoadProfile, statusCode: response.statusCode);
+        }
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting profile $profileId: ${e.message}');
-      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
-      return null;
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      rethrow;
     } catch (e) {
       _logger.error('Unexpected error getting profile $profileId: $e');
-      return null;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -138,7 +132,7 @@ class ProfileService {
             _logger.debug('Returning mock profiles in debug mode');
             return List.generate(10, (_) => _generateMockProfile());
           }
-          return [];
+          throw ApiException(Constants.errorFailedToLoadProfile, statusCode: response.statusCode);
         }
         
         final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
@@ -151,25 +145,27 @@ class ProfileService {
           _logger.debug('Returning mock profiles in debug mode');
           return List.generate(10, (_) => _generateMockProfile());
         }
-        return [];
+        throw ApiException(Constants.errorFailedToLoadProfile, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting discover profiles: ${e.message}');
-      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
       
       if (kDebugMode) {
         _logger.debug('Returning mock profiles in debug mode');
         return List.generate(10, (_) => _generateMockProfile());
+      } else {
+        rethrow;
       }
-      return [];
     } catch (e) {
       _logger.error('Unexpected error getting discover profiles: $e');
       
       if (kDebugMode) {
         _logger.debug('Returning mock profiles in debug mode');
         return List.generate(10, (_) => _generateMockProfile());
+      } else {
+        throw ApiException(Constants.errorGeneric);
       }
-      return [];
     }
   }
 
@@ -186,15 +182,15 @@ class ProfileService {
         return Profile.fromJson(response.data);
       } else {
         _logger.warn('Failed to create profile: ${response.statusCode}');
-        return null;
+        throw ApiException(Constants.errorProfileUpdateFailed, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error creating profile: ${e.message}');
-      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
-      return null;
+      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      rethrow;
     } catch (e) {
       _logger.error('Unexpected error creating profile: $e');
-      return null;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -211,15 +207,15 @@ class ProfileService {
         return Profile.fromJson(response.data);
       } else {
         _logger.warn('Failed to update profile: ${response.statusCode}');
-        return null;
+        throw ApiException(Constants.errorProfileUpdateFailed, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error updating profile $profileId: ${e.message}');
-      _logger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
-      return null;
+      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      rethrow;
     } catch (e) {
       _logger.error('Unexpected error updating profile $profileId: $e');
-      return null;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -238,28 +234,11 @@ class ProfileService {
       return true;
     } on DioException catch (e) {
       _logger.error("Dio error liking profile $profileId: ${e.message}");
-      
-      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout) {
-        throw Exception(Constants.networkError);
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(Constants.authError);
-      } else if (e.response?.statusCode == 500) {
-        throw Exception(Constants.serverError);
-      } else {
-        _logger.error("Response: ${e.response?.statusCode} - ${e.response?.data}");
-        // Return error message from server or fallback to generic
-        final errorMessage = e.response?.data?['message'] ?? Constants.genericError;
-        throw Exception(errorMessage);
-      }
+      _handleDioError(e);
+      rethrow;
     } catch (e) {
       _logger.error("General error liking profile $profileId: $e");
-      
-      if (kDebugMode) {
-        _logger.debug("Returning mock success in debug mode");
-        return true;
-      }
-      
-      throw Exception(Constants.genericError);
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -279,14 +258,16 @@ class ProfileService {
         _logger.info('Successfully disliked profile: $profileId');
       } else {
         _logger.warn('Failed to dislike profile: ${response.statusCode}');
+        throw ApiException('Failed to dislike profile', statusCode: response.statusCode);
       }
       return success;
     } on DioException catch (e) {
       _logger.error('Dio error disliking profile $profileId: ${e.message}');
-      return false;
+      _handleDioError(e);
+      rethrow;
     } catch (e) {
       _logger.error('Unexpected error disliking profile $profileId: $e');
-      return false;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -306,14 +287,16 @@ class ProfileService {
         _logger.info('Successfully superliked profile: $profileId');
       } else {
         _logger.warn('Failed to superlike profile: ${response.statusCode}');
+        throw ApiException('Failed to superlike profile', statusCode: response.statusCode);
       }
       return success;
     } on DioException catch (e) {
       _logger.error('Dio error superliking profile $profileId: ${e.message}');
-      return false;
+      _handleDioError(e);
+      rethrow;
     } catch (e) {
       _logger.error('Unexpected error superliking profile $profileId: $e');
-      return false;
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -332,13 +315,13 @@ class ProfileService {
       return {
         'status': 'pending',
         'message': 'Your verification is being processed.',
-        'error': Constants.ERROR_VERIFICATION
+        'error': Constants.errorVerification
       };
     } catch (e) {
       _logger.error('Unexpected error checking verification status: $e');
       return {
         'status': 'error',
-        'message': Constants.ERROR_VERIFICATION
+        'message': Constants.errorVerification
       };
     }
   }
@@ -359,13 +342,13 @@ class ProfileService {
         'status': 'requested',
         'token': 'mock-verification-token',
         'message': 'Verification has been requested successfully.',
-        'error': Constants.ERROR_VERIFICATION
+        'error': Constants.errorVerification
       };
     } catch (e) {
       _logger.error('Unexpected error requesting verification: $e');
       return {
         'status': 'error',
-        'message': Constants.ERROR_VERIFICATION
+        'message': Constants.errorVerification
       };
     }
   }
@@ -394,14 +377,14 @@ class ProfileService {
       // Return mock data for testing
       return {
         'status': 'error',
-        'message': Constants.ERROR_VERIFICATION,
+        'message': Constants.errorVerification,
         'details': e.message
       };
     } catch (e) {
       _logger.error('Unexpected error completing verification: $e');
       return {
         'status': 'error',
-        'message': Constants.ERROR_VERIFICATION
+        'message': Constants.errorVerification
       };
     }
   }
@@ -424,30 +407,49 @@ class ProfileService {
         };
       } else {
         _logger.warn("Failed to undo last action: ${response.statusCode} - ${response.data?['message']}");
-        throw Exception(response.data?['message'] ?? 'Failed to undo action');
+        if (response.statusCode == 403) {
+          throw ApiException(Constants.errorInsufficientPermissions, statusCode: response.statusCode);
+        } else if (response.statusCode == 404) {
+          throw ApiException(Constants.errorNoActionToUndo, statusCode: response.statusCode);
+        }
+        throw ApiException(response.data?['message'] ?? 'Failed to undo action', statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error("Dio error undoing last action: ${e.message}");
-      String errorMessage = Constants.genericError;
-      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.sendTimeout || e.type == DioExceptionType.receiveTimeout) {
-        errorMessage = Constants.networkError;
-      } else if (e.response?.statusCode == 401) {
-        errorMessage = Constants.authError;
-      } else if (e.response?.statusCode == 403) {
-        errorMessage = e.response?.data?['message'] ?? 'Premium feature required'; // Use server message if available
-      } else if (e.response?.statusCode == 404) {
-        errorMessage = e.response?.data?['message'] ?? 'No action to undo';
-      } else if (e.response?.statusCode == 500) {
-        errorMessage = Constants.serverError;
-      } else {
-        errorMessage = e.response?.data?['message'] ?? Constants.genericError;
-      }
-      _logger.error("Undo action failed with message: $errorMessage");
-      throw Exception(errorMessage);
+      _handleDioError(e);
+      rethrow;
     } catch (e) {
       _logger.error("Unexpected error undoing last action: $e");
-      throw Exception(Constants.genericError);
+      throw ApiException(Constants.errorGeneric);
     }
+  }
+
+  // Helper function to standardize Dio error handling
+  void _handleDioError(DioException e, {String? defaultMessage}) {
+      String errorMessage = defaultMessage ?? Constants.errorGeneric;
+      int? statusCode = e.response?.statusCode;
+
+      if (e.type == DioExceptionType.connectionTimeout || 
+          e.type == DioExceptionType.sendTimeout || 
+          e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = Constants.errorTimeout;
+      } else if (e.type == DioExceptionType.connectionError) {
+         errorMessage = Constants.errorNetwork;
+      } else if (statusCode == 401) {
+        errorMessage = Constants.errorAuth;
+      } else if (statusCode == 403) {
+        errorMessage = Constants.errorInsufficientPermissions;
+      } else if (statusCode == 404) {
+        errorMessage = Constants.errorNotFound;
+      } else if (statusCode != null && statusCode >= 500) {
+        errorMessage = Constants.errorServer;
+      }
+      
+      // Prefer server message if available
+      errorMessage = e.response?.data?['message'] ?? errorMessage;
+      
+      // Throw a standardized exception
+      throw ApiException(errorMessage, statusCode: statusCode);
   }
 
   Profile _generateMockProfile() {

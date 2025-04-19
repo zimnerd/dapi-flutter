@@ -7,6 +7,7 @@ import '../config/app_config.dart';
 import '../utils/logger.dart';
 import '../utils/constants.dart';
 import 'auth_service.dart';
+import '../utils/exceptions.dart';
 
 /// Auth Interceptor for handling token authentication
 class AuthInterceptor extends Interceptor {
@@ -84,7 +85,16 @@ class AuthInterceptor extends Interceptor {
         // Use AuthService's refreshToken if available (preferred method)
         if (authService != null) {
           _logger.debug('Using AuthService to refresh token');
-          refreshSuccess = await authService!.refreshToken();
+          try {
+            await authService!.refreshToken();
+            refreshSuccess = true; // Success if no exception is thrown
+          } on ApiException catch (e) {
+            _logger.error('ApiException during AuthService refreshToken: ${e.message}');
+            refreshSuccess = false;
+          } catch (e) {
+             _logger.error('Unexpected error during AuthService refreshToken: $e');
+             refreshSuccess = false;
+          }
         } else {
           // Fallback to direct token refresh if AuthService not available
           _logger.debug('Using direct token refresh (AuthService not provided)');
@@ -104,7 +114,7 @@ class AuthInterceptor extends Interceptor {
           return null;
         }
       } catch (e) {
-        _logger.error('Exception during token refresh: $e');
+        _logger.error('Exception during token refresh process: $e'); // Outer catch
         _isRefreshing = false;
         _handleFailedRefresh();
         return null;

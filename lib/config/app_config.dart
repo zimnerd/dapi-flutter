@@ -53,6 +53,11 @@ class AppEndpoints {
   static const String deleteMessage = '$messages/delete';    // DELETE: Delete a message
   static const String reactToMessage = '$messages/react';    // POST: Add reaction to message
   
+  // Method to get messages for a specific conversation
+  static String conversationMessages(String conversationId) {
+    return '$conversations/$conversationId/messages';
+  }
+  
   // Settings endpoints - User settings and preferences
   static const String settings = '/api/settings';
   static const String notifications = '$settings/notifications'; // GET/PATCH: Notification settings

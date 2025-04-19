@@ -11,6 +11,8 @@ import 'api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/logger.dart';
 import '../providers/providers.dart'; // Import providers.dart for reference to shared providers
+import '../utils/constants.dart'; // Import Constants
+import '../utils/exceptions.dart'; // Import ApiException
 
 final authServiceProvider = Provider<AuthService>((ref) {
   final dio = ref.watch(dioProvider);
@@ -27,8 +29,8 @@ class AuthService {
 
   AuthService(this._dio, this._secureStorage, this._prefs);
 
-  // Login user
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  // Login user - Returns void on success, throws ApiException on failure
+  Future<void> login(String email, String password) async {
     _logger.debug('Attempting login for email: $email');
     try {
       // Ensure the URL is properly constructed
@@ -45,59 +47,30 @@ class AuthService {
         },
       );
       
-      _logger.debug('Login success: ${response.statusCode}');
-      
-      await _handleAuthResponse(response.data);
-      
-      return {
-        'success': true,
-        'data': response.data,
-      };
-    } on DioException catch (e) {
-      String errorMessage = 'Login failed';
-      
-      if (e.response != null) {
-        _logger.error('Login failed: ${e.response?.statusCode} - ${e.response?.data}');
-        
-        // Extract error message from response if available
-        if (e.response?.data is Map) {
-          errorMessage = e.response?.data['message'] ?? 
-                        e.response?.data['error'] ?? 
-                        'Authentication failed';
-        }
-        
-        // Handle specific status codes
-        if (e.response?.statusCode == 401) {
-          errorMessage = 'Invalid email or password';
-        } else if (e.response?.statusCode == 429) {
-          errorMessage = 'Too many login attempts. Please try again later.';
-        } else if (e.response?.statusCode == 403) {
-          errorMessage = 'Account locked or disabled. Please contact support.';
-        } else if (e.response?.statusCode == 404) {
-          errorMessage = 'Account not found with this email.';
-        }
+      // Check status code for success (e.g., 200)
+      if (response.statusCode == 200 && response.data != null) {
+        _logger.debug('Login success: ${response.statusCode}');
+        await _handleAuthResponse(response.data);
       } else {
-        _logger.error('Login failed: ${e.message}');
-        errorMessage = 'Network error. Please check your connection.';
+        // Handle non-200 responses by throwing ApiException
+        _logger.warn('Login failed with status: ${response.statusCode}, data: ${response.data}');
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorInvalidCredentials,
+          statusCode: response.statusCode,
+        );
       }
-      
-      return {
-        'success': false,
-        'message': errorMessage,
-        'error': e,
-      };
-    } catch (e) {
-      _logger.error('Unexpected error during login: $e');
-      return {
-        'success': false,
-        'message': 'An unexpected error occurred',
-        'error': e,
-      };
+    } on DioException catch (e) {
+      _logger.error('Login failed: ${e.message}');
+      _handleDioError(e, defaultMessage: Constants.errorAuth); // Use helper
+      rethrow; // Rethrow the ApiException from _handleDioError
+    } catch (e, s) {
+      _logger.error('Unexpected error during login: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
   
-  // Login with biometrics
-  Future<Map<String, dynamic>> loginWithBiometrics(String email) async {
+  // Login with biometrics - Returns void on success, throws ApiException on failure
+  Future<void> loginWithBiometrics(String email) async {
     _logger.info('Attempting biometric login with email: $email');
     try {
       final response = await _dio.post(
@@ -110,23 +83,26 @@ class AuthService {
       
       if (response.statusCode == AppStatusCodes.success && response.data != null) {
         await _handleAuthResponse(response.data!);
-        return response.data!;
+        _logger.info('Biometric login successful');
       } else {
-        String errorMessage = response.data?[AppResponseKeys.message] ?? AppErrorMessages.biometricLoginFailed;
-        throw Exception(errorMessage);
+         _logger.warn('Biometric login failed with status: ${response.statusCode}, data: ${response.data}');
+         throw ApiException(
+          response.data?[AppResponseKeys.message] ?? Constants.errorBiometricLoginFailed,
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e) {
       _logger.error('Biometric Login Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?[AppResponseKeys.message] ?? e.message ?? AppErrorMessages.biometricLoginFailed;
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Biometric Login general exception: $e');
-      throw Exception(AppErrorMessages.unexpectedError);
+      _handleDioError(e, defaultMessage: Constants.errorBiometricLoginFailed);
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Biometric Login general exception: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
   
-  // Register user
-  Future<Map<String, dynamic>> register(
+  // Register user - Returns void on success, throws ApiException on failure
+  Future<void> register(
     String name, 
     String email, 
     String password, 
@@ -149,18 +125,21 @@ class AuthService {
       if (response.statusCode == AppStatusCodes.created && response.data != null) {
         await _handleAuthResponse(response.data!);
         _logger.info('Registration successful for: $email');
-        return response.data!;
       } else {
-        String errorMessage = response.data?[AppResponseKeys.message] ?? AppErrorMessages.registrationFailed;
-        throw Exception(errorMessage);
+         _logger.warn('Registration failed with status: ${response.statusCode}, data: ${response.data}');
+         String errorMessage = response.data?[AppResponseKeys.message] ?? Constants.errorRegistrationFailed;
+        if (response.statusCode == 409) { // Conflict
+           errorMessage = Constants.errorEmailInUse;
+        }
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Registration Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?[AppResponseKeys.message] ?? e.message ?? AppErrorMessages.registrationFailed;
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Registration general exception: $e');
-      throw Exception(AppErrorMessages.unexpectedError);
+      _handleDioError(e, defaultMessage: Constants.errorRegistrationFailed);
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Registration general exception: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
   
@@ -238,15 +217,15 @@ class AuthService {
     }
   }
 
-  // Refresh token with enhanced error handling
-  Future<bool> refreshToken() async {
+  // Refresh token - Returns void on success, throws ApiException on failure
+  Future<void> refreshToken() async {
     _logger.debug('Attempting to refresh token');
     try {
       final refreshToken = await _secureStorage.read(key: AppStorageKeys.refreshToken);
       
       if (refreshToken == null || refreshToken.isEmpty) {
         _logger.warn('No refresh token available - authentication required');
-        return false;
+        return;
       }
       
       // Create a new dio instance to avoid interceptor loops
@@ -302,17 +281,20 @@ class AuthService {
           }
           
           _logger.info('Token refreshed successfully');
-          return true;
+          // Success, return void
         } else {
           _logger.error('Missing token in refresh response: ${data}');
-          return false;
+          throw ApiException(Constants.errorAuth, statusCode: response.statusCode);
         }
       } else {
         _logger.error('Invalid token refresh response: ${response.statusCode}');
-        return false;
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorAuth,
+          statusCode: response.statusCode
+        );
       }
     } on DioException catch (e) {
-      // Handle specific error cases
+      // Handle specific error cases for logging, but throw standardized error via helper
       if (e.response?.statusCode == 401) {
         _logger.error('Refresh token is invalid or expired (401)');
         // Clear tokens on 401 response
@@ -327,10 +309,11 @@ class AuthService {
         _logger.error('Token refresh Dio error: ${e.message}, status: ${e.response?.statusCode}');
         _logger.error('Response data: ${e.response?.data}');
       }
-      return false;
-    } catch (e) {
-      _logger.error('Unexpected error during token refresh: $e');
-      return false;
+      _handleDioError(e, defaultMessage: Constants.errorAuth); // Centralized handling
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Unexpected error during token refresh: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
   
@@ -386,7 +369,7 @@ class AuthService {
     }
   }
 
-  // Request password reset email
+  // Request password reset email - Returns void on success, throws ApiException on failure
   Future<void> requestPasswordReset(String email) async {
     _logger.info('Requesting password reset for email: $email');
     try {
@@ -397,25 +380,28 @@ class AuthService {
         },
       );
       
+      // Only 200 is success for this endpoint usually
       if (response.statusCode != AppStatusCodes.success) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: response.data?['message'] ?? 'Failed to request password reset'
-        );
+         _logger.warn('Request password reset failed with status: ${response.statusCode}, data: ${response.data}');
+         String errorMessage = response.data?['message'] ?? 'Password reset request failed';
+         if (response.statusCode == 404) {
+           errorMessage = 'Email not found.';
+         }
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
+      _logger.info('Password reset request sent successfully for $email');
       // Success
     } on DioException catch (e) {
-      _logger.error('Reset password Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Reset password general exception: $e');
-      throw Exception(AppErrorMessages.unexpectedError);
+      _logger.error('Request password reset Dio exception: ${e.message}');
+      _handleDioError(e, defaultMessage: 'Password reset request failed');
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Request password reset general exception: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
   
-  // Confirm password reset with token
+  // Confirm password reset with token - Returns void on success, throws ApiException on failure
   Future<void> confirmPasswordReset(String email, String token, String newPassword) async {
     _logger.info('Confirming password reset for email: $email');
     try {
@@ -428,22 +414,26 @@ class AuthService {
         },
       );
       
+      // Only 200 is success for this endpoint usually
       if (response.statusCode != AppStatusCodes.success) {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: response.data?['message'] ?? 'Failed to reset password'
-        );
+         _logger.warn('Confirm password reset failed with status: ${response.statusCode}, data: ${response.data}');
+         String errorMessage = response.data?['message'] ?? 'Failed to reset password';
+         if (response.statusCode == 400) { 
+           errorMessage = response.data?['message'] ?? 'Invalid token or password criteria not met.'; 
+         } else if (response.statusCode == 404) {
+           errorMessage = 'Email or token not found.';
+         }
+        throw ApiException(errorMessage, statusCode: response.statusCode);
       }
       _logger.info('Password reset successful for email: $email');
       // Success
     } on DioException catch (e) {
       _logger.error('Confirm password reset Dio exception: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Password reset failed';
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Confirm password reset general exception: $e');
-      throw Exception(AppErrorMessages.unexpectedError);
+      _handleDioError(e, defaultMessage: 'Password reset confirmation failed');
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Confirm password reset general exception: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -474,24 +464,19 @@ class AuthService {
         _logger.info('Successfully retrieved user: ${response.data['user']['email']}');
         return User.fromJson(response.data['user']);
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: response.data?['message'] ?? 'Failed to get user data'
+        _logger.warn('Get user failed with status: ${response.statusCode}, data: ${response.data}');
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorFailedToLoadProfile,
+          statusCode: response.statusCode
         );
       }
     } on DioException catch (e) {
       _logger.error('Get user Dio error: ${e.message}');
-      _logger.error('Error status code: ${e.response?.statusCode}');
-      
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to get user data';
-      if (e.response?.statusCode == 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      }
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Get user general error: $e');
-      throw Exception('Failed to get user data');
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Get user general error: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
   }
 
@@ -505,24 +490,86 @@ class AuthService {
       );
 
       if (response.statusCode == 200 && response.data['user'] != null) {
+        _logger.info('Successfully updated profile');
         return User.fromJson(response.data['user']);
       } else {
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          message: response.data?['message'] ?? 'Failed to update profile'
+        _logger.warn('Update profile failed with status: ${response.statusCode}, data: ${response.data}');
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorProfileUpdateFailed,
+          statusCode: response.statusCode
         );
       }
     } on DioException catch (e) {
       _logger.error('Update profile Dio error: ${e.message}');
-      String errorMessage = e.response?.data?['message'] ?? e.message ?? 'Failed to update profile';
-      if (e.response?.statusCode == 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      }
-      throw Exception(errorMessage);
-    } catch (e) {
-      _logger.error('Update profile general error: $e');
-      throw Exception('Failed to update profile: ${e.toString()}');
+      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Update profile general error: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
     }
+  }
+
+  // Helper method to handle Dio errors and throw ApiException
+  void _handleDioError(DioException e, {String? defaultMessage}) {
+    String errorMessage = defaultMessage ?? Constants.errorGeneric;
+    int? statusCode = e.response?.statusCode;
+
+    // Prefer server message if available
+    final serverMessage = e.response?.data?['message'] ?? e.response?.data?['error'];
+    if (serverMessage != null && serverMessage is String && serverMessage.isNotEmpty) {
+      errorMessage = serverMessage;
+    } else {
+      // Fallback to type/status code based messages
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          errorMessage = Constants.errorTimeout;
+          break;
+        case DioExceptionType.badResponse:
+          switch (statusCode) {
+            case 400:
+              // Keep potential server message if more specific, else use constant
+              errorMessage = serverMessage ?? Constants.errorBadRequest;
+              break;
+            case 401:
+              errorMessage = Constants.errorAuth; // Specific auth error
+              break;
+            case 403:
+              errorMessage = Constants.errorInsufficientPermissions;
+              break;
+            case 404:
+              errorMessage = Constants.errorNotFound;
+              break;
+            case 409: // Conflict
+              errorMessage = serverMessage ?? Constants.errorConflict; // Need a conflict constant
+              break;
+            case 429:
+              errorMessage = Constants.errorRateLimit; // Need a rate limit constant
+              break;
+            case 500:
+            case 502:
+            case 503:
+            case 504:
+              errorMessage = Constants.errorServer;
+              break;
+            default:
+              errorMessage = Constants.errorResponseFormat;
+          }
+          break;
+        case DioExceptionType.cancel:
+          errorMessage = Constants.errorRequestCancelled;
+          break;
+        case DioExceptionType.connectionError:
+          errorMessage = Constants.errorNetwork;
+          break;
+        case DioExceptionType.unknown:
+        default:
+          errorMessage = Constants.errorUnknown;
+      }
+    }
+
+    _logger.error('API Error ($statusCode): $errorMessage', e); // Log original DioException
+    throw ApiException(errorMessage, statusCode: statusCode);
   }
 }

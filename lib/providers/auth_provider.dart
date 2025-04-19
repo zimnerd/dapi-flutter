@@ -8,6 +8,7 @@ import '../services/api_client.dart';
 import '../utils/logger.dart';
 import '../config/app_config.dart';
 import 'providers.dart'; // Import providers.dart for access to dioProvider and secureStorageProvider
+import '../utils/exceptions.dart'; // Import ApiException
 
 // Enum for Authentication Status
 enum AuthStatus { unknown, authenticated, unauthenticated, authenticating }
@@ -119,20 +120,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final authService = _ref.read(authServiceProvider);
       _logger.debug('Making login API request');
       
-      final response = await authService.login(email, password);
+      await authService.login(email, password);
       
-      if (response['success'] == true) {
-        _logger.info('Login successful for: $email');
-        
-        // Refresh auth status to load user details
-        checkAuth();
-      } else {
-        throw Exception(response['message'] ?? 'Login failed');
-      }
-    } catch (e, stackTrace) {
-      _logger.error('Login error: $e');
+      _logger.info('Login successful for: $email');
+      
+      checkAuth();
+
+    } on ApiException catch (e, stackTrace) {
+      _logger.error('Login API error: ${e.message}');
       _logger.error('Stack trace: $stackTrace');
-      
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: 'Login failed: ${e.message}',
+      );
+    } catch (e, stackTrace) {
+      _logger.error('Login unexpected error: $e');
+      _logger.error('Stack trace: $stackTrace');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: 'Login failed: ${e.toString()}',
@@ -152,7 +155,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         formattedBirthDate = birthDate.toIso8601String();
       }
 
-      final response = await authService.register(
+      await authService.register(
         name, 
         email, 
         password, 
@@ -160,18 +163,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
         gender ?? 'other'
       );
       
-      if (response['success'] == true) {
-        _logger.info('Registration successful for: $email');
-        
-        // Refresh auth status to load user details
-        checkAuth();
-      } else {
-        throw Exception(response['message'] ?? 'Registration failed');
-      }
-    } catch (e, stackTrace) {
-      _logger.error('Registration error: $e');
-      _logger.error('Stack trace: $stackTrace');
+      _logger.info('Registration successful for: $email');
       
+      checkAuth();
+
+    } on ApiException catch (e, stackTrace) {
+      _logger.error('Registration API error: ${e.message}');
+      _logger.error('Stack trace: $stackTrace');
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: 'Registration failed: ${e.message}',
+      );
+    } catch (e, stackTrace) {
+      _logger.error('Registration unexpected error: $e');
+      _logger.error('Stack trace: $stackTrace');
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         errorMessage: 'Registration failed: ${e.toString()}',
