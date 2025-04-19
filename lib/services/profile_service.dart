@@ -223,18 +223,23 @@ class ProfileService {
     _logger.debug("Liking profile: $profileId");
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.matches}/like',
         data: {
-          'targetProfileId': profileId,
-          'action': 'like',
+          'profileId': profileId,
         },
       );
       
-      _logger.info("Successfully liked profile: $profileId");
-      return true;
+      final success = response.statusCode == 200 || response.statusCode == 201;
+      if (success) {
+        _logger.info("Successfully liked profile: $profileId");
+      } else {
+        _logger.warn("Failed to like profile: ${response.statusCode}");
+        throw ApiException('Failed to like profile', statusCode: response.statusCode);
+      }
+      return success;
     } on DioException catch (e) {
       _logger.error("Dio error liking profile $profileId: ${e.message}");
-      _handleDioError(e);
+      _handleDioError(e, defaultMessage: 'Failed to like profile');
       rethrow;
     } catch (e) {
       _logger.error("General error liking profile $profileId: $e");
@@ -246,10 +251,9 @@ class ProfileService {
     _logger.debug('Disliking profile: $profileId');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.matches}/pass',
         data: {
-          'targetProfileId': profileId,
-          'action': 'dislike',
+          'profileId': profileId,
         },
       );
 
@@ -263,7 +267,7 @@ class ProfileService {
       return success;
     } on DioException catch (e) {
       _logger.error('Dio error disliking profile $profileId: ${e.message}');
-      _handleDioError(e);
+      _handleDioError(e, defaultMessage: 'Failed to dislike profile');
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error disliking profile $profileId: $e');
@@ -275,16 +279,15 @@ class ProfileService {
     _logger.debug('Superliking profile: $profileId');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}${AppEndpoints.profileAction}',
+        '${AppConfig.apiBaseUrl}${AppEndpoints.matches}/like',
         data: {
-          'targetProfileId': profileId,
-          'action': 'superlike',
+          'profileId': profileId,
         },
       );
 
       final success = response.statusCode == 200 || response.statusCode == 201;
       if (success) {
-        _logger.info('Successfully superliked profile: $profileId');
+        _logger.info('Successfully superliked (mapped to like) profile: $profileId');
       } else {
         _logger.warn('Failed to superlike profile: ${response.statusCode}');
         throw ApiException('Failed to superlike profile', statusCode: response.statusCode);
@@ -292,7 +295,7 @@ class ProfileService {
       return success;
     } on DioException catch (e) {
       _logger.error('Dio error superliking profile $profileId: ${e.message}');
-      _handleDioError(e);
+      _handleDioError(e, defaultMessage: 'Failed to superlike profile');
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error superliking profile $profileId: $e');

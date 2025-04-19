@@ -173,7 +173,7 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                     ),
                     
                     Opacity(
-                       opacity: _matchTextAnimation.value,
+                       opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
                        child: Text(
                          "You and ${widget.matchProfile.name} like each other",
                          style: const TextStyle(
@@ -187,7 +187,7 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                        Padding(
                          padding: const EdgeInsets.only(top: 12.0),
                          child: Opacity(
-                           opacity: _matchTextAnimation.value,
+                           opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
                            child: Text(
                              commonInterests.length == 1
                                  ? "You both like ${commonInterests.first}!"
@@ -205,7 +205,7 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                     const SizedBox(height: 40),
                     
                     Opacity(
-                      opacity: _profilePhotosAnimation.value,
+                      opacity: _profilePhotosAnimation.value.clamp(0.0, 1.0),
                       child: Transform.scale(
                         scale: 0.7 + (_profilePhotosAnimation.value * 0.3),
                         child: Row(
@@ -274,7 +274,7 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                     const SizedBox(height: 60),
                     
                     Opacity(
-                      opacity: _buttonsAnimation.value,
+                      opacity: _buttonsAnimation.value.clamp(0.0, 1.0),
                       child: Transform.translate(
                         offset: Offset(0, 50 * (1 - _buttonsAnimation.value)),
                         child: Column(
