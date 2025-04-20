@@ -14,6 +14,7 @@ import '../utils/colors.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
+import '../config/app_config.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -374,13 +375,50 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ),
           IconButton(
             icon: Icon(
-              Icons.more_vert,
-              color: Colors.black87,
+              Icons.videocam,
+              color: AppColors.primary,
             ),
             onPressed: () {
-              // TODO: Show conversation options
+              // TODO: Implement video call functionality
             },
           ),
+          PopupMenuButton(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'profile',
+                child: const Text('View Profile'),
+                onTap: () {
+                  // Navigate to profile screen
+                },
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: const Text('Delete Conversation'),
+                onTap: () {
+                  // Implement delete conversation
+                },
+              ),
+              // Add debug option in development mode
+              // Always show in debug mode - could be made configurable
+              PopupMenuItem(
+                value: 'debug',
+                child: const Row(
+                  children: [
+                    Icon(Icons.bug_report, size: 20),
+                    SizedBox(width: 8),
+                    Text('WebSocket Debug'),
+                  ],
+                ),
+                onTap: () {
+                  // Add delay to allow menu to close before navigation
+                  Future.delayed(Duration.zero, () {
+                    Navigator.of(context).pushNamed('/websocket-debug');
+                  });
+                },
+              ),
+            ],
+          )
         ],
       ),
       body: Column(

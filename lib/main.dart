@@ -26,6 +26,7 @@ import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
 import 'widgets/websocket_tester.dart'; // Add import for WebSocketTester
+import 'utils/websocket_debug.dart'; // Import the WebSocketDebugMonitor
 
 final appLogger = Logger('App');
 
@@ -108,6 +109,8 @@ class MyApp extends ConsumerWidget {
         '/websocket-test': (context) => WebSocketTestScreen(),
         '/websocket_tester': (context) =>
             const WebSocketTester(), // Add route for WebSocketTester
+        '/websocket-debug': (context) =>
+            const WebSocketDebugMonitor(), // Add route for WebSocketDebugMonitor
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/conversation') {

@@ -10,6 +10,7 @@ import '../models/conversation.dart';
 import '../models/message.dart';
 import '../services/auth_service.dart';
 import '../utils/logger.dart';
+import '../utils/websocket_debug.dart'; // Import the debug utility
 
 // Event models for WebSockets
 class TypingEvent {
@@ -64,10 +65,17 @@ class ChatService {
           StreamController<Map<String, dynamic>>.broadcast();
       _roomUpdatesController =
           StreamController<Map<String, dynamic>>.broadcast();
+
+      // Initialize the WebSocket debug utility
+      _debug = WebSocketDebug();
+      _debug.logStatus('ChatService initialized');
     } catch (e) {
       print('Error initializing ChatService: $e');
     }
   }
+
+  // Debug utility
+  late WebSocketDebug _debug;
 
   // Socket instance
   IO.Socket? _socket;
@@ -113,6 +121,7 @@ class ChatService {
       print('AuthService not initialized. Call initializeAuthService() first.');
       _errorController
           .add('Authentication service not available. Please restart the app.');
+      _debug.logError('AuthService not initialized');
       return;
     }
 
@@ -120,26 +129,32 @@ class ChatService {
       final token = await _authService!.getAccessToken();
       print(
           '🔐 Auth token for WebSocket: ${token != null ? "Found (${token.substring(0, 10)}...)" : "NOT FOUND!"}');
+      _debug.logStatus('Auth token: ${token != null ? "Found" : "NOT FOUND"}');
 
       if (token == null) {
         print(
             '❌ Failed to initialize socket: No authentication token available');
         _errorController
             .add('No authentication token available. Please log in again.');
+        _debug.logError('No authentication token available');
         return;
       }
 
       // Create socket connection with Socket.IO client
       print('🔌 Initializing socket connection to ${AppConfig.socketUrl}');
+      _debug.logStatus(
+          'Initializing socket connection to ${AppConfig.socketUrl}');
 
       // Directly use HTTP URL format for WebSocket connection
       // Force using the non-localhost URL for actual device usage
       String socketUrl = 'http://dapi.pulsetek.co.za:3001';
       print('🔌 Using socket URL: $socketUrl');
+      _debug.logStatus('Using socket URL: $socketUrl');
 
       // Close existing socket if it exists
       if (_socket != null) {
         print('🔄 Closing existing socket connection before creating new one');
+        _debug.logStatus('Closing existing socket connection');
         _socket!.disconnect();
         _socket!.dispose();
         _socket = null;
@@ -161,12 +176,15 @@ class ChatService {
       // Set up event listeners
       _setupSocketListeners();
       print('🔐 WebSocket initialized with token - connecting manually');
+      _debug
+          .logStatus('WebSocket initialized with token - connecting manually');
 
       // Manually connect the socket
       _socket!.connect();
     } catch (e) {
       print('❌ Error initializing WebSocket: $e');
       _errorController.add('Failed to initialize chat connection: $e');
+      _debug.logError('Error initializing WebSocket: $e');
     }
   }
 
@@ -210,10 +228,12 @@ class ChatService {
   void _setupSocketListeners() {
     _socket?.onConnect((_) {
       print('✅ Connected to WebSocket server successfully');
+      _debug.logStatus('Connected to WebSocket server successfully');
     });
 
     _socket?.onDisconnect((reason) {
       print('🔌 Disconnected from WebSocket server. Reason: $reason');
+      _debug.logStatus('Disconnected from WebSocket server. Reason: $reason');
     });
 
     _socket?.onConnectError((error) {
@@ -222,17 +242,53 @@ class ChatService {
           '📋 Connection details: URL=${AppConfig.socketUrl}, Transport=${_socket?.io.engine?.transport?.name}');
       _errorController
           .add('Connection error: Unable to connect to chat server');
+      _debug.logError('Connection error: $error');
     });
 
     _socket?.onError((error) {
       print('❌ Socket error: $error');
       _errorController.add('Chat service error: Please try again later');
+      _debug.logError('Socket error: $error');
     });
 
     // Message events
     _socket?.on('private_message', (data) {
       print('📩 Received private message: ${data.toString()}');
+      _debug.logReceivedMessage({'event': 'private_message', 'data': data});
       _messagesController.add(data);
+    });
+
+    // Add listeners for the server's response events
+    _socket?.on('new_message', (data) {
+      print('📩 Received new message: ${data.toString()}');
+      _debug.logReceivedMessage({'event': 'new_message', 'data': data});
+
+      final messageData = {
+        'id': data['id'] ?? 'msg-${DateTime.now().millisecondsSinceEpoch}',
+        'conversationId': data['match_id'] ?? '',
+        'senderId': data['sender_id'] ?? '',
+        'text': data['content'] ?? '',
+        'timestamp': data['sent_at'] ?? DateTime.now().toIso8601String(),
+        'status': 'sent'
+      };
+
+      _messagesController.add(messageData);
+    });
+
+    _socket?.on('message_sent', (data) {
+      print('📩 Message sent confirmation: ${data.toString()}');
+      _debug.logReceivedMessage({'event': 'message_sent', 'data': data});
+
+      final messageData = {
+        'id': data['id'] ?? 'msg-${DateTime.now().millisecondsSinceEpoch}',
+        'conversationId': data['match_id'] ?? '',
+        'senderId': data['sender_id'] ?? '',
+        'text': data['content'] ?? '',
+        'timestamp': data['sent_at'] ?? DateTime.now().toIso8601String(),
+        'status': 'sent'
+      };
+
+      _messagesController.add(messageData);
     });
 
     _socket?.on('typing', (data) {
@@ -263,23 +319,72 @@ class ChatService {
   }
 
   /// Send a private message to another user via WebSocket
-  void sendPrivateMessage(String receiverId, String message,
+  void sendPrivateMessage(String recipientId, String message,
       {String? mediaUrl}) {
     if (!isConnected) {
       print('Not connected to WebSocket server');
       _errorController.add('Not connected to chat server. Please try again.');
+      _debug.logError('Not connected to WebSocket server');
       return;
     }
 
+    // Create a match ID for the conversation (this format should match your server expectation)
+    final matchId = 'conv_with_${recipientId}';
+
+    // Prepare message data in the format expected by the server
     final messageData = {
-      'receiverId': receiverId,
+      'matchId': matchId, // The server expects matchId
+      'content': message, // The server expects content
+      'mediaUrl': mediaUrl, // This matches the server format
+    };
+
+    // Also include original format for backward compatibility
+    final backupMessageData = {
+      'receiverId': recipientId,
       'message': message,
       'timestamp': DateTime.now().toIso8601String(),
       if (mediaUrl != null) 'mediaUrl': mediaUrl,
     };
 
-    _socket?.emit('private_message', messageData);
-    print('Sent private message to $receiverId');
+    // Log the message we're about to send
+    _debug.logSentMessage({'event': 'send_message', 'data': messageData});
+
+    // Try both event names since we're not sure which one the server expects
+    _socket?.emit('send_message', messageData);
+
+    // Also emit with the original format for compatibility
+    _socket?.emit('private_message', backupMessageData);
+    _debug.logSentMessage(
+        {'event': 'private_message', 'data': backupMessageData});
+
+    print('Sent private message to $matchId');
+
+    // Get the current user ID if available
+    String currentUserId = 'currentUserId';
+    try {
+      // Try to get user ID from auth service
+      if (_authService != null) {
+        // The method to get user ID will depend on how your AuthService is implemented
+        // This is a safe fallback approach
+        currentUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+      }
+    } catch (e) {
+      print('Error getting current user ID: $e');
+    }
+
+    // Emit a local message to our own stream for immediate UI update
+    // This ensures the UI updates even if the server doesn't send confirmation
+    final localMessage = {
+      'id': 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      'conversationId': matchId,
+      'senderId': currentUserId, // Use the retrieved user ID
+      'text': message,
+      'timestamp': DateTime.now().toIso8601String(),
+      'status': 'sending'
+    };
+
+    _messagesController.add(localMessage);
+    _debug.logStatus('Added local message to UI: ${localMessage['id']}');
   }
 
   /// Send a message to a group chat
