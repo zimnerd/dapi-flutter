@@ -370,39 +370,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
       // Use AsyncValue.when to handle loading/error/data states
       body: Column(
         children: [
-          // --- Profile Info Button Row ---
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Add info button here
-                AnimatedTapFeedback(
-                  onTap: () {
-                    // Implement action to show detailed profile view
-                    final currentProfiles = ref.read(discoverProfilesProvider).profiles.valueOrNull;
-                    if (currentProfiles != null && 
-                        currentProfiles.isNotEmpty && 
-                        _currentIndex >= 0 && 
-                        _currentIndex < currentProfiles.length) {
-                      final currentProfile = currentProfiles[_currentIndex];
-                      _showProfileDetails(context, currentProfile);
-                    } else {
-                      logger.warn('Cannot show profile details: index $_currentIndex out of bounds (length: ${currentProfiles?.length ?? 0})');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No profile selected.')),
-                      );
-                    }
-                  },
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primaryLight.withOpacity(0.5),
-                    child: Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-                  ),
-                ),
-              ],
-            ),
-          ),
           // --- Swiper Section ---
           Expanded(
             child: discoverState.profiles.when(

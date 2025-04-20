@@ -4,8 +4,13 @@ import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import '../models/profile.dart';
 import '../utils/colors.dart';
 import '../utils/image_helper.dart';
+import '../utils/logger.dart';
 import '../screens/profile_details_screen.dart';
 import 'dart:math';
+import 'dart:developer' as developer;
+
+// Create logger instance
+final logger = Logger('EnhancedProfileCard');
 
 class EnhancedProfileCard extends StatefulWidget {
   final List<Profile> profiles;
@@ -34,17 +39,36 @@ class EnhancedProfileCard extends StatefulWidget {
 class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
   late CardSwiperController controller;
   int currentIndex = 0;
+  
+  // Add PageController for photo navigation
+  final Map<String, PageController> _photoControllers = {};
+  
+  // Add current page tracking map
+  final Map<String, int> _currentPhotoIndices = {};
 
   @override
   void initState() {
     super.initState();
     controller = CardSwiperController();
     currentIndex = widget.initialIndex;
+    
+    // Initialize page controllers for each profile
+    for (final profile in widget.profiles) {
+      _photoControllers[profile.id] = PageController();
+      _currentPhotoIndices[profile.id] = 0; // Initialize page index to 0
+      print('Created page controller for profile ${profile.id}');
+    }
+    
+    developer.log('EnhancedProfileCard initialized', name: 'EnhancedProfileCard');
   }
 
   @override
   void dispose() {
     controller.dispose();
+    // Dispose all page controllers
+    for (final controller in _photoControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -80,8 +104,20 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
     }
   }
 
+  // Method to handle page changing (for logging)
+  void _handlePageChanged(Profile profile, int page) {
+    print('CONSOLE: Page changed for ${profile.id} to $page');
+    // Update the current page index in our tracking map
+    setState(() {
+      _currentPhotoIndices[profile.id] = page;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    developer.log('Building EnhancedProfileCard with ${widget.profiles.length} profiles', 
+                  name: 'EnhancedProfileCard');
+    
     if (widget.profiles.isEmpty) {
       return const Center(
         child: Text('No profiles available'),
@@ -109,6 +145,10 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               if (index >= widget.profiles.length) {
                 return Container();
               }
+              // Add debug log for each card build
+              developer.log('Building card for profile ${widget.profiles[index].name}', 
+                           name: 'EnhancedProfileCard');
+                           
               return _buildProfileCard(widget.profiles[index], percentThresholdX.toDouble(), percentThresholdY.toDouble());
             },
           ),
@@ -202,45 +242,226 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Use our new helper method for profile photos with fallbacks
-                _buildProfilePhoto(profile, 0),
-                
-                // Photo count indicators
-                if (profile.photoUrls.length > 1)
-                  Positioned(
-                    top: 8,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        profile.photoUrls.length.clamp(0, 5),
-                        (index) => Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: _buildCardContent(profile),
+          ),
+        ),
+        if (overlay != null) overlay,
+      ],
+    );
+  }
+
+  // Update card content to use PageView with explicit tap areas
+  Widget _buildCardContent(Profile profile) {
+    developer.log('Building card content for ${profile.name}', name: 'EnhancedProfileCard');
+    
+    // Get or create a PageController for this profile
+    final pageController = _photoControllers[profile.id] ?? 
+      (_photoControllers[profile.id] = PageController());
+    
+    // Get current page index with fallback
+    final currentPhotoIndex = _currentPhotoIndices[profile.id] ?? 0;
+    final totalPhotos = profile.photoUrls.length;
+    
+    return GestureDetector(
+      // Double tap to view full profile
+      onDoubleTap: () => _navigateToProfileDetails(context, profile),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Use PageView for photos - direct, no intermediary widget
+          PageView.builder(
+            controller: pageController,
+            itemCount: profile.photoUrls.length,
+            onPageChanged: (index) => _handlePageChanged(profile, index),
+            physics: ClampingScrollPhysics(), // Prevent horizontal scrolling
+            itemBuilder: (context, index) {
+              final imageUrl = profile.photoUrls[index];
+              print('CONSOLE: Building photo $index for ${profile.id}: ${imageUrl.substring(0, min(20, imageUrl.length))}...');
+              
+              return ImageHelper.getNetworkImageWithFallback(
+                imageUrl: imageUrl,
+                gender: profile.gender,
+                fit: BoxFit.cover,
+              );
+            },
+          ),
+          
+          // ARROW BUTTONS - clearly visible on the left and right edges
+          if (profile.photoUrls.length > 1)
+            Positioned.fill(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // LEFT ARROW
+                  if (currentPhotoIndex > 0)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          print('CONSOLE: LEFT ARROW TAPPED');
+                          // Direct navigation
+                          if (currentPhotoIndex > 0) {
+                            // Both change the page controller and update state directly
+                            final newIndex = currentPhotoIndex - 1;
+                            _currentPhotoIndices[profile.id] = newIndex;
+                            pageController.jumpToPage(newIndex);
+                            
+                            // Force update state
+                            setState(() {});
+                            
+                            // Vibrate
+                            HapticFeedback.selectionClick();
+                          }
+                        },
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          margin: EdgeInsets.only(left: 10),
                           decoration: BoxDecoration(
+                            color: Colors.black54,
                             shape: BoxShape.circle,
-                            color: index == 0
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.5),
+                          ),
+                          child: Icon(
+                            Icons.chevron_left,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // RIGHT ARROW
+                  if (currentPhotoIndex < profile.photoUrls.length - 1)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          print('CONSOLE: RIGHT ARROW TAPPED');
+                          // Direct navigation
+                          if (currentPhotoIndex < profile.photoUrls.length - 1) {
+                            // Both change the page controller and update state directly
+                            final newIndex = currentPhotoIndex + 1;
+                            _currentPhotoIndices[profile.id] = newIndex;
+                            pageController.jumpToPage(newIndex);
+                            
+                            // Force update state
+                            setState(() {});
+                            
+                            // Vibrate
+                            HapticFeedback.selectionClick();
+                          }
+                        },
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          margin: EdgeInsets.only(right: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            
+          // Swipe instruction overlay that only shows for 5 seconds
+          if (profile.photoUrls.length > 1)
+            _SwipeInstructionOverlay(),
+          
+          // Profile details at the bottom
+          _buildProfileDetails(profile),
+          
+          // Visual indicator for double tap
+          Positioned(
+            bottom: 100,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Text(
+                "Double tap to view full profile",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 3.0,
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Photo counter with tappable dots
+          if (profile.photoUrls.length > 1)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(
+                        min(profile.photoUrls.length, 5),
+                        (i) => GestureDetector(
+                          onTap: () {
+                            print('CONSOLE: DOT $i TAPPED');
+                            // Direct jump to this photo
+                            _currentPhotoIndices[profile.id] = i;
+                            pageController.jumpToPage(i);
+                            setState(() {});
+                            HapticFeedback.selectionClick();
+                          },
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i == currentPhotoIndex
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.5),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                
-                // Profile details at the bottom
-                _buildProfileDetails(profile),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
-        if (overlay != null) overlay,
-      ],
+        ],
+      ),
+    );
+  }
+
+  void _navigateToProfileDetails(BuildContext context, Profile profile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileDetailsScreen(profile: profile),
+      ),
     );
   }
 
@@ -265,6 +486,24 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               Icons.close,
               color: Colors.red,
               size: 30,
+            ),
+          ),
+          
+          // INFO button (new)
+          FloatingActionButton(
+            heroTag: 'infoBtn',
+            onPressed: () {
+              if (currentIndex < widget.profiles.length) {
+                _navigateToProfileDetails(context, widget.profiles[currentIndex]);
+              }
+            },
+            backgroundColor: Colors.white,
+            elevation: 6,
+            mini: true,
+            child: const Icon(
+              Icons.info,
+              color: AppColors.primary,
+              size: 24,
             ),
           ),
           
@@ -389,157 +628,55 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
       ),
     );
   }
-
-  Widget _buildProfilePhoto(Profile profile, int photoIndex) {
-    final String photoUrl = photoIndex < profile.photoUrls.length 
-        ? profile.photoUrls[photoIndex]
-        : '';
-        
-    // Use our new static ImageHelper method for better image loading with fallbacks
-    return ImageHelper.getNetworkImageWithFallback(
-      imageUrl: photoUrl,
-      gender: profile.gender,
-      fit: BoxFit.cover,
-      borderRadius: BorderRadius.circular(16),
-    );
-  }
 }
 
-/// Photo switcher widget for profile cards
-class _PhotoSwitcher extends StatefulWidget {
-  final List<String> photos;
-  
-  const _PhotoSwitcher({required this.photos});
-  
+// Add a separate widget for the swipe instruction that auto-hides
+class _SwipeInstructionOverlay extends StatefulWidget {
   @override
-  _PhotoSwitcherState createState() => _PhotoSwitcherState();
+  _SwipeInstructionOverlayState createState() => _SwipeInstructionOverlayState();
 }
 
-class _PhotoSwitcherState extends State<_PhotoSwitcher> {
-  final PageController _pageController = PageController();
-  int _currentIndex = 0;
+class _SwipeInstructionOverlayState extends State<_SwipeInstructionOverlay> {
+  bool _visible = true;
   
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Auto-hide after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _visible = false;
+        });
+      }
+    });
   }
   
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Photo PageView
-        PageView.builder(
-          controller: _pageController,
-          itemCount: widget.photos.length,
-          onPageChanged: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            HapticFeedback.selectionClick();
-          },
-          itemBuilder: (context, index) {
-            return Image.network(
-              widget.photos[index],
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      size: 80,
-                      color: Colors.grey,
-                    ),
-                  ),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  color: Colors.grey[300],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-        
-        // Photo indicators
-        Positioned(
-          top: 12, // Moved slightly higher
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              widget.photos.length,
-              (index) {
-                return Container(
-                  width: 6, // Smaller dots
-                  height: 6, // Smaller dots
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index == _currentIndex
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.4), // More subtle non-active dots
-                  ),
-                );
-              },
+    if (!_visible) return SizedBox.shrink();
+    
+    return Positioned(
+      top: 50,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            "Tap arrows to view more photos",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        
-        // Left edge tap area for previous photo
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 70,
-          child: GestureDetector(
-            onTap: () {
-              if (_currentIndex > 0) {
-                _pageController.previousPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              }
-            },
-            behavior: HitTestBehavior.translucent,
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        
-        // Right edge tap area for next photo
-        Positioned(
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 70,
-          child: GestureDetector(
-            onTap: () {
-              if (_currentIndex < widget.photos.length - 1) {
-                _pageController.nextPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              }
-            },
-            behavior: HitTestBehavior.translucent,
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-      ],
+      ),
     );
   }
 } 
