@@ -1,6 +1,5 @@
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Or your storage solution
+// Or your storage solution
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -20,7 +19,7 @@ class StorageService {
       return await _secureStorage.read(key: key);
     } catch (e) {
       print('⟹ [StorageService] Error reading from secure storage: $e');
-      
+
       // Fallback to SharedPreferences
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -39,7 +38,7 @@ class StorageService {
       await _secureStorage.write(key: key, value: value);
     } catch (e) {
       print('⟹ [StorageService] Error writing to secure storage: $e');
-      
+
       // Fallback to SharedPreferences
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -54,13 +53,14 @@ class StorageService {
   Future<String> uploadProfileImage(XFile imageFile, String userId) async {
     print("[StorageService] Uploading image for user $userId...");
     await Future.delayed(const Duration(milliseconds: 1500)); // Simulate upload
-    
+
     // Return a dummy URL
     final fileName = _uuid.v4();
-    final dummyUrl = 'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/profile_images%2F$userId%2F$fileName.jpg?alt=media';
+    final dummyUrl =
+        'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/profile_images%2F$userId%2F$fileName.jpg?alt=media';
     print("[StorageService] Dummy upload complete. URL: $dummyUrl");
     return dummyUrl;
-    
+
     /* 
     // Example Firebase Storage implementation:
     try {
@@ -89,10 +89,10 @@ class StorageService {
     await write('use_mock_data', 'true');
     print('⟹ [StorageService] Mock data mode enabled');
   }
-  
+
   // Disable mock data mode
   Future<void> disableMockDataMode() async {
     await write('use_mock_data', 'false');
     print('⟹ [StorageService] Mock data mode disabled');
   }
-} 
+}

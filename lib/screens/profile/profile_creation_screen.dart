@@ -11,10 +11,11 @@ final profileProvider = Provider<ProfileService>((ref) {
 });
 
 class ProfileCreationScreen extends ConsumerStatefulWidget {
-  const ProfileCreationScreen({Key? key}) : super(key: key);
+  const ProfileCreationScreen({super.key});
 
   @override
-  ConsumerState<ProfileCreationScreen> createState() => _ProfileCreationScreenState();
+  ConsumerState<ProfileCreationScreen> createState() =>
+      _ProfileCreationScreenState();
 }
 
 class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
@@ -44,11 +45,11 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
     try {
       final profileService = ref.read(profileProvider);
       final userId = ref.read(userIdProvider);
-      
+
       if (userId == null) {
         throw Exception('User ID not available. Please log in again.');
       }
-      
+
       // Create profile data from form
       final profileData = {
         'name': _nameController.text,
@@ -56,15 +57,15 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         'gender': _selectedGender,
         'interests': _selectedInterests,
       };
-      
+
       // Submit profile data with user ID
       await profileService.createProfile(profileData);
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        
+
         // Navigate to next screen on success
         Navigator.pushReplacementNamed(context, '/profile');
       }
@@ -77,7 +78,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       }
     }
   }
-  
+
   void _toggleInterest(String interest) {
     setState(() {
       if (_selectedInterests.contains(interest)) {
@@ -111,7 +112,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                           style: const TextStyle(color: Colors.red),
                         ),
                       ),
-                    
+
                     // Name field
                     TextFormField(
                       controller: _nameController,
@@ -128,7 +129,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Bio field
                     TextFormField(
                       controller: _bioController,
@@ -140,7 +141,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Gender selection
                     Text(
                       'Gender',
@@ -154,20 +155,22 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                         'female',
                         'non-binary',
                         'prefer not to say',
-                      ].map((gender) => ChoiceChip(
-                        label: Text(gender),
-                        selected: _selectedGender == gender,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _selectedGender = gender;
-                            });
-                          }
-                        },
-                      )).toList(),
+                      ]
+                          .map((gender) => ChoiceChip(
+                                label: Text(gender),
+                                selected: _selectedGender == gender,
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() {
+                                      _selectedGender = gender;
+                                    });
+                                  }
+                                },
+                              ))
+                          .toList(),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Interests selection
                     Text(
                       'Interests',
@@ -187,14 +190,16 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                         'Gaming',
                         'Sports',
                         'Technology',
-                      ].map((interest) => FilterChip(
-                        label: Text(interest),
-                        selected: _selectedInterests.contains(interest),
-                        onSelected: (_) => _toggleInterest(interest),
-                      )).toList(),
+                      ]
+                          .map((interest) => FilterChip(
+                                label: Text(interest),
+                                selected: _selectedInterests.contains(interest),
+                                onSelected: (_) => _toggleInterest(interest),
+                              ))
+                          .toList(),
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Submit button
                     SizedBox(
                       width: double.infinity,
@@ -216,4 +221,4 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
             ),
     );
   }
-} 
+}

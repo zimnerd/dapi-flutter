@@ -34,11 +34,10 @@ class ChatScreen extends ConsumerStatefulWidget {
   final Profile? matchProfile;
 
   const ChatScreen({
-    Key? key,
+    super.key,
     this.conversation,
     this.matchProfile,
-  }) : assert(conversation != null || matchProfile != null),
-      super(key: key);
+  }) : assert(conversation != null || matchProfile != null);
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -129,17 +128,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         apiKey: AppConfig.giphyApiKey,
       );
     } catch (e) {
-       print("Error picking GIF: $e");
-       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open GIF picker: ${e.toString()}')),
-       );
+      print("Error picking GIF: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open GIF picker: ${e.toString()}')),
+      );
     }
 
     if (gif != null && gif.images.original != null) {
       final gifUrl = gif.images.original!.url;
       print("Selected GIF URL: $gifUrl");
-      ChatMessageActions.addMessage(ref, _conversationId, "GIF: ${gifUrl}");
-       _scrollToBottom(jump: true);
+      ChatMessageActions.addMessage(ref, _conversationId, "GIF: $gifUrl");
+      _scrollToBottom(jump: true);
     } else {
       print("GIF selection cancelled or failed.");
     }
@@ -149,15 +148,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final messagesAsyncValue = ref.watch(chatMessagesProvider(_conversationId));
 
-    final participantName = widget.conversation?.participants.first.name ?? widget.matchProfile?.name ?? "Chat";
-    final participantAvatarUrl = widget.conversation?.participants.first.profilePictures?.isNotEmpty == true
-        ? widget.conversation!.participants.first.profilePictures!.first
-        : widget.matchProfile?.photoUrls.isNotEmpty == true
-            ? widget.matchProfile!.photoUrls.first
-            : null;
+    final participantName = widget.conversation?.participants.first.name ??
+        widget.matchProfile?.name ??
+        "Chat";
+    final participantAvatarUrl =
+        widget.conversation?.participants.first.profilePictures?.isNotEmpty ==
+                true
+            ? widget.conversation!.participants.first.profilePictures!.first
+            : widget.matchProfile?.photoUrls.isNotEmpty == true
+                ? widget.matchProfile!.photoUrls.first
+                : null;
 
     ref.listen(chatMessagesProvider(_conversationId), (_, __) {
-      _scrollToBottom(jump: messagesAsyncValue.asData?.value.isNotEmpty ?? false);
+      _scrollToBottom(
+          jump: messagesAsyncValue.asData?.value.isNotEmpty ?? false);
     });
 
     return Scaffold(
@@ -171,7 +175,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             CircleAvatar(
               backgroundImage: participantAvatarUrl != null
                   ? NetworkImage(participantAvatarUrl)
-                  : const AssetImage('assets/images/placeholder_user.png') as ImageProvider,
+                  : const AssetImage('assets/images/placeholder_user.png')
+                      as ImageProvider,
               radius: 18,
             ),
             const SizedBox(width: 8),
@@ -192,7 +197,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               // TODO: Implement video call initiation
               print("Video call pressed - Placeholder");
               ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('In-app video calls coming soon!'), duration: Duration(seconds: 2)),
+                const SnackBar(
+                    content: Text('In-app video calls coming soon!'),
+                    duration: Duration(seconds: 2)),
               );
             },
           ),
@@ -201,9 +208,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'Start Audio Call',
             onPressed: () {
               // TODO: Implement audio call initiation
-               print("Audio call pressed - Placeholder");
+              print("Audio call pressed - Placeholder");
               ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('In-app audio calls coming soon!'), duration: Duration(seconds: 2)),
+                const SnackBar(
+                    content: Text('In-app audio calls coming soon!'),
+                    duration: Duration(seconds: 2)),
               );
             },
           ),
@@ -219,16 +228,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               const PopupMenuItem<String>(
                 value: 'unmatch',
                 child: ListTile(
-                   leading: Icon(Icons.person_remove_alt_1_outlined),
-                   title: Text('Unmatch'),
-                 ),
+                  leading: Icon(Icons.person_remove_alt_1_outlined),
+                  title: Text('Unmatch'),
+                ),
               ),
               PopupMenuItem<String>(
                 value: 'report',
-                 child: ListTile(
-                   leading: Icon(Icons.report_problem_outlined),
-                   title: Text('Report ${widget.conversation?.participants.first.name ?? widget.matchProfile?.name ?? "User"}'),
-                 ),
+                child: ListTile(
+                  leading: Icon(Icons.report_problem_outlined),
+                  title: Text(
+                      'Report ${widget.conversation?.participants.first.name ?? widget.matchProfile?.name ?? "User"}'),
+                ),
               ),
             ],
             icon: const Icon(Icons.more_vert),
@@ -261,7 +271,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error loading messages: $err')),
+              error: (err, stack) =>
+                  Center(child: Text('Error loading messages: $err')),
             ),
           ),
           _buildIcebreakerSuggestions(),
@@ -303,7 +314,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Message message, {
+  Widget _buildMessageBubble(
+    Message message, {
     required bool showAvatar,
     required String? participantAvatarUrl,
     required String conversationId,
@@ -312,9 +324,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isPremium = false; // TODO: Fix premium provider reference
     final isFromCurrentUser = message.isFromCurrentUser;
     final bool showReactionsPicker = _reactingToMessageId == message.id;
-    final List<String> availableReactions = ['❤️', '👍', '😂', '😢', '😮', '🔥'];
+    final List<String> availableReactions = [
+      '❤️',
+      '👍',
+      '😂',
+      '😢',
+      '😮',
+      '🔥'
+    ];
 
-    void _toggleReaction(String emoji) {
+    void toggleReaction(String emoji) {
       ChatMessageActions.toggleReaction(ref, conversationId, message.id, emoji);
       setState(() {
         _reactingToMessageId = null;
@@ -334,28 +353,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: CircleAvatar(
                 backgroundImage: participantAvatarUrl != null
                     ? NetworkImage(participantAvatarUrl)
-                    : const AssetImage('assets/images/placeholder_user.png') as ImageProvider,
+                    : const AssetImage('assets/images/placeholder_user.png')
+                        as ImageProvider,
                 radius: 16,
               ),
             )
           else if (!isFromCurrentUser)
             const SizedBox(width: 40),
-            
           Flexible(
             child: Column(
-              crossAxisAlignment: isFromCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isFromCurrentUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (showReactionsPicker)
                   Container(
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: availableReactions.map((emoji) =>
-                        InkWell(
-                          onTap: () => _toggleReaction(emoji),
-                          child: Text(emoji, style: const TextStyle(fontSize: 14)),
-                        )
-                      ).toList(),
+                      children: availableReactions
+                          .map((emoji) => InkWell(
+                                onTap: () => toggleReaction(emoji),
+                                child: Text(emoji,
+                                    style: const TextStyle(fontSize: 14)),
+                              ))
+                          .toList(),
                     ),
                   ),
                 GestureDetector(
@@ -367,9 +389,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                   onTap: () {
                     if (_reactingToMessageId != null) {
-                       setState(() {
-                         _reactingToMessageId = null;
-                       });
+                      setState(() {
+                        _reactingToMessageId = null;
+                      });
                     }
                   },
                   child: Container(
@@ -386,7 +408,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: Text(
                       message.text,
                       style: TextStyle(
-                        color: isFromCurrentUser ? Colors.white : Colors.black87,
+                        color:
+                            isFromCurrentUser ? Colors.white : Colors.black87,
                       ),
                     ),
                   ),
@@ -396,33 +419,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Wrap(
                       spacing: 4.0,
-                      children: message.reactions!.map((emoji) => Text(emoji, style: const TextStyle(fontSize: 14))).toList(),
+                      children: message.reactions!
+                          .map((emoji) =>
+                              Text(emoji, style: const TextStyle(fontSize: 14)))
+                          .toList(),
                     ),
                   ),
               ],
             ),
           ),
-          
           Padding(
-             padding: const EdgeInsets.only(left: 6.0, right: 6.0, bottom: 5),
-             child: Row(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 Text(
-                   _formatTime(message.timestamp),
-                   style: TextStyle(
-                     fontSize: 10,
-                     color: Colors.grey[500],
-                   ),
-                 ),
-                 if (isFromCurrentUser)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: _buildReadReceiptIcon(message.status, isPremium),
-                    )
-               ],
-             ),
-           ),
+            padding: const EdgeInsets.only(left: 6.0, right: 6.0, bottom: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                if (isFromCurrentUser)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0),
+                    child: _buildReadReceiptIcon(message.status, isPremium),
+                  )
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -460,77 +485,98 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildIcebreakerSuggestions() {
-    final suggestionsAsyncValue = ref.watch(icebreakerSuggestionsProvider(_conversationId));
+    final suggestionsAsyncValue =
+        ref.watch(icebreakerSuggestionsProvider(_conversationId));
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),
+        border: Border(
+            top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),
       ),
       child: Column(
-         crossAxisAlignment: CrossAxisAlignment.start,
-         children: [
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Padding(
             padding: const EdgeInsets.only(left: 16.0, bottom: 6.0),
             child: Text(
               "Suggested Icebreakers ✨",
-               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                 color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-               ),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color
+                        ?.withOpacity(0.7),
+                  ),
             ),
           ),
           suggestionsAsyncValue.when(
-             data: (suggestions) {
-               if (suggestions.isEmpty) {
-                  return const SizedBox(height: 40);
-               }
-               return SizedBox(
-                 height: 40,
-                 child: ListView.separated(
-                   scrollDirection: Axis.horizontal,
-                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                   itemCount: suggestions.length,
-                   separatorBuilder: (context, index) => const SizedBox(width: 8),
-                   itemBuilder: (context, index) {
-                     final suggestion = suggestions[index];
-                     return ActionChip(
-                       label: Text(suggestion),
-                       onPressed: () {
-                         _textController.text = suggestion;
-                         _textController.selection = TextSelection.fromPosition(
-                           TextPosition(offset: _textController.text.length),
-                         );
-                       },
-                       backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                       labelStyle: TextStyle(
-                         color: Theme.of(context).colorScheme.secondary,
-                         fontSize: 13,
-                         fontWeight: FontWeight.w500,
-                       ),
-                       shape: RoundedRectangleBorder(
-                         borderRadius: BorderRadius.circular(20.0),
-                         side: BorderSide(color: Theme.of(context).colorScheme.secondary.withOpacity(0.3)),
-                       ),
-                     );
-                   },
-                 ),
-               );
-             },
-              loading: () => const SizedBox(
-                 height: 40,
-                 child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+            data: (suggestions) {
+              if (suggestions.isEmpty) {
+                return const SizedBox(height: 40);
+              }
+              return SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: suggestions.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final suggestion = suggestions[index];
+                    return ActionChip(
+                      label: Text(suggestion),
+                      onPressed: () {
+                        _textController.text = suggestion;
+                        _textController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: _textController.text.length),
+                        );
+                      },
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .secondary
+                          .withOpacity(0.1),
+                      labelStyle: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20.0),
+                        side: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondary
+                                .withOpacity(0.3)),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+            loading: () => const SizedBox(
+              height: 40,
+              child: Center(
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))),
+            ),
+            error: (err, stack) => SizedBox(
+              height: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Center(
+                    child: Text('Could not load suggestions.',
+                        style:
+                            TextStyle(color: Colors.red[400], fontSize: 12))),
               ),
-              error: (err, stack) => SizedBox(
-                 height: 40,
-                 child: Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                   child: Center(child: Text('Could not load suggestions.', style: TextStyle(color: Colors.red[400], fontSize: 12))),
-                 ),
-              ),
+            ),
           ),
-         ],
-       ),
+        ],
+      ),
     );
   }
 
@@ -551,64 +597,80 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Row(
           children: <Widget>[
             IconButton(
-              icon: Icon(Icons.gif_box_outlined, color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
+              icon: Icon(Icons.gif_box_outlined,
+                  color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
               tooltip: 'Send GIF',
               onPressed: _pickGif,
             ),
             IconButton(
-              icon: Icon(Icons.mic_none_outlined, color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
+              icon: Icon(Icons.mic_none_outlined,
+                  color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
               tooltip: 'Send Voice Message',
               onPressed: () {
                 // TODO: Implement voice message recording
                 print("Voice message button pressed");
                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text('Voice messages not implemented yet.'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                      content: Text('Voice messages not implemented yet.'),
+                      duration: Duration(seconds: 2)),
                 );
               },
             ),
             Expanded(
               child: Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                 decoration: BoxDecoration(
-                   color: Theme.of(context).colorScheme.background.withOpacity(0.8),
-                   borderRadius: BorderRadius.circular(25.0),
-                 ),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(25.0),
+                ),
                 child: TextField(
                   controller: _textController,
-                  onSubmitted: _isTextFieldEmpty ? null : _handleSubmitted, // Only submit if not empty
+                  onSubmitted: _isTextFieldEmpty
+                      ? null
+                      : _handleSubmitted, // Only submit if not empty
                   decoration: InputDecoration(
                     hintText: "Send a message...",
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12.0, vertical: 14.0),
                     isCollapsed: true, // Reduces intrinsic height
                   ),
                   keyboardType: TextInputType.multiline,
                   maxLines: null, // Allows multiple lines
                   textCapitalization: TextCapitalization.sentences,
-                   style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                  style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color),
                 ),
               ),
             ),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               transitionBuilder: (Widget child, Animation<double> animation) {
-                return ScaleTransition(child: child, scale: animation);
+                return ScaleTransition(scale: animation, child: child);
               },
               child: _isTextFieldEmpty
                   ? IconButton(
-                      key: const ValueKey('attach_button'), // Example key for Attach
-                      icon: Icon(Icons.attach_file, color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
+                      key: const ValueKey(
+                          'attach_button'), // Example key for Attach
+                      icon: Icon(Icons.attach_file,
+                          color: Theme.of(context)
+                              .iconTheme
+                              .color
+                              ?.withOpacity(0.7)),
                       onPressed: () {
-                         // TODO: Implement attachment logic
-                          print("Attach file button pressed");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Attachments not implemented yet.'), duration: Duration(seconds: 2)),
-                          );
+                        // TODO: Implement attachment logic
+                        print("Attach file button pressed");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Attachments not implemented yet.'),
+                              duration: Duration(seconds: 2)),
+                        );
                       },
                     )
                   : IconButton(
                       key: const ValueKey('send_button'), // Key for Send
-                      icon: Icon(Icons.send, color: Theme.of(context).colorScheme.primary),
+                      icon: Icon(Icons.send,
+                          color: Theme.of(context).colorScheme.primary),
                       onPressed: () => _handleSubmitted(_textController.text),
                     ),
             ),
@@ -623,14 +685,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _handleUnmatch() async {
-    final userName = widget.conversation?.participants.first.name ?? widget.matchProfile?.name ?? "this user";
+    final userName = widget.conversation?.participants.first.name ??
+        widget.matchProfile?.name ??
+        "this user";
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Unmatch $userName?'),
-          content: Text('You will no longer be able to message or see each other.\nThis cannot be undone.'),
+          content: Text(
+              'You will no longer be able to message or see each other.\nThis cannot be undone.'),
           actions: <Widget>[
             TextButton(
               child: Text('Cancel'),
@@ -653,18 +718,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Show success message and navigate back
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Successfully unmatched $userName.'), duration: Duration(seconds: 2)),
+          SnackBar(
+              content: Text('Successfully unmatched $userName.'),
+              duration: Duration(seconds: 2)),
         );
         // Check if the screen can be popped before popping
-        if(Navigator.canPop(context)) {
-           Navigator.of(context).pop();
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
         }
       }
     }
   }
 
   Future<void> _handleReport() async {
-    final userName = widget.conversation?.participants.first.name ?? widget.matchProfile?.name ?? "this user";
+    final userName = widget.conversation?.participants.first.name ??
+        widget.matchProfile?.name ??
+        "this user";
     String? selectedReason;
     final detailsController = TextEditingController();
 
@@ -709,15 +778,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     }),
                     // Optional details field, shown if 'Other' is selected
                     if (selectedReason == 'Other') ...[
-                       const SizedBox(height: 8),
-                       TextField(
-                          controller: detailsController,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                             hintText: 'Please provide details (optional)',
-                             border: OutlineInputBorder(),
-                          ),
-                       ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: detailsController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Please provide details (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                     ]
                   ],
                 ),
@@ -732,7 +801,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   onPressed: selectedReason == null
                       ? null
                       : () => Navigator.of(context).pop(true),
-                  child: Text('Submit Report', style: TextStyle(color: selectedReason == null ? Colors.grey : Colors.red)),
+                  child: Text('Submit Report',
+                      style: TextStyle(
+                          color: selectedReason == null
+                              ? Colors.grey
+                              : Colors.red)),
                 ),
               ],
             );
@@ -742,11 +815,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (confirmed == true && selectedReason != null) {
-      final reportDetails = selectedReason == 'Other' ? detailsController.text : null;
+      final reportDetails =
+          selectedReason == 'Other' ? detailsController.text : null;
       print("Report confirmed for $userName");
       print("  Reason: $selectedReason");
       if (reportDetails != null && reportDetails.isNotEmpty) {
-         print("  Details: $reportDetails");
+        print("  Details: $reportDetails");
       }
 
       // Simulate API call
@@ -755,7 +829,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Report submitted for $userName. Thank you.'), duration: Duration(seconds: 3)),
+          SnackBar(
+              content: Text('Report submitted for $userName. Thank you.'),
+              duration: Duration(seconds: 3)),
         );
       }
     }
@@ -803,7 +879,8 @@ class _ReportReasonsDialogState extends State<_ReportReasonsDialog> {
       content: SingleChildScrollView(
         child: ListBody(
           children: [
-            Text('Please select a reason for reporting:', style: Theme.of(context).textTheme.bodyMedium),
+            Text('Please select a reason for reporting:',
+                style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
             ..._reasons.map((reason) => RadioListTile<String>(
                   title: Text(reason),
@@ -850,4 +927,4 @@ class _ReportReasonsDialogState extends State<_ReportReasonsDialog> {
       ],
     );
   }
-} 
+}

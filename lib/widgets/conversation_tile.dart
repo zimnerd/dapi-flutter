@@ -6,30 +6,35 @@ import '../utils/colors.dart';
 class ConversationTile extends StatelessWidget {
   final Conversation conversation;
   final VoidCallback onTap;
-  
+
   const ConversationTile({
-    Key? key,
+    super.key,
     required this.conversation,
     required this.onTap,
-  }) : super(key: key);
-  
+  });
+
   @override
   Widget build(BuildContext context) {
     final otherUser = conversation.participants.first;
     final hasUnread = conversation.unreadCount > 0;
-    
+
     return ListTile(
       leading: CircleAvatar(
         radius: 28,
-        backgroundImage: otherUser.profilePictures != null && otherUser.profilePictures!.isNotEmpty
+        backgroundImage: otherUser.profilePictures != null &&
+                otherUser.profilePictures!.isNotEmpty
             ? NetworkImage(otherUser.profilePictures!.first)
             : null,
-        backgroundColor: otherUser.profilePictures == null || otherUser.profilePictures!.isEmpty
+        backgroundColor: otherUser.profilePictures == null ||
+                otherUser.profilePictures!.isEmpty
             ? AppColors.primary.withOpacity(0.2)
             : null,
-        child: otherUser.profilePictures == null || otherUser.profilePictures!.isEmpty
+        child: otherUser.profilePictures == null ||
+                otherUser.profilePictures!.isEmpty
             ? Text(
-                otherUser.name.isNotEmpty ? otherUser.name[0].toUpperCase() : '?',
+                otherUser.name.isNotEmpty
+                    ? otherUser.name[0].toUpperCase()
+                    : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -85,18 +90,20 @@ class ConversationTile extends StatelessWidget {
       onTap: onTap,
     );
   }
-  
+
   String _formatTime(DateTime? time) {
     if (time == null) {
       return '';
     }
-    
+
     final now = DateTime.now();
     if (now.difference(time).inDays > 0) {
       if (now.difference(time).inDays == 1) {
         return 'Yesterday';
       } else if (now.difference(time).inDays < 7) {
-        return DateFormat('EEEE').format(time).substring(0, 3);  // First three letters of day name
+        return DateFormat('EEEE')
+            .format(time)
+            .substring(0, 3); // First three letters of day name
       } else {
         return '${time.day}/${time.month}';
       }
@@ -104,4 +111,4 @@ class ConversationTile extends StatelessWidget {
       return DateFormat('HH:mm').format(time);
     }
   }
-} 
+}

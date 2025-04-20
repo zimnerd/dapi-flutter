@@ -8,18 +8,18 @@ class ConversationCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const ConversationCard({
-    Key? key,
+    super.key,
     required this.conversation,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   String _formatTimestamp(DateTime? timestamp) {
     if (timestamp == null) return '';
-    
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final date = DateTime(timestamp.year, timestamp.month, timestamp.day);
-    
+
     if (date == today) {
       // Today, show time
       return DateFormat.jm().format(timestamp);
@@ -39,10 +39,10 @@ class ConversationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // For demonstration purposes, we'll assume the current user is not the first participant
     // In a real app, you would compare with the authenticated user's ID
-    final otherUser = conversation.participants.isNotEmpty 
+    final otherUser = conversation.participants.isNotEmpty
         ? conversation.participants.first
         : null;
-    
+
     return Card(
       elevation: 1.0,
       shape: RoundedRectangleBorder(
@@ -160,4 +160,4 @@ class ConversationCard extends StatelessWidget {
       ),
     );
   }
-} 
+}

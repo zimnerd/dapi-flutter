@@ -6,10 +6,10 @@ class InterestBadge extends StatelessWidget {
   final VoidCallback? onDeleted; // Optional: For profile editing screen
 
   const InterestBadge({
-    Key? key,
+    super.key,
     required this.interest,
     this.onDeleted,
-  }) : super(key: key);
+  });
 
   // Simple mapping of interest keywords to icons (expand as needed)
   static final Map<String, IconData> _interestIcons = {
@@ -61,7 +61,7 @@ class InterestBadge extends StatelessWidget {
     'golf': Icons.sports_golf,
     'baseball': Icons.sports_baseball,
     'football': Icons.sports_football, // American football
-    
+
     // Default/Fallback
     'default': Icons.interests, // Generic fallback
   };
@@ -91,7 +91,8 @@ class InterestBadge extends StatelessWidget {
     final Color backgroundColor = AppColors.primaryLight.withOpacity(0.6);
     final Color foregroundColor = AppColors.primary; // Or AppColors.textDark?
     final double borderRadius = 16.0;
-    final double paddingHorizontal = onDeleted != null ? 6.0 : 12.0; // Less padding if delete icon exists
+    final double paddingHorizontal =
+        onDeleted != null ? 6.0 : 12.0; // Less padding if delete icon exists
     final double paddingVertical = 8.0;
 
     Widget badgeContent = Row(
@@ -113,30 +114,37 @@ class InterestBadge extends StatelessWidget {
     // Wrap with Chip structure only if onDeleted is provided (for the 'x' button)
     if (onDeleted != null) {
       return Chip(
-        padding: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical - 4), // Chip adds its own padding
-        labelPadding: EdgeInsets.only(left: 4), // Adjust label padding if needed
-        avatar: Icon(icon, size: 16, color: foregroundColor), // Use avatar for icon in Chip
+        padding: EdgeInsets.symmetric(
+            horizontal: paddingHorizontal,
+            vertical: paddingVertical - 4), // Chip adds its own padding
+        labelPadding:
+            EdgeInsets.only(left: 4), // Adjust label padding if needed
+        avatar: Icon(icon,
+            size: 16, color: foregroundColor), // Use avatar for icon in Chip
         label: Text(
-           interest,
-           style: TextStyle(
-             color: foregroundColor,
-             fontWeight: FontWeight.w500,
-             fontSize: 13,
-           ),
-         ),
+          interest,
+          style: TextStyle(
+            color: foregroundColor,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
         backgroundColor: backgroundColor,
         onDeleted: onDeleted,
-        deleteIcon: Icon(Icons.close, size: 16, color: foregroundColor.withOpacity(0.7)),
+        deleteIcon: Icon(Icons.close,
+            size: 16, color: foregroundColor.withOpacity(0.7)),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
-          side: BorderSide(color: Colors.transparent), // Hide default Chip border
+          side:
+              BorderSide(color: Colors.transparent), // Hide default Chip border
         ),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       );
     } else {
       // Use a simple Container for display-only badges
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical),
+        padding: EdgeInsets.symmetric(
+            horizontal: paddingHorizontal, vertical: paddingVertical),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(borderRadius),
@@ -145,4 +153,4 @@ class InterestBadge extends StatelessWidget {
       );
     }
   }
-} 
+}

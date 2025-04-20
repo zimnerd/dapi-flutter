@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:collection/collection.dart';
 
@@ -49,7 +47,7 @@ class Profile {
   static int calculateAge(DateTime birthDate) {
     final now = DateTime.now();
     int age = now.year - birthDate.year;
-    if (now.month < birthDate.month || 
+    if (now.month < birthDate.month ||
         (now.month == birthDate.month && now.day < birthDate.day)) {
       age--;
     }
@@ -65,11 +63,11 @@ class Profile {
   factory Profile.fromJson(Map<String, dynamic> json) {
     // Handle potential null/type variations from different API responses
     final id = json['id']?.toString() ?? '';
-    
+
     // Handle birthDate - can come as String or DateTime
     DateTime? parsedBirthDate;
     if (json['birth_date'] != null) {
-      // Try to parse the birth_date from string 
+      // Try to parse the birth_date from string
       try {
         parsedBirthDate = DateTime.parse(json['birth_date'].toString());
       } catch (e) {
@@ -90,7 +88,7 @@ class Profile {
       try {
         if (json['photos'] is List) {
           final photosList = json['photos'] as List<dynamic>;
-          
+
           // Handle different formats: simple string array or objects with url field
           if (photosList.isNotEmpty) {
             if (photosList[0] is String) {
@@ -99,9 +97,8 @@ class Profile {
             } else if (photosList[0] is Map) {
               // Array of objects with url field
               photos = photosList
-                  .map((photo) => photo is Map 
-                      ? (photo['url'] ?? '').toString() 
-                      : '')
+                  .map((photo) =>
+                      photo is Map ? (photo['url'] ?? '').toString() : '')
                   .where((url) => url.isNotEmpty)
                   .toList();
             }
@@ -137,7 +134,8 @@ class Profile {
     if (json['interests'] != null) {
       parsedInterests = (json['interests'] as List<dynamic>?)
               ?.map((e) => e.toString())
-              .toList() ?? [];
+              .toList() ??
+          [];
     }
 
     // Handle location - could be a string or a map
@@ -153,8 +151,9 @@ class Profile {
     if (json['prompts'] != null) {
       try {
         promptsList = (json['prompts'] as List<dynamic>?)
-            ?.map((e) => Map<String, String>.from(e as Map))
-            .toList() ?? [];
+                ?.map((e) => Map<String, String>.from(e as Map))
+                .toList() ??
+            [];
       } catch (e) {
         print('Error parsing prompts: $e');
       }
@@ -169,19 +168,31 @@ class Profile {
       photoUrls: photos,
       interests: parsedInterests,
       location: locationMap,
-      distance: json['distance'] != null ? double.tryParse(json['distance'].toString()) : null,
+      distance: json['distance'] != null
+          ? double.tryParse(json['distance'].toString())
+          : null,
       occupation: json['occupation']?.toString(),
       education: json['education']?.toString(),
       bio: json['bio']?.toString(),
       isVerified: json['is_verified'] == true || json['isVerified'] == true,
       prompts: promptsList,
-      minAgePreference: json['min_age_preference'] != null ? int.tryParse(json['min_age_preference'].toString()) : 
-                         json['minAgePreference'] != null ? int.tryParse(json['minAgePreference'].toString()) : null,
-      maxAgePreference: json['max_age_preference'] != null ? int.tryParse(json['max_age_preference'].toString()) : 
-                         json['maxAgePreference'] != null ? int.tryParse(json['maxAgePreference'].toString()) : null,
-      maxDistance: json['max_distance'] != null ? int.tryParse(json['max_distance'].toString()) : 
-                    json['maxDistance'] != null ? int.tryParse(json['maxDistance'].toString()) : null,
-      genderPreference: json['gender_preference']?.toString() ?? json['genderPreference']?.toString(),
+      minAgePreference: json['min_age_preference'] != null
+          ? int.tryParse(json['min_age_preference'].toString())
+          : json['minAgePreference'] != null
+              ? int.tryParse(json['minAgePreference'].toString())
+              : null,
+      maxAgePreference: json['max_age_preference'] != null
+          ? int.tryParse(json['max_age_preference'].toString())
+          : json['maxAgePreference'] != null
+              ? int.tryParse(json['maxAgePreference'].toString())
+              : null,
+      maxDistance: json['max_distance'] != null
+          ? int.tryParse(json['max_distance'].toString())
+          : json['maxDistance'] != null
+              ? int.tryParse(json['maxDistance'].toString())
+              : null,
+      genderPreference: json['gender_preference']?.toString() ??
+          json['genderPreference']?.toString(),
     );
   }
 
@@ -257,7 +268,7 @@ class Profile {
     if (identical(this, other)) return true;
     final listEquals = const DeepCollectionEquality().equals;
     final mapEquals = const DeepCollectionEquality().equals;
-    
+
     return other is Profile &&
         other.id == id &&
         other.userId == userId &&

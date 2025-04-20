@@ -5,7 +5,7 @@ import '../widgets/websocket_tester.dart';
 /// A dedicated screen for testing WebSocket connections
 /// This provides a full-screen experience for testing the chat functionality
 class WebSocketTestScreen extends ConsumerWidget {
-  const WebSocketTestScreen({Key? key}) : super(key: key);
+  const WebSocketTestScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,7 +40,7 @@ class WebSocketTestScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   void _showInfoDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -79,4 +79,4 @@ class WebSocketTestScreen extends ConsumerWidget {
       ),
     );
   }
-} 
+}

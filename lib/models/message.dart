@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -10,7 +9,9 @@ class Message {
   final DateTime timestamp;
   final MessageStatus status;
   final List<String>? reactions;
-  bool get isFromCurrentUser => senderId == 'currentUserId'; // In real app, replace with actual currentUser check
+  bool get isFromCurrentUser =>
+      senderId ==
+      'currentUserId'; // In real app, replace with actual currentUser check
 
   const Message({
     required this.id,
@@ -48,7 +49,8 @@ class Message {
       conversationId: json['conversationId'] as String? ?? '',
       senderId: json['senderId'] as String? ?? '',
       text: json['text'] as String? ?? '',
-      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
+          DateTime.now(),
       status: MessageStatus.values.firstWhere(
         (e) => e.name == (json['status'] as String?),
         orElse: () => MessageStatus.sent,
@@ -141,4 +143,4 @@ extension MessageStatusExtension on MessageStatus {
         return MessageStatus.sent;
     }
   }
-} 
+}

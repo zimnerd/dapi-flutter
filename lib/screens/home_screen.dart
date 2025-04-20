@@ -11,6 +11,8 @@ import 'profile_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -19,13 +21,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
   String _userName = '';
   bool _isLoading = true;
-  
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
-  
+
   Future<void> _loadUserData() async {
     setState(() {
       final userName = ref.read(userNameProvider);
@@ -33,43 +35,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _isLoading = false;
     });
   }
-  
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
-  
+
   Future<void> _logout() async {
     await ref.read(authStateProvider.notifier).logout();
     if (mounted) {
-       Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacementNamed(context, '/login');
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final userName = ref.watch(userNameProvider);
     final currentUserName = userName ?? 'User';
-    
+
     return Scaffold(
-      appBar: _selectedIndex != 0 && _selectedIndex != 4 ? AppBar(
-        title: Text(_isLoading ? 'Loading...' : 'Hi, $currentUserName'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to settings screen
-              Navigator.pushNamed(context, '/settings');
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          ),
-        ],
-      ) : null,
+      appBar: _selectedIndex != 0 && _selectedIndex != 4
+          ? AppBar(
+              title: Text(_isLoading ? 'Loading...' : 'Hi, $currentUserName'),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.settings),
+                  onPressed: () {
+                    // Navigate to settings screen
+                    Navigator.pushNamed(context, '/settings');
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.logout),
+                  onPressed: _logout,
+                  tooltip: 'Logout',
+                ),
+              ],
+            )
+          : null,
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _buildBody(),
@@ -104,7 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-  
+
   Widget _buildBody() {
     // Show different screens based on selected tab
     switch (_selectedIndex) {

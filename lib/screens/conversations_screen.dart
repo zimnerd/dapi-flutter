@@ -7,10 +7,11 @@ import '../providers/providers.dart';
 import '../widgets/conversation_list_item.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
-  const ConversationsScreen({Key? key}) : super(key: key);
+  const ConversationsScreen({super.key});
 
   @override
-  ConsumerState<ConversationsScreen> createState() => _ConversationsScreenState();
+  ConsumerState<ConversationsScreen> createState() =>
+      _ConversationsScreenState();
 }
 
 class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
@@ -18,18 +19,18 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   String? _currentUserId;
-  
+
   @override
   void initState() {
     super.initState();
     _initialize();
   }
-  
+
   Future<void> _initialize() async {
     await _getCurrentUserId();
     await _loadConversations();
   }
-  
+
   Future<void> _getCurrentUserId() async {
     try {
       final authService = ref.read(authServiceProvider);
@@ -41,7 +42,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       print('Error getting current user: $e');
     }
   }
-  
+
   Future<void> _loadConversations() async {
     if (_currentUserId == null) {
       setState(() {
@@ -50,21 +51,21 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       });
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final chatService = ref.read(chatServiceProvider);
       final dynamicConversations = await chatService.getConversations();
-      
+
       // Convert dynamic data to Conversation objects
       final conversations = dynamicConversations.map((data) {
         return Conversation.fromJson(data);
       }).toList();
-      
+
       setState(() {
         _conversations = conversations;
         _isLoading = false;
@@ -77,7 +78,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,14 +111,14 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       ),
     );
   }
-  
+
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
-    
+
     if (_errorMessage != null) {
       return Center(
         child: Column(
@@ -140,7 +141,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
       );
     }
-    
+
     if (_conversations == null || _conversations!.isEmpty) {
       return Center(
         child: Column(
@@ -179,14 +180,15 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               label: const Text('Find Matches'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
         ),
       );
     }
-    
+
     // Sort conversations by the most recent message
     final sortedConversations = List<Conversation>.from(_conversations!)
       ..sort((a, b) {
@@ -194,7 +196,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         final bTime = b.lastMessage?.timestamp ?? b.updatedAt ?? b.createdAt;
         return bTime.compareTo(aTime); // Descending: most recent first
       });
-    
+
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: sortedConversations.length,
@@ -206,4 +208,4 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       },
     );
   }
-} 
+}

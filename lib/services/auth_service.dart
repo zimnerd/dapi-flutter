@@ -38,7 +38,7 @@ class AuthService {
       if (loginUrl.startsWith('/') && AppConfig.apiBaseUrl.endsWith('/')) {
         loginUrl = loginUrl.substring(1);
       }
-      
+
       final response = await _dio.post(
         '${AppConfig.apiBaseUrl}$loginUrl',
         data: {
@@ -46,14 +46,15 @@ class AuthService {
           AppRequestKeys.password: password,
         },
       );
-      
+
       // Check status code for success (e.g., 200)
       if (response.statusCode == 200 && response.data != null) {
         _logger.debug('Login success: ${response.statusCode}');
         await _handleAuthResponse(response.data);
       } else {
         // Handle non-200 responses by throwing ApiException
-        _logger.warn('Login failed with status: ${response.statusCode}, data: ${response.data}');
+        _logger.warn(
+            'Login failed with status: ${response.statusCode}, data: ${response.data}');
         throw ApiException(
           response.data?['message'] ?? Constants.errorInvalidCredentials,
           statusCode: response.statusCode,
@@ -68,7 +69,7 @@ class AuthService {
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Login with biometrics - Returns void on success, throws ApiException on failure
   Future<void> loginWithBiometrics(String email) async {
     _logger.info('Attempting biometric login with email: $email');
@@ -80,14 +81,17 @@ class AuthService {
           AppRequestKeys.biometricAuthenticated: true,
         },
       );
-      
-      if (response.statusCode == AppStatusCodes.success && response.data != null) {
+
+      if (response.statusCode == AppStatusCodes.success &&
+          response.data != null) {
         await _handleAuthResponse(response.data!);
         _logger.info('Biometric login successful');
       } else {
-         _logger.warn('Biometric login failed with status: ${response.statusCode}, data: ${response.data}');
-         throw ApiException(
-          response.data?[AppResponseKeys.message] ?? Constants.errorBiometricLoginFailed,
+        _logger.warn(
+            'Biometric login failed with status: ${response.statusCode}, data: ${response.data}');
+        throw ApiException(
+          response.data?[AppResponseKeys.message] ??
+              Constants.errorBiometricLoginFailed,
           statusCode: response.statusCode,
         );
       }
@@ -100,15 +104,10 @@ class AuthService {
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Register user - Returns void on success, throws ApiException on failure
-  Future<void> register(
-    String name, 
-    String email, 
-    String password, 
-    String birthDate, 
-    String gender
-  ) async {
+  Future<void> register(String name, String email, String password,
+      String birthDate, String gender) async {
     _logger.info('Registering new user: $email');
     try {
       final response = await _dio.post(
@@ -121,15 +120,19 @@ class AuthService {
           AppRequestKeys.gender: gender,
         },
       );
-      
-      if (response.statusCode == AppStatusCodes.created && response.data != null) {
+
+      if (response.statusCode == AppStatusCodes.created &&
+          response.data != null) {
         await _handleAuthResponse(response.data!);
         _logger.info('Registration successful for: $email');
       } else {
-         _logger.warn('Registration failed with status: ${response.statusCode}, data: ${response.data}');
-         String errorMessage = response.data?[AppResponseKeys.message] ?? Constants.errorRegistrationFailed;
-        if (response.statusCode == 409) { // Conflict
-           errorMessage = Constants.errorEmailInUse;
+        _logger.warn(
+            'Registration failed with status: ${response.statusCode}, data: ${response.data}');
+        String errorMessage = response.data?[AppResponseKeys.message] ??
+            Constants.errorRegistrationFailed;
+        if (response.statusCode == 409) {
+          // Conflict
+          errorMessage = Constants.errorEmailInUse;
         }
         throw ApiException(errorMessage, statusCode: response.statusCode);
       }
@@ -142,7 +145,7 @@ class AuthService {
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Logout user
   Future<void> logout() async {
     _logger.debug('Logging out user');
@@ -159,7 +162,7 @@ class AuthService {
       rethrow;
     }
   }
-  
+
   // Check if user is logged in
   Future<bool> isLoggedIn() async {
     try {
@@ -173,7 +176,7 @@ class AuthService {
       return false;
     }
   }
-  
+
   // Get current user id from SharedPreferences
   Future<String?> getUserId() async {
     try {
@@ -221,32 +224,38 @@ class AuthService {
   Future<void> refreshToken() async {
     _logger.debug('Attempting to refresh token');
     try {
-      final refreshToken = await _secureStorage.read(key: AppStorageKeys.refreshToken);
-      
+      final refreshToken =
+          await _secureStorage.read(key: AppStorageKeys.refreshToken);
+
       if (refreshToken == null || refreshToken.isEmpty) {
         _logger.warn('No refresh token available - authentication required');
         return;
       }
-      
+
       // Create a new dio instance to avoid interceptor loops
       final refreshDio = Dio(BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
-        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
-        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        connectTimeout:
+            const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout:
+            const Duration(milliseconds: AppConfig.networkTimeoutMs),
         headers: {
           'Content-Type': AppHeaders.applicationJson,
           'Accept': AppHeaders.applicationJson,
         },
       ));
-      
+
       // Ensure the URL is properly constructed
-      String refreshUrl = AppEndpoints.refresh; // Use refresh instead of refreshToken
-      if (refreshUrl.startsWith('/') && refreshDio.options.baseUrl.endsWith('/')) {
+      String refreshUrl =
+          AppEndpoints.refresh; // Use refresh instead of refreshToken
+      if (refreshUrl.startsWith('/') &&
+          refreshDio.options.baseUrl.endsWith('/')) {
         refreshUrl = refreshUrl.substring(1);
       }
-      
-      _logger.debug('Making refresh token request to: ${refreshDio.options.baseUrl}$refreshUrl');
-      
+
+      _logger.debug(
+          'Making refresh token request to: ${refreshDio.options.baseUrl}$refreshUrl');
+
       final response = await refreshDio.post(
         refreshUrl,
         data: {
@@ -254,44 +263,46 @@ class AuthService {
           'refreshToken': refreshToken,
         },
       );
-      
+
       _logger.debug('Token refresh response status: ${response.statusCode}');
       _logger.debug('Token refresh response data: ${response.data}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         Map<String, dynamic> data = response.data;
-        
+
         // Check for token in root or nested in data field
-        final newToken = data['accessToken'] ?? 
-                         data['token'] ?? 
-                         (data['data'] is Map ? data['data']['token'] : null);
-        
-        final newRefreshToken = data['refreshToken'] ?? 
-                               data['refresh_token'] ?? 
-                               (data['data'] is Map ? data['data']['refreshToken'] : null) ??
-                               refreshToken; // Fallback to same refresh token
-        
+        final newToken = data['accessToken'] ??
+            data['token'] ??
+            (data['data'] is Map ? data['data']['token'] : null);
+
+        final newRefreshToken = data['refreshToken'] ??
+            data['refresh_token'] ??
+            (data['data'] is Map ? data['data']['refreshToken'] : null) ??
+            refreshToken; // Fallback to same refresh token
+
         if (newToken != null) {
           // Store new tokens
-          await _secureStorage.write(key: AppStorageKeys.token, value: newToken);
-          await _secureStorage.write(key: AppStorageKeys.accessToken, value: newToken);
-          
+          await _secureStorage.write(
+              key: AppStorageKeys.token, value: newToken);
+          await _secureStorage.write(
+              key: AppStorageKeys.accessToken, value: newToken);
+
           if (newRefreshToken != null) {
-            await _secureStorage.write(key: AppStorageKeys.refreshToken, value: newRefreshToken);
+            await _secureStorage.write(
+                key: AppStorageKeys.refreshToken, value: newRefreshToken);
           }
-          
+
           _logger.info('Token refreshed successfully');
           // Success, return void
         } else {
-          _logger.error('Missing token in refresh response: ${data}');
-          throw ApiException(Constants.errorAuth, statusCode: response.statusCode);
+          _logger.error('Missing token in refresh response: $data');
+          throw ApiException(Constants.errorAuth,
+              statusCode: response.statusCode);
         }
       } else {
         _logger.error('Invalid token refresh response: ${response.statusCode}');
-        throw ApiException(
-          response.data?['message'] ?? Constants.errorAuth,
-          statusCode: response.statusCode
-        );
+        throw ApiException(response.data?['message'] ?? Constants.errorAuth,
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       // Handle specific error cases for logging, but throw standardized error via helper
@@ -301,70 +312,71 @@ class AuthService {
         await _secureStorage.delete(key: AppStorageKeys.token);
         await _secureStorage.delete(key: AppStorageKeys.accessToken);
         await _secureStorage.delete(key: AppStorageKeys.refreshToken);
-      } else if (e.type == DioExceptionType.connectionTimeout || 
-                e.type == DioExceptionType.sendTimeout ||
-                e.type == DioExceptionType.receiveTimeout) {
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
         _logger.error('Token refresh timeout: ${e.message}');
       } else {
-        _logger.error('Token refresh Dio error: ${e.message}, status: ${e.response?.statusCode}');
+        _logger.error(
+            'Token refresh Dio error: ${e.message}, status: ${e.response?.statusCode}');
         _logger.error('Response data: ${e.response?.data}');
       }
-      _handleDioError(e, defaultMessage: Constants.errorAuth); // Centralized handling
+      _handleDioError(e,
+          defaultMessage: Constants.errorAuth); // Centralized handling
       rethrow;
     } catch (e, s) {
       _logger.error('Unexpected error during token refresh: $e', e, s);
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Handle auth response and store tokens
   Future<void> _handleAuthResponse(Map<String, dynamic> data) async {
     _logger.debug('Handling auth response');
-    
+
     // Extract tokens from response
     String? token;
     String? refreshToken;
     Map<String, dynamic>? userData;
-    
+
     // Check if the data is nested in a 'data' field
-    final Map<String, dynamic> dataToUse = data['data'] is Map ? 
-                                          data['data'] as Map<String, dynamic> : 
-                                          data;
-    
+    final Map<String, dynamic> dataToUse =
+        data['data'] is Map ? data['data'] as Map<String, dynamic> : data;
+
     // Extract token - check multiple possible field names
     token = dataToUse['token'] as String?;
-    if (token == null) {
-      token = dataToUse['accessToken'] as String?;
-    }
-    
+    token ??= dataToUse['accessToken'] as String?;
+
     // Extract refresh token - check multiple possible field names
     refreshToken = dataToUse['refresh_token'] as String?;
-    if (refreshToken == null) {
-      refreshToken = dataToUse['refreshToken'] as String?;
-    }
-    
+    refreshToken ??= dataToUse['refreshToken'] as String?;
+
     // Extract user data
     userData = dataToUse['user'] as Map<String, dynamic>?;
-    
+
     _logger.debug('Extracted token: ${token != null ? 'yes' : 'no'}');
-    _logger.debug('Extracted refresh token: ${refreshToken != null ? 'yes' : 'no'}');
+    _logger.debug(
+        'Extracted refresh token: ${refreshToken != null ? 'yes' : 'no'}');
     _logger.debug('Extracted user data: ${userData != null ? 'yes' : 'no'}');
-    
+
     if (token != null) {
       await _secureStorage.write(key: AppStorageKeys.token, value: token);
       await _secureStorage.write(key: AppStorageKeys.accessToken, value: token);
       _logger.debug('Token stored in secure storage');
     }
-    
+
     if (refreshToken != null) {
-      await _secureStorage.write(key: AppStorageKeys.refreshToken, value: refreshToken);
+      await _secureStorage.write(
+          key: AppStorageKeys.refreshToken, value: refreshToken);
       _logger.debug('Refresh token stored in secure storage');
     }
-    
+
     if (userData != null) {
       await _prefs.setString(AppStorageKeys.userId, userData['id'].toString());
-      await _prefs.setString(AppStorageKeys.userEmail, userData['email'].toString());
-      await _prefs.setString(AppStorageKeys.userName, userData['name']?.toString() ?? '');
+      await _prefs.setString(
+          AppStorageKeys.userEmail, userData['email'].toString());
+      await _prefs.setString(
+          AppStorageKeys.userName, userData['name']?.toString() ?? '');
       _logger.debug('User data stored in preferences');
     }
   }
@@ -379,14 +391,16 @@ class AuthService {
           AppRequestKeys.email: email,
         },
       );
-      
+
       // Only 200 is success for this endpoint usually
       if (response.statusCode != AppStatusCodes.success) {
-         _logger.warn('Request password reset failed with status: ${response.statusCode}, data: ${response.data}');
-         String errorMessage = response.data?['message'] ?? 'Password reset request failed';
-         if (response.statusCode == 404) {
-           errorMessage = 'Email not found.';
-         }
+        _logger.warn(
+            'Request password reset failed with status: ${response.statusCode}, data: ${response.data}');
+        String errorMessage =
+            response.data?['message'] ?? 'Password reset request failed';
+        if (response.statusCode == 404) {
+          errorMessage = 'Email not found.';
+        }
         throw ApiException(errorMessage, statusCode: response.statusCode);
       }
       _logger.info('Password reset request sent successfully for $email');
@@ -400,9 +414,10 @@ class AuthService {
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Confirm password reset with token - Returns void on success, throws ApiException on failure
-  Future<void> confirmPasswordReset(String email, String token, String newPassword) async {
+  Future<void> confirmPasswordReset(
+      String email, String token, String newPassword) async {
     _logger.info('Confirming password reset for email: $email');
     try {
       final response = await _dio.post(
@@ -413,16 +428,19 @@ class AuthService {
           AppRequestKeys.password: newPassword,
         },
       );
-      
+
       // Only 200 is success for this endpoint usually
       if (response.statusCode != AppStatusCodes.success) {
-         _logger.warn('Confirm password reset failed with status: ${response.statusCode}, data: ${response.data}');
-         String errorMessage = response.data?['message'] ?? 'Failed to reset password';
-         if (response.statusCode == 400) { 
-           errorMessage = response.data?['message'] ?? 'Invalid token or password criteria not met.'; 
-         } else if (response.statusCode == 404) {
-           errorMessage = 'Email or token not found.';
-         }
+        _logger.warn(
+            'Confirm password reset failed with status: ${response.statusCode}, data: ${response.data}');
+        String errorMessage =
+            response.data?['message'] ?? 'Failed to reset password';
+        if (response.statusCode == 400) {
+          errorMessage = response.data?['message'] ??
+              'Invalid token or password criteria not met.';
+        } else if (response.statusCode == 404) {
+          errorMessage = 'Email or token not found.';
+        }
         throw ApiException(errorMessage, statusCode: response.statusCode);
       }
       _logger.info('Password reset successful for email: $email');
@@ -442,33 +460,36 @@ class AuthService {
     _logger.info('Getting current user...');
     try {
       final token = await getAccessToken();
-      
+
       if (token == null || token.isEmpty) {
         _logger.error('No auth token available for getCurrentUser request');
         throw Exception('Authentication required: No token available');
       }
-      
-      _logger.debug('Making request to ${AppConfig.apiBaseUrl}/api/users/me with token: ${token.length > 15 ? token.substring(0, 15) + '...' : token}');
-      
+
+      _logger.debug(
+          'Making request to ${AppConfig.apiBaseUrl}/api/users/me with token: ${token.length > 15 ? '${token.substring(0, 15)}...' : token}');
+
       // Add explicit headers for this specific request to ensure token is included
       final options = Options(
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
-      
-      final response = await _dio.get('${AppConfig.apiBaseUrl}/api/users/me', options: options);
+
+      final response = await _dio.get('${AppConfig.apiBaseUrl}/api/users/me',
+          options: options);
       _logger.debug('Get user response status: ${response.statusCode}');
-      
+
       if (response.statusCode == 200 && response.data['user'] != null) {
-        _logger.info('Successfully retrieved user: ${response.data['user']['email']}');
+        _logger.info(
+            'Successfully retrieved user: ${response.data['user']['email']}');
         return User.fromJson(response.data['user']);
       } else {
-        _logger.warn('Get user failed with status: ${response.statusCode}, data: ${response.data}');
+        _logger.warn(
+            'Get user failed with status: ${response.statusCode}, data: ${response.data}');
         throw ApiException(
-          response.data?['message'] ?? Constants.errorFailedToLoadProfile,
-          statusCode: response.statusCode
-        );
+            response.data?['message'] ?? Constants.errorFailedToLoadProfile,
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Get user Dio error: ${e.message}');
@@ -493,11 +514,11 @@ class AuthService {
         _logger.info('Successfully updated profile');
         return User.fromJson(response.data['user']);
       } else {
-        _logger.warn('Update profile failed with status: ${response.statusCode}, data: ${response.data}');
+        _logger.warn(
+            'Update profile failed with status: ${response.statusCode}, data: ${response.data}');
         throw ApiException(
-          response.data?['message'] ?? Constants.errorProfileUpdateFailed,
-          statusCode: response.statusCode
-        );
+            response.data?['message'] ?? Constants.errorProfileUpdateFailed,
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Update profile Dio error: ${e.message}');
@@ -516,18 +537,17 @@ class AuthService {
       final response = await _dio.delete(
         '${AppConfig.apiBaseUrl}/api/users/me',
       );
-      
+
       if (response.statusCode == 200) {
         _logger.info('Account deleted successfully');
         // Clear all user data after successful deletion
         await logout();
         return true;
       } else {
-        _logger.warn('Account deletion failed with status: ${response.statusCode}');
-        throw ApiException(
-          response.data?['message'] ?? Constants.errorGeneric, 
-          statusCode: response.statusCode
-        );
+        _logger.warn(
+            'Account deletion failed with status: ${response.statusCode}');
+        throw ApiException(response.data?['message'] ?? Constants.errorGeneric,
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error during account deletion: ${e.message}');
@@ -546,16 +566,16 @@ class AuthService {
       final response = await _dio.post(
         '${AppConfig.apiBaseUrl}/api/users/verify/request',
       );
-      
+
       if (response.statusCode == 200) {
         _logger.info('Verification request sent successfully');
         return true;
       } else {
-        _logger.warn('Verification request failed with status: ${response.statusCode}');
+        _logger.warn(
+            'Verification request failed with status: ${response.statusCode}');
         throw ApiException(
-          response.data?['message'] ?? 'Verification request failed', 
-          statusCode: response.statusCode
-        );
+            response.data?['message'] ?? 'Verification request failed',
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error during verification request: ${e.message}');
@@ -566,7 +586,7 @@ class AuthService {
       throw ApiException(Constants.errorGeneric);
     }
   }
-  
+
   // Confirm verification with token
   Future<bool> confirmVerification(String token) async {
     _logger.info('Confirming account verification');
@@ -575,16 +595,16 @@ class AuthService {
         '${AppConfig.apiBaseUrl}/api/users/verify/confirm',
         data: {'token': token},
       );
-      
+
       if (response.statusCode == 200) {
         _logger.info('Verification confirmed successfully');
         return true;
       } else {
-        _logger.warn('Verification confirmation failed with status: ${response.statusCode}');
+        _logger.warn(
+            'Verification confirmation failed with status: ${response.statusCode}');
         throw ApiException(
-          response.data?['message'] ?? 'Verification confirmation failed', 
-          statusCode: response.statusCode
-        );
+            response.data?['message'] ?? 'Verification confirmation failed',
+            statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error during verification confirmation: ${e.message}');
@@ -602,8 +622,11 @@ class AuthService {
     int? statusCode = e.response?.statusCode;
 
     // Prefer server message if available
-    final serverMessage = e.response?.data?['message'] ?? e.response?.data?['error'];
-    if (serverMessage != null && serverMessage is String && serverMessage.isNotEmpty) {
+    final serverMessage =
+        e.response?.data?['message'] ?? e.response?.data?['error'];
+    if (serverMessage != null &&
+        serverMessage is String &&
+        serverMessage.isNotEmpty) {
       errorMessage = serverMessage;
     } else {
       // Fallback to type/status code based messages
@@ -629,10 +652,12 @@ class AuthService {
               errorMessage = Constants.errorNotFound;
               break;
             case 409: // Conflict
-              errorMessage = serverMessage ?? Constants.errorConflict; // Need a conflict constant
+              errorMessage = serverMessage ??
+                  Constants.errorConflict; // Need a conflict constant
               break;
             case 429:
-              errorMessage = Constants.errorRateLimit; // Need a rate limit constant
+              errorMessage =
+                  Constants.errorRateLimit; // Need a rate limit constant
               break;
             case 500:
             case 502:
@@ -656,7 +681,8 @@ class AuthService {
       }
     }
 
-    _logger.error('API Error ($statusCode): $errorMessage', e); // Log original DioException
+    _logger.error('API Error ($statusCode): $errorMessage',
+        e); // Log original DioException
     throw ApiException(errorMessage, statusCode: statusCode);
   }
 }

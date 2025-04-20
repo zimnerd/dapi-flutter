@@ -5,14 +5,14 @@ class LoadingOverlay extends StatelessWidget {
   final Widget child;
   final bool isLoading;
   final String? message;
-  
+
   const LoadingOverlay({
-    Key? key,
+    super.key,
     required this.child,
     required this.isLoading,
     this.message,
-  }) : super(key: key);
-  
+  });
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -32,7 +32,8 @@ class LoadingOverlay extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                       if (message != null) ...[
                         const SizedBox(height: 16.0),
@@ -54,7 +55,7 @@ class LoadingOverlay extends StatelessWidget {
       ],
     );
   }
-  
+
   // Convenience method to show a loading overlay
   static Future<T> show<T>({
     required BuildContext context,
@@ -76,7 +77,8 @@ class LoadingOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.primary),
                   ),
                   if (message != null) ...[
                     const SizedBox(height: 16.0),
@@ -96,23 +98,23 @@ class LoadingOverlay extends StatelessWidget {
         ),
       ),
     );
-    
+
     Overlay.of(context).insert(overlayEntry);
-    
+
     try {
       // Execute the future
       final result = await future();
-      
+
       // Remove loading indicator
       overlayEntry.remove();
-      
+
       return result;
     } catch (e) {
       // Remove loading indicator
       overlayEntry.remove();
-      
+
       // Rethrow the error
       rethrow;
     }
   }
-} 
+}

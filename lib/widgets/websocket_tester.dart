@@ -10,7 +10,7 @@ import '../config/app_config.dart';
 /// A widget for testing WebSocket connections
 /// This widget can be embedded in a screen to verify WebSocket functionality
 class WebSocketTester extends ConsumerStatefulWidget {
-  const WebSocketTester({Key? key}) : super(key: key);
+  const WebSocketTester({super.key});
 
   @override
   ConsumerState<WebSocketTester> createState() => _WebSocketTesterState();
@@ -22,10 +22,10 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _recipientController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   // Subscription management
   late List<StreamSubscription> _subscriptions;
-  
+
   @override
   void initState() {
     super.initState();
@@ -36,57 +36,43 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
   void _setupListeners() {
     // Get ChatService instance
     final chatService = ref.read(chatServiceProvider);
-    
+
     // Listen for new messages
-    _subscriptions.add(
-      chatService.onNewMessage.listen((data) {
-        _addLog('Message received: ${data.toString()}');
-      })
-    );
-    
+    _subscriptions.add(chatService.onNewMessage.listen((data) {
+      _addLog('Message received: ${data.toString()}');
+    }));
+
     // Listen for typing indicators
-    _subscriptions.add(
-      chatService.onTypingEvent.listen((data) {
-        _addLog('Typing event: ${data.toString()}');
-      })
-    );
-    
+    _subscriptions.add(chatService.onTypingEvent.listen((data) {
+      _addLog('Typing event: ${data.toString()}');
+    }));
+
     // Listen for read receipts
-    _subscriptions.add(
-      chatService.onReadReceipt.listen((data) {
-        _addLog('Read receipt: ${data.toString()}');
-      })
-    );
-    
+    _subscriptions.add(chatService.onReadReceipt.listen((data) {
+      _addLog('Read receipt: ${data.toString()}');
+    }));
+
     // Listen for online status updates
-    _subscriptions.add(
-      chatService.onOnlineStatus.listen((data) {
-        _addLog('Online status update: ${data.toString()}');
-      })
-    );
-    
+    _subscriptions.add(chatService.onOnlineStatus.listen((data) {
+      _addLog('Online status update: ${data.toString()}');
+    }));
+
     // Listen for errors
-    _subscriptions.add(
-      chatService.onError.listen((error) {
-        _addLog('ERROR: $error');
-      })
-    );
-    
+    _subscriptions.add(chatService.onError.listen((error) {
+      _addLog('ERROR: $error');
+    }));
+
     // Listen for group messages
-    _subscriptions.add(
-      chatService.onGroupMessage.listen((data) {
-        _addLog('Group message: ${data.toString()}');
-      })
-    );
-    
+    _subscriptions.add(chatService.onGroupMessage.listen((data) {
+      _addLog('Group message: ${data.toString()}');
+    }));
+
     // Listen for room updates
-    _subscriptions.add(
-      chatService.onRoomUpdate.listen((data) {
-        _addLog('Room update: ${data.toString()}');
-      })
-    );
+    _subscriptions.add(chatService.onRoomUpdate.listen((data) {
+      _addLog('Room update: ${data.toString()}');
+    }));
   }
-  
+
   void _addLog(String log) {
     setState(() {
       _logs.add('[${DateTime.now().toIso8601String()}] $log');
@@ -95,7 +81,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
         _logs.removeAt(0);
       }
     });
-    
+
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -107,38 +93,39 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
       }
     });
   }
-  
+
   void _connectWebSocket() async {
     final chatService = ref.read(chatServiceProvider);
-    
+
     _addLog('Initializing WebSocket...');
     await chatService.initSocket();
-    
+
     _addLog('Connecting to WebSocket server at ${AppConfig.socketUrl}');
     chatService.connect();
-    
+
     setState(() {
       _isConnected = chatService.isConnected;
     });
-    
+
     // Check status after delay to allow connection
     Future.delayed(Duration(seconds: 2), () {
       setState(() {
         _isConnected = chatService.isConnected;
       });
-      _addLog('Connection status after delay: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
+      _addLog(
+          'Connection status after delay: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
     });
   }
-  
+
   // New method to check token info
   void _checkAuthToken() async {
     try {
       final authService = ref.read(authServiceProvider);
       final token = await authService.getAccessToken();
-      
+
       if (token != null) {
         _addLog('🔐 Auth token found: ${token.substring(0, 10)}...');
-        
+
         // Check token expiration if possible
         try {
           final parts = token.split('.');
@@ -147,13 +134,13 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
             final normalized = base64Url.normalize(payload);
             final decoded = utf8.decode(base64Url.decode(normalized));
             final Map<String, dynamic> data = jsonDecode(decoded);
-            
+
             if (data.containsKey('exp')) {
               final exp = data['exp'];
               final expDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
               final now = DateTime.now();
               final isExpired = expDate.isBefore(now);
-              
+
               _addLog('Token expiration: ${expDate.toString()}');
               _addLog('Token status: ${isExpired ? "EXPIRED ❌" : "VALID ✅"}');
             } else {
@@ -170,20 +157,20 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
       _addLog('❌ Error checking token: $e');
     }
   }
-  
+
   // Force reconnect with fresh token
   void _forceReconnect() async {
     _addLog('🔄 Forcing reconnection with fresh token...');
-    
+
     final chatService = ref.read(chatServiceProvider);
     final authService = ref.read(authServiceProvider);
-    
+
     // Disconnect current socket
     if (chatService.isConnected) {
       _addLog('Disconnecting current socket...');
       chatService.disconnect();
     }
-    
+
     // Get a fresh token if possible
     try {
       // Refresh token if you have a refresh method
@@ -193,64 +180,66 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
     } catch (e) {
       _addLog('⚠️ Token refresh failed: $e');
     }
-    
+
     // Reinitialize and connect
     await chatService.initSocket();
     chatService.connect();
-    
+
     _addLog('Reconnection attempt complete');
-    
+
     // Check status after delay
     Future.delayed(Duration(seconds: 2), () {
       setState(() {
         _isConnected = chatService.isConnected;
       });
-      _addLog('Connection status after reconnect: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
+      _addLog(
+          'Connection status after reconnect: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
     });
   }
-  
+
   void _disconnectWebSocket() {
     final chatService = ref.read(chatServiceProvider);
     chatService.disconnect();
-    
+
     _addLog('Disconnected from WebSocket server');
     setState(() {
       _isConnected = false;
     });
   }
-  
+
   void _sendTestMessage() {
     if (_recipientController.text.isEmpty || _messageController.text.isEmpty) {
       _addLog('Error: Please enter recipient ID and message text');
       return;
     }
-    
+
     final chatService = ref.read(chatServiceProvider);
     final recipientId = _recipientController.text;
     final messageText = _messageController.text;
-    
+
     chatService.sendPrivateMessage(recipientId, messageText);
     _addLog('Sent message to $recipientId: $messageText');
     _messageController.clear();
   }
-  
+
   void _updateOnlineStatus(bool isOnline) {
     final chatService = ref.read(chatServiceProvider);
     chatService.updateOnlineStatus(isOnline);
     _addLog('Updated online status: $isOnline');
   }
-  
+
   void _checkConnectionStatus() {
     final chatService = ref.read(chatServiceProvider);
     final isConnected = chatService.isConnected;
-    
+
     setState(() {
       _isConnected = isConnected;
     });
-    
-    _addLog('Connection status check: ${isConnected ? 'Connected' : 'Disconnected'}');
+
+    _addLog(
+        'Connection status check: ${isConnected ? 'Connected' : 'Disconnected'}');
   }
-  
+
   @override
   void dispose() {
     // Cancel all subscriptions
@@ -262,7 +251,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -278,7 +267,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            
+
             // Connection status
             Row(
               children: [
@@ -302,7 +291,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Connect/Disconnect buttons
             Row(
               children: [
@@ -321,7 +310,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Additional connection troubleshooting buttons
             Text(
               'Troubleshooting',
@@ -348,7 +337,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Online status buttons
             if (_isConnected) ...[
               Text(
@@ -377,7 +366,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
             // Test message form
             if (_isConnected) ...[
               Text(
@@ -413,7 +402,7 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
             // Log viewer
             Text(
               'Event Logs',
@@ -448,4 +437,4 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
       ),
     );
   }
-} 
+}

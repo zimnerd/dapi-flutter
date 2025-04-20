@@ -10,16 +10,16 @@ class ConversationListItem extends StatelessWidget {
   final String currentUserId;
 
   const ConversationListItem({
-    Key? key,
+    super.key,
     required this.conversation,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final otherUser = conversation.getOtherParticipant(currentUserId);
     final hasUnread = conversation.unreadCount > 0;
-    
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -57,7 +57,8 @@ class ConversationListItem extends StatelessWidget {
                           otherUser.name,
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                hasUnread ? FontWeight.bold : FontWeight.normal,
                             color: AppColors.textPrimary,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -67,10 +68,11 @@ class ConversationListItem extends StatelessWidget {
                         _formatDate(conversation.lastMessage?.timestamp),
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasUnread 
-                              ? AppColors.primary 
+                          color: hasUnread
+                              ? AppColors.primary
                               : AppColors.textSecondary,
-                          fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              hasUnread ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -80,13 +82,15 @@ class ConversationListItem extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.lastMessage?.text ?? 'Start a conversation!',
+                          conversation.lastMessage?.text ??
+                              'Start a conversation!',
                           style: TextStyle(
                             fontSize: 14,
-                            color: hasUnread 
-                                ? AppColors.textPrimary 
+                            color: hasUnread
+                                ? AppColors.textPrimary
                                 : AppColors.textSecondary,
-                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                hasUnread ? FontWeight.bold : FontWeight.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -160,12 +164,12 @@ class ConversationListItem extends StatelessWidget {
     if (date == null) {
       return '';
     }
-    
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final dateToCheck = DateTime(date.year, date.month, date.day);
-    
+
     if (dateToCheck == today) {
       return DateFormat('h:mm a').format(date);
     } else if (dateToCheck == yesterday) {
@@ -176,4 +180,4 @@ class ConversationListItem extends StatelessWidget {
       return DateFormat('MM/dd/yyyy').format(date);
     }
   }
-} 
+}

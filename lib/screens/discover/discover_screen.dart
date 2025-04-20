@@ -16,16 +16,17 @@ final profileFiltersProvider = StateProvider<Map<String, dynamic>>((ref) {
 });
 
 class DiscoverScreen extends ConsumerStatefulWidget {
-  const DiscoverScreen({Key? key}) : super(key: key);
+  const DiscoverScreen({super.key});
 
   @override
   ConsumerState<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProviderStateMixin {
+class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
-  
+
   List<Profile> _profiles = [];
   bool _isLoading = false;
   String? _error;
@@ -39,17 +40,17 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 1.0, end: 0.2).animate(_controller);
-    
+
     // Wrap autoLogin in Future.microtask to avoid Riverpod state modification during build
     Future.microtask(() => _autoLogin());
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Filter listener will be automatically removed when the widget is disposed
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
@@ -72,7 +73,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
     try {
       final profileService = ref.read(profileServiceProvider);
       final profiles = await profileService.getDiscoverProfiles();
-      
+
       if (mounted) {
         setState(() {
           _profiles = profiles;
@@ -97,7 +98,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
 
   void _handleLike() {
     if (_currentProfileIndex >= _profiles.length) return;
-    
+
     // Apply animation
     _controller.forward().then((_) {
       if (!mounted) return;
@@ -106,7 +107,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
       });
       _controller.reset();
     });
-    
+
     // In a real app, send like to API
     final currentProfile = _profiles[_currentProfileIndex];
     print('Liked profile: ${currentProfile.name}');
@@ -114,7 +115,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
 
   void _handleDislike() {
     if (_currentProfileIndex >= _profiles.length) return;
-    
+
     // Apply animation
     _controller.forward().then((_) {
       if (!mounted) return;
@@ -123,7 +124,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
       });
       _controller.reset();
     });
-    
+
     // In a real app, send dislike to API
     final currentProfile = _profiles[_currentProfileIndex];
     print('Disliked profile: ${currentProfile.name}');
@@ -137,7 +138,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with TickerProv
         _handleFilterUpdate();
       }
     });
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discover'),

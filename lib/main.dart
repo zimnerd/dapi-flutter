@@ -32,36 +32,38 @@ final appLogger = Logger('App');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   appLogger.info('Application starting...');
-  
+
   // Add retry logic for SharedPreferences initialization
   SharedPreferences? prefs;
   int maxRetries = 3;
   int retryCount = 0;
-  
+
   while (prefs == null && retryCount < maxRetries) {
     try {
       prefs = await SharedPreferences.getInstance();
       appLogger.debug('⟹ [Main] SharedPreferences initialized successfully');
     } catch (e) {
       retryCount++;
-      appLogger.warn('⟹ [Main] Error initializing SharedPreferences: $e (Attempt $retryCount/$maxRetries)');
+      appLogger.warn(
+          '⟹ [Main] Error initializing SharedPreferences: $e (Attempt $retryCount/$maxRetries)');
       await Future.delayed(Duration(milliseconds: 500)); // Wait before retry
     }
   }
-  
+
   if (prefs == null) {
-    appLogger.warn('⟹ [Main] Failed to initialize SharedPreferences after $maxRetries attempts, using MockSharedPreferences as fallback');
+    appLogger.warn(
+        '⟹ [Main] Failed to initialize SharedPreferences after $maxRetries attempts, using MockSharedPreferences as fallback');
     // Use the mock implementation as a fallback
     prefs = MockSharedPreferences();
   }
-  
+
   // Create a custom ProviderContainer to override the SharedPreferences provider
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
   );
-  
+
   // Run the app within an UncontrolledProviderScope using our custom container
   runApp(
     UncontrolledProviderScope(
@@ -73,12 +75,12 @@ void main() async {
 }
 
 class MyApp extends ConsumerWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     appLogger.debug('Building MyApp widget');
-    
+
     final authState = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
 
@@ -101,9 +103,11 @@ class MyApp extends ConsumerWidget {
         '/discover': (context) => DiscoverScreen(),
         '/matches': (context) => MatchesScreen(),
         '/settings': (context) => SettingsScreen(),
-        '/reset-password-confirmation': (context) => ResetPasswordConfirmationScreen(),
+        '/reset-password-confirmation': (context) =>
+            ResetPasswordConfirmationScreen(),
         '/websocket-test': (context) => WebSocketTestScreen(),
-        '/websocket_tester': (context) => const WebSocketTester(), // Add route for WebSocketTester
+        '/websocket_tester': (context) =>
+            const WebSocketTester(), // Add route for WebSocketTester
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/conversation') {
@@ -129,8 +133,9 @@ class MyApp extends ConsumerWidget {
   }
 
   Widget _buildHome(WidgetRef ref, AuthState authState) {
-    appLogger.debug('Building home screen based on auth state: ${authState.status}');
-    
+    appLogger
+        .debug('Building home screen based on auth state: ${authState.status}');
+
     switch (authState.status) {
       case AuthStatus.authenticated:
         appLogger.info('User is authenticated, showing HomeScreen');

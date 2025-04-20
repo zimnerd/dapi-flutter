@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../models/profile.dart';
 
 /// Enum to represent the different swipe directions
@@ -35,9 +34,9 @@ class ProfileAction {
       id: json['id'] ?? '',
       profileId: json['profile_id'] ?? '',
       actionType: json['action_type'] ?? '',
-      timestamp: json['timestamp'] != null 
-        ? DateTime.parse(json['timestamp']) 
-        : DateTime.now(),
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'])
+          : DateTime.now(),
     );
   }
 
@@ -75,4 +74,4 @@ class ProfileAction {
         return null;
     }
   }
-} 
+}

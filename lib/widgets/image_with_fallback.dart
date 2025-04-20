@@ -9,25 +9,25 @@ class ImageWithFallback extends StatelessWidget {
   final BoxFit fit;
   final String? fallbackAsset;
   final BorderRadius? borderRadius;
-  
+
   final Logger _logger = Logger('Image');
-  
+
   ImageWithFallback({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
     this.fallbackAsset,
     this.borderRadius,
-  }) : super(key: key);
-  
+  });
+
   @override
   Widget build(BuildContext context) {
     if (imageUrl.isEmpty) {
       return _buildFallbackWidget();
     }
-    
+
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: CachedNetworkImage(
@@ -44,11 +44,12 @@ class ImageWithFallback extends StatelessWidget {
         cacheManager: null, // Use default cache manager
         fadeOutDuration: const Duration(milliseconds: 300),
         fadeInDuration: const Duration(milliseconds: 300),
-        memCacheWidth: width?.toInt(), // Resize in memory for better performance
+        memCacheWidth:
+            width?.toInt(), // Resize in memory for better performance
       ),
     );
   }
-  
+
   Widget _buildLoadingWidget() {
     return Container(
       width: width,
@@ -62,7 +63,7 @@ class ImageWithFallback extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildFallbackWidget() {
     if (fallbackAsset != null) {
       return ClipRRect(
@@ -75,7 +76,7 @@ class ImageWithFallback extends StatelessWidget {
         ),
       );
     }
-    
+
     return Container(
       width: width,
       height: height,
@@ -106,4 +107,4 @@ class ImageWithFallback extends StatelessWidget {
       ),
     );
   }
-} 
+}

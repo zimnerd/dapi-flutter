@@ -8,10 +8,10 @@ class MatchCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const MatchCard({
-    Key? key,
+    super.key,
     required this.profile,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,8 @@ class MatchCard extends StatelessWidget {
           Expanded(
             flex: 4,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12.0)),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -67,7 +68,8 @@ class MatchCard extends StatelessWidget {
           ),
           // Info section at the bottom - more compact now
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min, // Use minimum space
@@ -106,8 +108,10 @@ class MatchCard extends StatelessWidget {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 0), // Minimal padding
-                      minimumSize: const Size.fromHeight(30), // Ensure minimum height
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 0), // Minimal padding
+                      minimumSize:
+                          const Size.fromHeight(30), // Ensure minimum height
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
@@ -125,7 +129,7 @@ class MatchCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildPlaceholderImage() {
     return Container(
       color: Colors.grey[300],
@@ -138,4 +142,4 @@ class MatchCard extends StatelessWidget {
       ),
     );
   }
-} 
+}

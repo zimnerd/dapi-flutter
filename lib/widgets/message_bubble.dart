@@ -8,25 +8,23 @@ class MessageBubble extends StatelessWidget {
   final bool isFromCurrentUser;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isFromCurrentUser,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        mainAxisAlignment: isFromCurrentUser 
-            ? MainAxisAlignment.end 
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isFromCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Time stamp for received messages (left side)
-          if (!isFromCurrentUser)
-            _buildTimestamp(),
-            
+          if (!isFromCurrentUser) _buildTimestamp(),
+
           // Message bubble
           Flexible(
             child: Container(
@@ -38,9 +36,7 @@ class MessageBubble extends StatelessWidget {
                 vertical: 10.0,
               ),
               decoration: BoxDecoration(
-                color: isFromCurrentUser 
-                    ? AppColors.primary 
-                    : Colors.grey[200],
+                color: isFromCurrentUser ? AppColors.primary : Colors.grey[200],
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(!isFromCurrentUser ? 4 : 18),
                   topRight: Radius.circular(isFromCurrentUser ? 4 : 18),
@@ -55,9 +51,7 @@ class MessageBubble extends StatelessWidget {
                   Text(
                     message.text,
                     style: TextStyle(
-                      color: isFromCurrentUser 
-                          ? Colors.white 
-                          : Colors.black87,
+                      color: isFromCurrentUser ? Colors.white : Colors.black87,
                       fontSize: 16,
                     ),
                   ),
@@ -65,7 +59,7 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Status indicators and time stamp for sent messages (right side)
           if (isFromCurrentUser)
             Row(
@@ -83,7 +77,7 @@ class MessageBubble extends StatelessWidget {
   Widget _buildStatusIndicator() {
     // Only show status for sent messages
     if (!isFromCurrentUser) return const SizedBox();
-    
+
     switch (message.status) {
       case MessageStatus.sending:
         return const SizedBox(
@@ -135,4 +129,4 @@ class MessageBubble extends StatelessWidget {
       ),
     );
   }
-} 
+}

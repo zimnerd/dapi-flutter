@@ -5,7 +5,7 @@ import '../../services/subscription_service.dart';
 import '../../utils/logger.dart';
 
 class PremiumScreen extends ConsumerStatefulWidget {
-  const PremiumScreen({Key? key}) : super(key: key);
+  const PremiumScreen({super.key});
 
   @override
   ConsumerState<PremiumScreen> createState() => _PremiumScreenState();
@@ -13,7 +13,7 @@ class PremiumScreen extends ConsumerStatefulWidget {
 
 class _PremiumScreenState extends ConsumerState<PremiumScreen> {
   bool _isLoading = false;
-  
+
   Future<void> _subscribeToPremium() async {
     setState(() => _isLoading = true);
     try {
@@ -21,7 +21,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
       final subscriptionService = SubscriptionService();
       await subscriptionService.subscribeToPremium('monthly');
       print('⟹ [PremiumScreen] Premium subscription successful');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -51,7 +51,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
   Widget build(BuildContext context) {
     final isPremium = ref.watch(premiumProvider);
     final hasFeature = ref.watch(premiumFeaturesProvider('unlimited_swipes'));
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Premium Membership'),
@@ -84,7 +84,9 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     const SizedBox(height: 16.0),
                     Text(
                       isPremium.when(
-                        data: (value) => value ? 'You are a Premium Member!' : 'Upgrade to Premium',
+                        data: (value) => value
+                            ? 'You are a Premium Member!'
+                            : 'Upgrade to Premium',
                         loading: () => 'Loading...',
                         error: (_, __) => 'Upgrade to Premium',
                       ),
@@ -101,7 +103,8 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                             ? 'Enjoy all the exclusive features'
                             : 'Unlock the full potential of your dating experience',
                         loading: () => 'Loading your premium status...',
-                        error: (_, __) => 'Unlock the full potential of your dating experience',
+                        error: (_, __) =>
+                            'Unlock the full potential of your dating experience',
                       ),
                       style: const TextStyle(
                         color: Colors.white,
@@ -112,9 +115,9 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24.0),
-              
+
               // Features
               const Text(
                 'Premium Features',
@@ -124,44 +127,46 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                 ),
               ),
               const SizedBox(height: 16.0),
-              
+
               _buildFeatureCard(
                 icon: Icons.autorenew,
                 title: 'Unlimited Swipes',
                 description: 'Swipe as much as you want without daily limits',
                 isActive: hasFeature,
               ),
-              
+
               _buildFeatureCard(
                 icon: Icons.visibility,
                 title: 'See Who Likes You',
-                description: 'Discover users who have already liked your profile',
+                description:
+                    'Discover users who have already liked your profile',
                 isActive: ref.watch(premiumFeaturesProvider('see_likes')),
               ),
-              
+
               _buildFeatureCard(
                 icon: Icons.location_on,
                 title: 'Global Mode',
                 description: 'Match with people from anywhere in the world',
                 isActive: ref.watch(premiumFeaturesProvider('global_mode')),
               ),
-              
+
               _buildFeatureCard(
                 icon: Icons.history,
                 title: 'Rewind Swipes',
                 description: 'Go back to profiles you accidentally swiped on',
                 isActive: ref.watch(premiumFeaturesProvider('rewind')),
               ),
-              
+
               _buildFeatureCard(
                 icon: Icons.star,
                 title: 'Priority Matches',
                 description: 'Get more visibility and match faster',
-                isActive: ref.watch(premiumFeaturesProvider('priority_matching')),
+                isActive:
+                    ref.watch(premiumFeaturesProvider('priority_matching')),
               ),
-              
+
               const SizedBox(height: 24.0),
-              
+
               // Pricing
               if (isPremium is AsyncData && isPremium.value == false) ...[
                 const Text(
@@ -172,7 +177,6 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   ),
                 ),
                 const SizedBox(height: 16.0),
-                
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
@@ -220,7 +224,8 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Text(
@@ -234,9 +239,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     ],
                   ),
                 ),
-                
                 const SizedBox(height: 16.0),
-                
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
@@ -295,7 +298,8 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                       ),
                       const SizedBox(height: 16.0),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : () => _subscribeToPremium(),
+                        onPressed:
+                            _isLoading ? null : () => _subscribeToPremium(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5445),
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -309,7 +313,8 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Text(
@@ -324,9 +329,9 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                   ),
                 ),
               ],
-              
+
               const SizedBox(height: 32.0),
-              
+
               // Info text
               const Text(
                 'By subscribing, you agree to our Terms of Service and Privacy Policy. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period.',
@@ -336,7 +341,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 32.0),
             ],
           ),
@@ -366,7 +371,9 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
           Container(
             padding: const EdgeInsets.all(10.0),
             decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFFF5445).withOpacity(0.1) : Colors.grey.shade100,
+              color: isActive
+                  ? const Color(0xFFFF5445).withOpacity(0.1)
+                  : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8.0),
             ),
             child: Icon(
@@ -409,4 +416,4 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
       ),
     );
   }
-} 
+}

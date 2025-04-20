@@ -1,8 +1,7 @@
-import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
 /// A utility class that provides consistent logging throughout the app.
-/// 
+///
 /// This logger uses a structured format to make logs more readable and filterable:
 /// ⟹ [ServiceName] Message
 ///
@@ -10,14 +9,14 @@ import 'package:flutter/foundation.dart';
 /// while also handling debug vs release mode appropriately.
 class Logger {
   final String tag;
-  
+
   // Singleton instance for global access
   static final Logger _instance = Logger._internal('App');
   static Logger get instance => _instance;
-  
+
   // Constructor that allows tag specification for backward compatibility
   Logger([this.tag = 'App']);
-  
+
   // Internal constructor for singleton
   Logger._internal(this.tag);
 
@@ -34,21 +33,21 @@ class Logger {
       print('⟹ [$tag][INFO] $message');
     }
   }
-  
+
   /// Debug level logging
   void debug(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][DEBUG] $message');
     }
   }
-  
+
   /// Warning alias for compatibility
   void warn(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][WARN] $message');
     }
   }
-  
+
   /// Warning method
   void warning(String message) {
     warn(message);
@@ -99,56 +98,56 @@ class Logger {
       print('⟹ [$tag][NAV] $message');
     }
   }
-  
+
   /// Log network related events
   void network(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][NETWORK] $message');
     }
   }
-  
+
   /// Log storage related events
   void storage(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][STORAGE] $message');
     }
   }
-  
+
   /// Log UI related events
   void ui(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][UI] $message');
     }
   }
-  
+
   /// Log analytics related events
   void analytics(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][ANALYTICS] $message');
     }
   }
-  
+
   /// Log verification related events
   void verification(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][VERIFICATION] $message');
     }
   }
-  
+
   /// Log match related events
   void match(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][MATCH] $message');
     }
   }
-  
+
   /// Log settings related events
   void settings(String message) {
     if (kDebugMode) {
       print('⟹ [$tag][SETTINGS] $message');
     }
   }
-  
+
   /// Log lifecycle related events
   void lifecycle(String message) {
     if (kDebugMode) {
@@ -167,7 +166,8 @@ void log(String service, String message) {
   print('⟹ [$service] $message');
 }
 
-void logError(String service, String message, [dynamic error, StackTrace? stackTrace]) {
+void logError(String service, String message,
+    [dynamic error, StackTrace? stackTrace]) {
   print('⟹ [$service] ERROR: $message');
   if (error != null) {
     print('⟹ [$service] Error details: $error');
@@ -190,4 +190,4 @@ void logDebug(String service, String message) {
     print('⟹ [$service] DEBUG: $message');
     return true;
   }());
-} 
+}

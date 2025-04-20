@@ -11,41 +11,42 @@ class MatchAnimation extends StatefulWidget {
   final VoidCallback? onKeepSwipingTap;
 
   const MatchAnimation({
-    Key? key,
+    super.key,
     required this.matchName,
     this.matchPhoto,
     this.onMessageTap,
     this.onKeepSwipingTap,
-  }) : super(key: key);
+  });
 
   @override
   _MatchAnimationState createState() => _MatchAnimationState();
 }
 
-class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProviderStateMixin {
+class _MatchAnimationState extends State<MatchAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
   late Animation<double> _contentOpacityAnimation;
-  
+
   final List<_Particle> _particles = [];
   final int _particleCount = 50;
   final math.Random _random = math.Random();
   bool _particlesGenerated = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Add vibration feedback
     HapticFeedback.mediumImpact();
-    
+
     // Create animation controller
     _controller = AnimationController(
       duration: const Duration(milliseconds: 2500),
       vsync: this,
     );
-    
+
     // Define animations
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -53,47 +54,47 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
         curve: Interval(0.0, 0.3, curve: Curves.easeOutBack),
       ),
     );
-    
+
     _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Interval(0.0, 0.2, curve: Curves.easeOut),
       ),
     );
-    
+
     _contentOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Interval(0.3, 0.6, curve: Curves.easeOut),
       ),
     );
-    
+
     // We'll generate particles in didChangeDependencies instead
-    
+
     // Start animation immediately
     _controller.forward();
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Generate particles only once after the widget is fully initialized
     if (!_particlesGenerated) {
       _generateParticles();
       _particlesGenerated = true;
     }
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   void _generateParticles() {
     final size = MediaQuery.of(context).size;
-    
+
     for (int i = 0; i < _particleCount; i++) {
       final particle = _Particle(
         position: Offset(
@@ -109,11 +110,11 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
         angleSpeed: (_random.nextDouble() * 2 - 1) * 0.1,
         shape: _random.nextInt(2),
       );
-      
+
       _particles.add(particle);
     }
   }
-  
+
   Color _getRandomColor() {
     final colors = [
       AppColors.primary,
@@ -124,10 +125,10 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
       Colors.pinkAccent,
       Colors.white,
     ];
-    
+
     return colors[_random.nextInt(colors.length)];
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,14 +140,14 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
           for (final particle in _particles) {
             particle.position += particle.velocity;
             particle.angle += particle.angleSpeed;
-            
+
             // Add gravity effect
             particle.velocity += const Offset(0, 0.05);
-            
+
             // Apply air resistance
             particle.velocity *= 0.99;
           }
-          
+
           return Stack(
             children: [
               // Particles
@@ -158,7 +159,7 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                   ),
                   size: Size.infinite,
                 ),
-              
+
               // Center content
               Center(
                 child: Column(
@@ -171,7 +172,8 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                         scale: _scaleAnimation.value,
                         child: ShaderMask(
                           shaderCallback: (bounds) {
-                            return AppColors.primaryGradient.createShader(bounds);
+                            return AppColors.primaryGradient
+                                .createShader(bounds);
                           },
                           child: const Text(
                             "It's a Match!",
@@ -184,9 +186,9 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(height: 40),
-                    
+
                     // Content that appears after the match text
                     Opacity(
                       opacity: _contentOpacityAnimation.value,
@@ -196,16 +198,17 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                           CircleAvatar(
                             radius: 70,
                             backgroundColor: Colors.white,
-                            backgroundImage: widget.matchPhoto != null 
+                            backgroundImage: widget.matchPhoto != null
                                 ? NetworkImage(widget.matchPhoto!)
                                 : null,
                             child: widget.matchPhoto == null
-                                ? Icon(Icons.person, size: 70, color: Colors.grey)
+                                ? Icon(Icons.person,
+                                    size: 70, color: Colors.grey)
                                 : null,
                           ),
-                          
+
                           SizedBox(height: 20),
-                          
+
                           // Match name
                           Text(
                             'You and ${widget.matchName} have liked each other.',
@@ -216,9 +219,9 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          
+
                           SizedBox(height: 40),
-                          
+
                           // Action buttons
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -246,15 +249,16 @@ class _MatchAnimationState extends State<MatchAnimation> with SingleTickerProvid
                                   ),
                                 ),
                               ),
-                              
+
                               SizedBox(width: 16),
-                              
+
                               // Keep swiping button
                               OutlinedButton(
                                 onPressed: widget.onKeepSwipingTap,
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  side: BorderSide(color: Colors.white, width: 1.5),
+                                  side: BorderSide(
+                                      color: Colors.white, width: 1.5),
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 32,
                                     vertical: 16,
@@ -295,7 +299,7 @@ class _Particle {
   double angle;
   double angleSpeed;
   int shape; // 0 = circle, 1 = square, 2 = triangle
-  
+
   _Particle({
     required this.position,
     required this.velocity,
@@ -310,29 +314,29 @@ class _Particle {
 class _ParticlePainter extends CustomPainter {
   final List<_Particle> particles;
   final double progress;
-  
+
   _ParticlePainter({
     required this.particles,
     required this.progress,
   });
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    
+
     // Only show particles until certain point in the animation
     if (progress < 0.9) {
       // Adjust opacity based on progress to fade out
       final opacity = progress < 0.7 ? 1.0 : (0.9 - progress) / 0.2;
-      
+
       for (final particle in particles) {
         paint.color = particle.color.withOpacity(opacity);
-        
+
         // Apply rotation
         canvas.save();
         canvas.translate(particle.position.dx, particle.position.dy);
         canvas.rotate(particle.angle);
-        
+
         // Draw different shapes
         switch (particle.shape) {
           case 0: // Circle
@@ -350,49 +354,61 @@ class _ParticlePainter extends CustomPainter {
             drawHeart(canvas, paint, particle.size);
             break;
         }
-        
+
         canvas.restore();
       }
     }
   }
-  
+
   void drawHeart(Canvas canvas, Paint paint, double size) {
     final path = Path();
     final width = size;
     final height = size;
-    
+
     path.moveTo(width / 2, height / 5);
-    
+
     // Left curve
     path.cubicTo(
-      5 * width / 14, 0,
-      0, height / 15,
-      width / 4, 2 * height / 5,
+      5 * width / 14,
+      0,
+      0,
+      height / 15,
+      width / 4,
+      2 * height / 5,
     );
-    
+
     // Bottom point
     path.cubicTo(
-      width / 2, 2 * height / 3,
-      width / 2, 2 * height / 3,
-      width / 2, 4 * height / 5,
+      width / 2,
+      2 * height / 3,
+      width / 2,
+      2 * height / 3,
+      width / 2,
+      4 * height / 5,
     );
-    
+
     // Right curve
     path.cubicTo(
-      width / 2, 2 * height / 3,
-      width / 2, 2 * height / 3,
-      3 * width / 4, 2 * height / 5,
+      width / 2,
+      2 * height / 3,
+      width / 2,
+      2 * height / 3,
+      3 * width / 4,
+      2 * height / 5,
     );
-    
+
     path.cubicTo(
-      width, height / 15,
-      9 * width / 14, 0,
-      width / 2, height / 5,
+      width,
+      height / 15,
+      9 * width / 14,
+      0,
+      width / 2,
+      height / 5,
     );
-    
+
     canvas.drawPath(path, paint);
   }
-  
+
   @override
   bool shouldRepaint(_ParticlePainter oldDelegate) => true;
-} 
+}

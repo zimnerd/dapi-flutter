@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'profile.dart';
 
 /// Represents a match between two users in the dating app
@@ -9,7 +7,7 @@ class Match {
   final DateTime matchedAt;
   final bool isRead;
   final bool isSupermatch;
-  
+
   Match({
     required this.id,
     required this.matchedProfile,
@@ -17,7 +15,7 @@ class Match {
     this.isRead = false,
     this.isSupermatch = false,
   });
-  
+
   /// Create a Match from JSON data
   factory Match.fromJson(Map<String, dynamic> json) {
     return Match(
@@ -28,7 +26,7 @@ class Match {
       isSupermatch: json['isSupermatch'] as bool? ?? false,
     );
   }
-  
+
   /// Convert Match to JSON
   Map<String, dynamic> toJson() {
     return {
@@ -39,7 +37,7 @@ class Match {
       'isSupermatch': isSupermatch,
     };
   }
-  
+
   /// Create a copy of Match with some fields changed
   Match copyWith({
     String? id,
@@ -56,30 +54,30 @@ class Match {
       isSupermatch: isSupermatch ?? this.isSupermatch,
     );
   }
-  
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    
+
     return other is Match &&
-      other.id == id &&
-      other.matchedProfile == matchedProfile &&
-      other.matchedAt == matchedAt &&
-      other.isRead == isRead &&
-      other.isSupermatch == isSupermatch;
+        other.id == id &&
+        other.matchedProfile == matchedProfile &&
+        other.matchedAt == matchedAt &&
+        other.isRead == isRead &&
+        other.isSupermatch == isSupermatch;
   }
-  
+
   @override
   int get hashCode {
     return id.hashCode ^
-      matchedProfile.hashCode ^
-      matchedAt.hashCode ^
-      isRead.hashCode ^
-      isSupermatch.hashCode;
+        matchedProfile.hashCode ^
+        matchedAt.hashCode ^
+        isRead.hashCode ^
+        isSupermatch.hashCode;
   }
-  
+
   @override
   String toString() {
     return 'Match(id: $id, matchedProfile: ${matchedProfile.name}, matchedAt: $matchedAt, isRead: $isRead, isSupermatch: $isSupermatch)';
   }
-} 
+}

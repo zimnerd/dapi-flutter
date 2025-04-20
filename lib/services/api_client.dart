@@ -21,17 +21,18 @@ class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._secureStorage, [this.authService]);
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
     // Make sure base URL is set
     if (options.baseUrl.isEmpty && !options.path.startsWith('http')) {
       options.baseUrl = AppConfig.apiBaseUrl;
-      
+
       // Fix double slash issue
       if (options.path.startsWith('/') && options.baseUrl.endsWith('/')) {
         options.path = options.path.substring(1);
       }
     }
-    
+
     // Add auth header if not already present
     if (!options.headers.containsKey('Authorization')) {
       final token = await _secureStorage.read(key: AppStorageKeys.token);
@@ -42,22 +43,24 @@ class AuthInterceptor extends Interceptor {
         _logger.debug('No token available for request to ${options.path}');
       }
     }
-    
+
     // Default headers
-    options.headers.putIfAbsent('Content-Type', () => AppHeaders.applicationJson);
+    options.headers
+        .putIfAbsent('Content-Type', () => AppHeaders.applicationJson);
     options.headers.putIfAbsent('Accept', () => AppHeaders.applicationJson);
-    
+
     return handler.next(options);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // Handle 401 - try token refresh
-    if (err.response?.statusCode == 401 && 
+    if (err.response?.statusCode == 401 &&
         !err.requestOptions.path.contains(AppEndpoints.refresh) &&
         !err.requestOptions.path.contains(AppEndpoints.login)) {
-      _logger.debug('Received 401 error for ${err.requestOptions.path}, attempting token refresh');
-      
+      _logger.debug(
+          'Received 401 error for ${err.requestOptions.path}, attempting token refresh');
+
       final refreshedRequest = await _refreshTokenAndRetry(err.requestOptions);
       if (refreshedRequest != null) {
         _logger.debug('Request retried successfully after token refresh');
@@ -69,19 +72,20 @@ class AuthInterceptor extends Interceptor {
     return handler.next(err);
   }
 
-  Future<Response<dynamic>?> _refreshTokenAndRetry(RequestOptions requestOptions) async {
+  Future<Response<dynamic>?> _refreshTokenAndRetry(
+      RequestOptions requestOptions) async {
     // Store the pending request
     _pendingRequests.add(requestOptions);
     _logger.debug('Added request to pending queue: ${requestOptions.path}');
-    
+
     // Only refresh once if multiple requests fail simultaneously
     if (!_isRefreshing) {
       _isRefreshing = true;
       _logger.debug('Starting token refresh process');
-      
+
       try {
         bool refreshSuccess = false;
-        
+
         // Use AuthService's refreshToken if available (preferred method)
         if (authService != null) {
           _logger.debug('Using AuthService to refresh token');
@@ -89,20 +93,24 @@ class AuthInterceptor extends Interceptor {
             await authService!.refreshToken();
             refreshSuccess = true; // Success if no exception is thrown
           } on ApiException catch (e) {
-            _logger.error('ApiException during AuthService refreshToken: ${e.message}');
+            _logger.error(
+                'ApiException during AuthService refreshToken: ${e.message}');
             refreshSuccess = false;
           } catch (e) {
-             _logger.error('Unexpected error during AuthService refreshToken: $e');
-             refreshSuccess = false;
+            _logger
+                .error('Unexpected error during AuthService refreshToken: $e');
+            refreshSuccess = false;
           }
         } else {
           // Fallback to direct token refresh if AuthService not available
-          _logger.debug('Using direct token refresh (AuthService not provided)');
+          _logger
+              .debug('Using direct token refresh (AuthService not provided)');
           refreshSuccess = await _refreshTokenDirectly();
         }
-        
+
         if (refreshSuccess) {
-          _logger.debug('Token refresh succeeded, retrying pending requests (${_pendingRequests.length})');
+          _logger.debug(
+              'Token refresh succeeded, retrying pending requests (${_pendingRequests.length})');
           // Process all pending requests with new token
           final result = await _retryPendingRequests(requestOptions);
           _isRefreshing = false;
@@ -114,7 +122,8 @@ class AuthInterceptor extends Interceptor {
           return null;
         }
       } catch (e) {
-        _logger.error('Exception during token refresh process: $e'); // Outer catch
+        _logger
+            .error('Exception during token refresh process: $e'); // Outer catch
         _isRefreshing = false;
         _handleFailedRefresh();
         return null;
@@ -127,78 +136,83 @@ class AuthInterceptor extends Interceptor {
         await Future.delayed(const Duration(milliseconds: 500));
         attempts++;
       }
-      
+
       // If successful, this request will be retried with the new token
       // If failed, return null to let the original error propagate
       if (!_isRefreshing && !_pendingRequests.contains(requestOptions)) {
         _logger.debug('Token refresh completed while waiting');
         return null; // Refresh was successful and request was processed
       } else {
-        _logger.error('Timeout waiting for token refresh after ${attempts * 500}ms');
+        _logger.error(
+            'Timeout waiting for token refresh after ${attempts * 500}ms');
         // Clear request from pending list to avoid memory leaks
         _pendingRequests.remove(requestOptions);
         return null;
       }
     }
   }
-  
+
   // Legacy direct token refresh method
   Future<bool> _refreshTokenDirectly() async {
     try {
-      final refreshToken = await _secureStorage.read(key: AppStorageKeys.refreshToken);
-      
+      final refreshToken =
+          await _secureStorage.read(key: AppStorageKeys.refreshToken);
+
       if (refreshToken == null || refreshToken.isEmpty) {
         _logger.error('No refresh token found for direct refresh');
         return false;
       }
-      
-      _logger.debug('Making direct token refresh request with token: ${maskToken(refreshToken)}');
-      
+
+      _logger.debug(
+          'Making direct token refresh request with token: ${maskToken(refreshToken)}');
+
       // Make refresh token request using the correct endpoint
       final refreshUrl = '${AppConfig.apiBaseUrl}${AppEndpoints.refresh}';
       final refreshResponse = await _refreshDio.post(
         refreshUrl,
         data: {'refreshToken': refreshToken},
-        options: Options(
-          headers: {
-            'Content-Type': AppHeaders.applicationJson,
-            'Accept': AppHeaders.applicationJson,
-          }
-        ),
+        options: Options(headers: {
+          'Content-Type': AppHeaders.applicationJson,
+          'Accept': AppHeaders.applicationJson,
+        }),
       );
-      
+
       _logger.debug('Refresh response status: ${refreshResponse.statusCode}');
-      
-      if (refreshResponse.statusCode == 200 && 
+
+      if (refreshResponse.statusCode == 200 &&
           refreshResponse.data is Map<String, dynamic>) {
-        
         // Try different property names
         final data = refreshResponse.data as Map<String, dynamic>;
-        
+
         // Check for token in root or nested in data field
-        final newToken = data['accessToken'] ?? 
-                        data['token'] ?? 
-                        (data['data'] is Map ? data['data']['token'] : null);
-        
-        final newRefreshToken = data['refreshToken'] ?? 
-                              data['refresh_token'] ?? 
-                              (data['data'] is Map ? data['data']['refreshToken'] : null) ??
-                              refreshToken; // Fallback to same refresh token
-        
+        final newToken = data['accessToken'] ??
+            data['token'] ??
+            (data['data'] is Map ? data['data']['token'] : null);
+
+        final newRefreshToken = data['refreshToken'] ??
+            data['refresh_token'] ??
+            (data['data'] is Map ? data['data']['refreshToken'] : null) ??
+            refreshToken; // Fallback to same refresh token
+
         if (newToken != null) {
           // Store new tokens
-          await _secureStorage.write(key: AppStorageKeys.token, value: newToken);
-          await _secureStorage.write(key: AppStorageKeys.refreshToken, value: newRefreshToken);
-          await _secureStorage.write(key: AppStorageKeys.accessToken, value: newToken);
-          
+          await _secureStorage.write(
+              key: AppStorageKeys.token, value: newToken);
+          await _secureStorage.write(
+              key: AppStorageKeys.refreshToken, value: newRefreshToken);
+          await _secureStorage.write(
+              key: AppStorageKeys.accessToken, value: newToken);
+
           _logger.debug('Token refreshed successfully: ${maskToken(newToken)}');
           return true;
         } else {
-          _logger.error('Token refresh response missing token field: ${data.keys}');
+          _logger.error(
+              'Token refresh response missing token field: ${data.keys}');
           return false;
         }
       } else {
-        _logger.error('Token refresh failed with status: ${refreshResponse.statusCode}');
+        _logger.error(
+            'Token refresh failed with status: ${refreshResponse.statusCode}');
         if (refreshResponse.data != null) {
           _logger.error('Response data: ${refreshResponse.data}');
         }
@@ -216,25 +230,26 @@ class AuthInterceptor extends Interceptor {
       return false;
     }
   }
-  
+
   // Process all pending requests with the new token
   Future<Response> _retryPendingRequests(RequestOptions originalRequest) async {
     Response? originalResponse;
-    
+
     try {
       // Get the new token
       final token = await _secureStorage.read(key: AppStorageKeys.token);
       if (token == null || token.isEmpty) {
         throw Exception('No token available after refresh');
       }
-      
-      _logger.debug('Retrying ${_pendingRequests.length} requests with new token');
-      
+
+      _logger
+          .debug('Retrying ${_pendingRequests.length} requests with new token');
+
       // Process all pending requests with new token
       final List<Future<Response>> responses = [];
       final List<RequestOptions> requests = List.from(_pendingRequests);
       _pendingRequests.clear();
-      
+
       for (final pendingRequest in requests) {
         // Clone the original request with new token
         final updatedRequest = Options(
@@ -244,60 +259,60 @@ class AuthInterceptor extends Interceptor {
             'Authorization': '${AppHeaders.bearer} $token',
           },
         );
-        
+
         // Create new Dio instance for retry to avoid interceptors loop
         final retryDio = Dio();
-        
+
         // Retry the original request
         final retryUrl = pendingRequest.uri.toString();
         _logger.debug('Retrying request: ${pendingRequest.method} $retryUrl');
-        
+
         final responseFuture = retryDio.request(
           retryUrl,
           data: pendingRequest.data,
           queryParameters: pendingRequest.queryParameters,
           options: updatedRequest,
         );
-        
+
         responses.add(responseFuture);
-        
+
         // If this is the original request we're interested in, save its response
         if (pendingRequest.uri.toString() == originalRequest.uri.toString() &&
             pendingRequest.method == originalRequest.method) {
           originalResponse = await responseFuture;
         }
       }
-      
+
       // Wait for all retries to complete
       await Future.wait(responses);
-      
+
       // Return the response for the original request
       if (originalResponse != null) {
         return originalResponse;
       }
-      
+
       // If we somehow didn't get the original response, throw an error
-      throw Exception('Failed to retry the original request after token refresh');
-      
+      throw Exception(
+          'Failed to retry the original request after token refresh');
     } catch (e) {
       _logger.error('Error retrying requests after token refresh: $e');
-      throw e;
+      rethrow;
     }
   }
-  
+
   void _handleFailedRefresh() {
     // Clear pending requests
     _pendingRequests.clear();
-    
+
     // Clear tokens on failed refresh
     _secureStorage.delete(key: AppStorageKeys.token);
     _secureStorage.delete(key: AppStorageKeys.refreshToken);
     _secureStorage.delete(key: AppStorageKeys.accessToken);
-    
+
     // Log the failure
     _logger.warn('Token refresh failed - user needs to log in again');
   }
-  
+
   // Helper to mask token for logging
   String maskToken(String token) {
     if (token.length > 10) {
@@ -305,7 +320,7 @@ class AuthInterceptor extends Interceptor {
     }
     return '***';
   }
-  
+
   int min(int a, int b) => a < b ? a : b;
 }
 
@@ -317,7 +332,8 @@ class ApiClient {
   final Logger _logger = Logger('ApiClient');
   final AuthService? authService;
 
-  ApiClient(this._dio, {
+  ApiClient(
+    this._dio, {
     bool enableLogging = true,
     this.authService,
   }) : _enableLogging = enableLogging {
@@ -328,10 +344,10 @@ class ApiClient {
 
   void _setupInterceptors() {
     _dio.interceptors.clear();
-    
+
     // Add auth interceptor with optional AuthService reference
     _dio.interceptors.add(AuthInterceptor(_secureStorage, authService));
-    
+
     // Add logging interceptor in debug mode
     if (_enableLogging && kDebugMode) {
       _dio.interceptors.add(
@@ -451,7 +467,8 @@ class ApiClient {
     }
   }
 
-  Future<String> uploadFile(String endpoint, String filePath, {String? fileName}) async {
+  Future<String> uploadFile(String endpoint, String filePath,
+      {String? fileName}) async {
     try {
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(filePath, filename: fileName),
@@ -481,20 +498,21 @@ class ApiClient {
       'method': e.requestOptions.method,
       'statusCode': e.response?.statusCode,
     };
-    
-    if (e.type == DioExceptionType.connectionTimeout || 
+
+    if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
       _logger.error('Network timeout: ${e.message}');
       throw Exception(Constants.ERROR_NETWORK);
     } else if (e.response?.statusCode == Constants.statusCodeUnauthorized) {
       _logger.error('Unauthorized access: ${e.message}');
-      
+
       // Check if this is due to a missing token
-      if (e.response?.data is Map && 
+      if (e.response?.data is Map &&
           e.response?.data['code'] == 'AUTH_HEADER_MISSING') {
         _logger.error('Authentication required - missing token');
-        throw Exception('Authentication required. Please log in and try again.');
+        throw Exception(
+            'Authentication required. Please log in and try again.');
       } else {
         _logger.error('Token might be expired or invalid');
         throw Exception(Constants.ERROR_UNAUTHORIZED);
@@ -509,7 +527,7 @@ class ApiClient {
       _logger.error('Connection error: ${e.message}');
       throw Exception(Constants.ERROR_NETWORK);
     }
-    
+
     // Extract server error message if possible
     String errorMessage = Constants.ERROR_GENERIC;
     if (e.response?.data is Map) {
@@ -520,7 +538,7 @@ class ApiClient {
         errorMessage = errorData['error'] as String;
       }
     }
-    
+
     _logger.error('API Error: $errorMessage');
     throw Exception(errorMessage);
   }

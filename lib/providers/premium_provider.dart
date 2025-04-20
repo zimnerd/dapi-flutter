@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/logger.dart';
-import 'subscription_provider.dart';
 import '../services/subscription_service.dart';
 
 /// Provider that exposes the user's premium status
@@ -23,16 +22,16 @@ final premiumProvider = FutureProvider.autoDispose<bool>((ref) async {
 final premiumFeaturesProvider = Provider.family<bool, String>((ref, featureId) {
   // Get the premium status
   final premiumStatus = ref.watch(premiumProvider);
-  
+
   // If still loading, assume not premium
   if (premiumStatus is AsyncLoading) {
     return false;
   }
-  
+
   // Extract the value or default to false on error
   final isPremium = premiumStatus.value ?? false;
-  
-  // Mock feature-specific logic - in a real app, this could check for 
+
+  // Mock feature-specific logic - in a real app, this could check for
   // individually purchased features or different tiers of premium
   switch (featureId) {
     case 'unlimited_swipes':
@@ -52,12 +51,12 @@ final premiumFeaturesProvider = Provider.family<bool, String>((ref, featureId) {
 class PremiumSubscriptionNotifier extends StateNotifier<bool> {
   final Ref _ref;
   final FlutterSecureStorage _storage;
-  
+
   PremiumSubscriptionNotifier(this._ref, this._storage) : super(false) {
     // Load premium status when initialized
     _loadPremiumStatus();
   }
-  
+
   // Load premium status from storage
   Future<void> _loadPremiumStatus() async {
     try {
@@ -69,7 +68,7 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
       state = false;
     }
   }
-  
+
   // Method to upgrade to premium
   Future<bool> upgradeToPremium() async {
     try {
@@ -84,7 +83,7 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
       return false;
     }
   }
-  
+
   // Method to cancel premium
   Future<bool> cancelPremium() async {
     try {
@@ -97,7 +96,7 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
       return false;
     }
   }
-  
+
   // Method to check if a feature is available (based on premium status)
   bool canUseFeature(String feature) {
     // List of premium-only features
@@ -108,19 +107,21 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
       'unlimited_likes',
       'passport'
     ];
-    
+
     // If the feature is premium-only and user is not premium, return false
     if (premiumFeatures.contains(feature) && !state) {
-      logger.debug('Premium feature $feature requested but user is not premium');
+      logger
+          .debug('Premium feature $feature requested but user is not premium');
       return false;
     }
-    
+
     return true;
   }
 }
 
 // Create a provider for the premium subscription notifier
-final premiumSubscriptionProvider = StateNotifierProvider<PremiumSubscriptionNotifier, bool>((ref) {
+final premiumSubscriptionProvider =
+    StateNotifierProvider<PremiumSubscriptionNotifier, bool>((ref) {
   final storage = FlutterSecureStorage();
   return PremiumSubscriptionNotifier(ref, storage);
-}); 
+});

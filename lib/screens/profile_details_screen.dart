@@ -8,9 +8,9 @@ class ProfileDetailsScreen extends StatefulWidget {
   final Profile profile;
 
   const ProfileDetailsScreen({
-    Key? key,
+    super.key,
     required this.profile,
-  }) : super(key: key);
+  });
 
   @override
   _ProfileDetailsScreenState createState() => _ProfileDetailsScreenState();
@@ -76,7 +76,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       );
                     },
                   ),
-                  
+
                   // Photo indicators
                   Positioned(
                     bottom: 16,
@@ -94,9 +94,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             width: isActive ? 20 : 10,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: isActive 
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.4),
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           );
@@ -104,13 +104,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Photo counter
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 16,
                     right: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(12),
@@ -129,7 +130,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               ),
             ),
           ),
-          
+
           // Profile details
           SliverToBoxAdapter(
             child: Container(
@@ -169,7 +170,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       ),
                       // Distance indicator
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           color: Colors.grey.withOpacity(0.15),
@@ -195,9 +197,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // About section
                   const Text(
                     'About',
@@ -206,9 +208,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Occupation
                   if (widget.profile.occupation?.isNotEmpty == true)
                     Padding(
@@ -231,7 +233,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         ],
                       ),
                     ),
-                  
+
                   // Bio - full text
                   if (widget.profile.bio?.isNotEmpty == true)
                     Padding(
@@ -245,12 +247,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         ),
                       ),
                     ),
-                    
+
                   // Additional personal information section
                   ..._buildPersonalInfoSection(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Interests section
                   if (widget.profile.interests.isNotEmpty) ...[
                     const Text(
@@ -260,15 +262,14 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    
                     const SizedBox(height: 12),
-                    
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
                       children: widget.profile.interests.map((interest) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
@@ -299,9 +300,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       }).toList(),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -315,7 +316,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                           // Handle dislike
                         },
                       ),
-                      
                       _buildActionButton(
                         icon: Icons.favorite,
                         color: AppColors.like,
@@ -327,7 +327,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 40),
                 ],
               ),
@@ -337,7 +337,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       ),
     );
   }
-  
+
   Widget _buildActionButton({
     required IconData icon,
     required Color color,
@@ -385,7 +385,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
 
   List<Widget> _buildPersonalInfoSection() {
     final dateFormatter = DateFormat('MMMM d, yyyy');
-    
+
     return [
       const Text(
         'Personal Information',
@@ -394,29 +394,29 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      
+
       const SizedBox(height: 16),
-      
+
       // Gender
       _buildInfoRow(
         icon: Icons.person_outline,
         label: 'Gender',
         value: widget.profile.gender ?? 'Not specified',
       ),
-      
+
       const SizedBox(height: 12),
-      
+
       // Birth date
       _buildInfoRow(
         icon: Icons.cake_outlined,
         label: 'Birth Date',
-        value: widget.profile.birthDate != null 
+        value: widget.profile.birthDate != null
             ? dateFormatter.format(widget.profile.birthDate!)
             : 'Not specified',
       ),
-      
+
       const SizedBox(height: 12),
-      
+
       // Location
       if (widget.profile.location != null)
         _buildInfoRow(
@@ -424,10 +424,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           label: 'Location',
           value: widget.profile.location.toString(),
         ),
-      
-      if (widget.profile.location != null)
-        const SizedBox(height: 12),
-      
+
+      if (widget.profile.location != null) const SizedBox(height: 12),
+
       // Additional profile preferences section
       const Text(
         'Preferences',
@@ -436,27 +435,28 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      
+
       const SizedBox(height: 12),
-      
+
       // Age preference
       _buildInfoRow(
         icon: Icons.person_search_outlined,
         label: 'Age Preference',
-        value: '${widget.profile.minAgePreference} - ${widget.profile.maxAgePreference} years',
+        value:
+            '${widget.profile.minAgePreference} - ${widget.profile.maxAgePreference} years',
       ),
-      
+
       const SizedBox(height: 12),
-      
+
       // Distance preference
       _buildInfoRow(
         icon: Icons.explore_outlined,
         label: 'Maximum Distance',
         value: '${widget.profile.maxDistance?.toInt() ?? 0} km',
       ),
-      
+
       const SizedBox(height: 12),
-      
+
       // Gender preference
       if (widget.profile.genderPreference != null)
         _buildInfoRow(
@@ -466,7 +466,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         ),
     ];
   }
-  
+
   Widget _buildInfoRow({
     required IconData icon,
     required String label,
@@ -532,10 +532,10 @@ class _FullscreenGallery extends StatefulWidget {
   final int initialIndex;
 
   const _FullscreenGallery({
-    Key? key,
+    super.key,
     required this.photos,
     required this.initialIndex,
-  }) : super(key: key);
+  });
 
   @override
   _FullscreenGalleryState createState() => _FullscreenGalleryState();
@@ -597,9 +597,9 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                           return Center(
                             child: CircularProgressIndicator(
                               value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / 
-                                  loadingProgress.expectedTotalBytes!
-                                : null,
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
                               color: AppColors.primary,
                             ),
                           );
@@ -611,7 +611,7 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
               },
             ),
           ),
-          
+
           // Controls - fade in/out
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
@@ -653,9 +653,9 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                     ],
                   ),
                 ),
-                
+
                 Spacer(),
-                
+
                 // Bottom indicators
                 if (widget.photos.length > 1)
                   Container(
@@ -675,9 +675,9 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                             width: isActive ? 20 : 10,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: isActive 
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.4),
+                              color: isActive
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           );
@@ -692,4 +692,4 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
       ),
     );
   }
-} 
+}

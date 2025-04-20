@@ -10,29 +10,32 @@ class ResetPasswordConfirmationScreen extends ConsumerStatefulWidget {
   final String? token;
 
   const ResetPasswordConfirmationScreen({
-    Key? key,
+    super.key,
     this.email,
     this.token,
-  }) : super(key: key);
+  });
 
   @override
-  ConsumerState<ResetPasswordConfirmationScreen> createState() => _ResetPasswordConfirmationScreenState();
+  ConsumerState<ResetPasswordConfirmationScreen> createState() =>
+      _ResetPasswordConfirmationScreenState();
 }
 
-class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordConfirmationScreen> 
+class _ResetPasswordConfirmationScreenState
+    extends ConsumerState<ResetPasswordConfirmationScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
+
   bool _isLoading = false;
   bool _resetSuccess = false;
   String _errorMessage = '';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -40,35 +43,36 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize with provided email and token if available
     if (widget.email != null && widget.email!.isNotEmpty) {
       _emailController.text = widget.email!;
     }
-    
+
     if (widget.token != null && widget.token!.isNotEmpty) {
       _tokenController.text = widget.token!;
     }
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation =
+        Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
+
     _animationController.forward();
   }
 
@@ -92,14 +96,14 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
       try {
         // Get auth service from provider
         final authService = ref.read(authServiceProvider);
-        
+
         // Call the new method to confirm password reset
         await authService.confirmPasswordReset(
           _emailController.text.trim(),
           _tokenController.text.trim(),
           _passwordController.text,
         );
-        
+
         setState(() {
           _resetSuccess = true;
         });
@@ -120,7 +124,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -169,7 +173,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
                 ),
               ),
             ),
-            
+
             // Main content
             SafeArea(
               child: SingleChildScrollView(
@@ -203,7 +207,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
                                   ],
                                 ),
                                 padding: const EdgeInsets.all(24.0),
-                                child: _resetSuccess 
+                                child: _resetSuccess
                                     ? _buildSuccessContent()
                                     : _buildResetForm(),
                               ),
@@ -221,7 +225,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
       ),
     );
   }
-  
+
   Widget _buildResetForm() {
     return Form(
       key: _formKey,
@@ -245,7 +249,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
             ),
           ),
           SizedBox(height: 24),
-          
+
           // Email Field
           TextFormField(
             controller: _emailController,
@@ -280,9 +284,9 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               return null;
             },
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Reset Token Field
           TextFormField(
             controller: _tokenController,
@@ -290,7 +294,8 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               labelText: 'Reset Token',
               hintText: 'Token from your email',
               floatingLabelBehavior: FloatingLabelBehavior.always,
-              prefixIcon: Icon(Icons.vpn_key_outlined, color: AppColors.primary),
+              prefixIcon:
+                  Icon(Icons.vpn_key_outlined, color: AppColors.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -313,9 +318,9 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               return null;
             },
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // New Password Field
           TextFormField(
             controller: _passwordController,
@@ -327,10 +332,13 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                   color: Colors.grey,
                 ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -357,9 +365,9 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               return null;
             },
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Confirm Password Field
           TextFormField(
             controller: _confirmPasswordController,
@@ -371,10 +379,13 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscureConfirmPassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                   color: Colors.grey,
                 ),
-                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                onPressed: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -401,7 +412,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               return null;
             },
           ),
-          
+
           // Error Message
           if (_errorMessage.isNotEmpty) ...[
             SizedBox(height: 16),
@@ -425,9 +436,9 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
               ),
             ),
           ],
-          
+
           SizedBox(height: 24),
-          
+
           // Reset Button
           ElevatedButton(
             onPressed: _isLoading ? null : _confirmPasswordReset,
@@ -465,13 +476,14 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
                     ),
                   ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Back to Login
           Center(
             child: TextButton(
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+              onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                  context, '/login', (route) => false),
               child: Text(
                 "Back to Login",
                 style: TextStyle(
@@ -485,7 +497,7 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
       ),
     );
   }
-  
+
   Widget _buildSuccessContent() {
     return Column(
       children: [
@@ -522,7 +534,8 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
         ),
         SizedBox(height: 24),
         AnimatedTapFeedback(
-          onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+          onTap: () => Navigator.pushNamedAndRemoveUntil(
+              context, '/login', (route) => false),
           child: ElevatedButton(
             onPressed: null, // Handled by AnimatedTapFeedback
             style: ElevatedButton.styleFrom(
@@ -547,4 +560,4 @@ class _ResetPasswordConfirmationScreenState extends ConsumerState<ResetPasswordC
       ],
     );
   }
-} 
+}

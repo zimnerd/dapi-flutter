@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'colors.dart';
 
 /// Utility class for UI helpers and common widgets
 class UiHelpers {
@@ -12,10 +11,10 @@ class UiHelpers {
     SnackBarAction? action,
   }) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    
+
     // Get appropriate colors based on type
     final colors = _getSnackBarColors(type);
-    
+
     // Create the snackbar
     final snackBar = SnackBar(
       content: Row(
@@ -37,11 +36,11 @@ class UiHelpers {
       duration: duration,
       action: action,
     );
-    
+
     // Show the snackbar
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
-  
+
   /// Shows a success snackbar
   static void showSuccessSnackBar(
     BuildContext context, {
@@ -57,7 +56,7 @@ class UiHelpers {
       action: action,
     );
   }
-  
+
   /// Shows an error snackbar
   static void showErrorSnackBar(
     BuildContext context, {
@@ -73,7 +72,7 @@ class UiHelpers {
       action: action,
     );
   }
-  
+
   /// Shows a warning snackbar
   static void showWarningSnackBar(
     BuildContext context, {
@@ -89,7 +88,7 @@ class UiHelpers {
       action: action,
     );
   }
-  
+
   /// Gets colors for snackbar based on type
   static _SnackBarColors _getSnackBarColors(SnackBarType type) {
     switch (type) {
@@ -120,9 +119,10 @@ class UiHelpers {
         );
     }
   }
-  
+
   /// Shows a loading dialog
-  static Future<void> showLoadingDialog(BuildContext context, {String? message}) async {
+  static Future<void> showLoadingDialog(BuildContext context,
+      {String? message}) async {
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -130,7 +130,8 @@ class UiHelpers {
         return Dialog(
           backgroundColor: Colors.white,
           elevation: 8,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
@@ -151,12 +152,12 @@ class UiHelpers {
       },
     );
   }
-  
+
   /// Hides any open dialogs
   static void hideDialog(BuildContext context) {
     Navigator.of(context, rootNavigator: true).pop();
   }
-  
+
   /// Shows a confirmation dialog
   static Future<bool> showConfirmationDialog(
     BuildContext context, {
@@ -192,7 +193,7 @@ class UiHelpers {
         );
       },
     );
-    
+
     return result ?? false;
   }
 }
@@ -202,7 +203,7 @@ class _SnackBarColors {
   final Color backgroundColor;
   final Color contentColor;
   final IconData icon;
-  
+
   _SnackBarColors({
     required this.backgroundColor,
     required this.contentColor,
@@ -216,4 +217,4 @@ enum SnackBarType {
   success,
   error,
   warning,
-} 
+}

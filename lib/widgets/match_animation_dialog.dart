@@ -13,12 +13,12 @@ class MatchAnimationDialog extends StatefulWidget {
   final VoidCallback onMessage;
 
   const MatchAnimationDialog({
-    Key? key,
+    super.key,
     required this.userProfile,
     required this.matchProfile,
     required this.onContinue,
     required this.onMessage,
-  }) : super(key: key);
+  });
 
   static Future<void> show({
     required BuildContext context,
@@ -29,7 +29,7 @@ class MatchAnimationDialog extends StatefulWidget {
   }) async {
     // Show haptic feedback on entry
     HapticFeedback.heavyImpact();
-    
+
     await showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -47,11 +47,10 @@ class MatchAnimationDialog extends StatefulWidget {
         return FadeTransition(
           opacity: animation,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.95, end: 1.0)
-                .animate(CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutBack,
-                )),
+            scale: Tween<double>(begin: 0.95, end: 1.0).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutBack,
+            )),
             child: child,
           ),
         );
@@ -70,56 +69,60 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
   late Animation<double> _profilePhotosAnimation;
   late Animation<double> _buttonsAnimation;
   late ConfettiController _confettiController;
-  
+
   @override
   void initState() {
     super.initState();
-    
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-    
+
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 2));
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    
+
     _matchTextAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
     ).drive(Tween<double>(begin: 0.0, end: 1.0));
-    
+
     _profilePhotosAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.2, 0.7, curve: Curves.easeOutBack),
     ).drive(Tween<double>(begin: 0.0, end: 1.0));
-    
+
     _buttonsAnimation = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.6, 1.0, curve: Curves.easeOut),
     ).drive(Tween<double>(begin: 0.0, end: 1.0));
-    
+
     _buttonsAnimation.addListener(() {
       if (_buttonsAnimation.value > 0.01 && _buttonsAnimation.value < 0.1) {
         HapticFeedback.lightImpact();
       }
     });
-    
+
     _controller.forward().whenComplete(() {
-       _confettiController.play();
+      _confettiController.play();
     });
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     _confettiController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    final Set<String> userInterests = widget.userProfile.interests.map((i) => i.toLowerCase()).toSet();
-    final Set<String> matchInterests = widget.matchProfile.interests.map((i) => i.toLowerCase()).toSet();
-    final List<String> commonInterests = userInterests.intersection(matchInterests).toList();
+    final Set<String> userInterests =
+        widget.userProfile.interests.map((i) => i.toLowerCase()).toSet();
+    final Set<String> matchInterests =
+        widget.matchProfile.interests.map((i) => i.toLowerCase()).toSet();
+    final List<String> commonInterests =
+        userInterests.intersection(matchInterests).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -139,11 +142,15 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
               minBlastForce: 10,
               particleDrag: 0.05,
               colors: const [
-                Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple, Colors.yellow
+                Colors.green,
+                Colors.blue,
+                Colors.pink,
+                Colors.orange,
+                Colors.purple,
+                Colors.yellow
               ],
             ),
           ),
-          
           Center(
             child: AnimatedBuilder(
               animation: _controller,
@@ -161,49 +168,45 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                           letterSpacing: 1.2,
                         ),
                         child: AnimatedTextKit(
-                           totalRepeatCount: 1,
-                           pause: const Duration(milliseconds: 500),
+                          totalRepeatCount: 1,
+                          pause: const Duration(milliseconds: 500),
                           animatedTexts: [
                             WavyAnimatedText("It's a Match!"),
                           ],
-                           displayFullTextOnTap: true,
-                           stopPauseOnTap: true,
+                          displayFullTextOnTap: true,
+                          stopPauseOnTap: true,
                         ),
                       ),
                     ),
-                    
                     Opacity(
-                       opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
-                       child: Text(
-                         "You and ${widget.matchProfile.name} like each other",
-                         style: const TextStyle(
-                           fontSize: 16,
-                           color: Colors.white70,
-                         ),
-                       ),
-                     ),
-                    
+                      opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
+                      child: Text(
+                        "You and ${widget.matchProfile.name} like each other",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
                     if (commonInterests.isNotEmpty)
-                       Padding(
-                         padding: const EdgeInsets.only(top: 12.0),
-                         child: Opacity(
-                           opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
-                           child: Text(
-                             commonInterests.length == 1
-                                 ? "You both like ${commonInterests.first}!"
-                                 : "You both like: ${commonInterests.join(', ')}",
-                             textAlign: TextAlign.center,
-                             style: const TextStyle(
-                               fontSize: 15,
-                               color: Colors.white70,
-                               fontWeight: FontWeight.w500,
-                             ),
-                           ),
-                         ),
-                       ),
-                    
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12.0),
+                        child: Opacity(
+                          opacity: _matchTextAnimation.value.clamp(0.0, 1.0),
+                          child: Text(
+                            commonInterests.length == 1
+                                ? "You both like ${commonInterests.first}!"
+                                : "You both like: ${commonInterests.join(', ')}",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 40),
-                    
                     Opacity(
                       opacity: _profilePhotosAnimation.value.clamp(0.0, 1.0),
                       child: Transform.scale(
@@ -212,7 +215,8 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Transform.translate(
-                              offset: Offset(-80 * (1 - _profilePhotosAnimation.value), 0),
+                              offset: Offset(
+                                  -80 * (1 - _profilePhotosAnimation.value), 0),
                               child: Container(
                                 width: 120,
                                 height: 120,
@@ -230,17 +234,21 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                     ),
                                   ],
                                   image: DecorationImage(
-                                    image: widget.userProfile.photoUrls.isNotEmpty 
-                                        ? NetworkImage(widget.userProfile.photoUrls.first)
-                                        : const AssetImage('assets/images/default_profile.png') as ImageProvider,
+                                    image: widget
+                                            .userProfile.photoUrls.isNotEmpty
+                                        ? NetworkImage(
+                                            widget.userProfile.photoUrls.first)
+                                        : const AssetImage(
+                                                'assets/images/default_profile.png')
+                                            as ImageProvider,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
                               ),
                             ),
-                            
                             Transform.translate(
-                              offset: Offset(80 * (1 - _profilePhotosAnimation.value), 0),
+                              offset: Offset(
+                                  80 * (1 - _profilePhotosAnimation.value), 0),
                               child: Container(
                                 width: 120,
                                 height: 120,
@@ -258,9 +266,13 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                     ),
                                   ],
                                   image: DecorationImage(
-                                    image: widget.matchProfile.photoUrls.isNotEmpty 
-                                        ? NetworkImage(widget.matchProfile.photoUrls.first)
-                                        : const AssetImage('assets/images/default_profile.png') as ImageProvider,
+                                    image: widget
+                                            .matchProfile.photoUrls.isNotEmpty
+                                        ? NetworkImage(
+                                            widget.matchProfile.photoUrls.first)
+                                        : const AssetImage(
+                                                'assets/images/default_profile.png')
+                                            as ImageProvider,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
@@ -270,9 +282,7 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                         ),
                       ),
                     ),
-                    
                     const SizedBox(height: 60),
-                    
                     Opacity(
                       opacity: _buttonsAnimation.value.clamp(0.0, 1.0),
                       child: Transform.translate(
@@ -284,7 +294,8 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 48, vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
@@ -293,17 +304,17 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                               ),
                               child: const Text(
                                 'Send a Message',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                             ),
-                            
                             const SizedBox(height: 16),
-                            
                             TextButton(
                               onPressed: widget.onContinue,
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 32, vertical: 12),
                               ),
                               child: const Text(
                                 'Keep Swiping',
@@ -323,4 +334,4 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
       ),
     );
   }
-} 
+}

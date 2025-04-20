@@ -2,27 +2,32 @@ import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 
 class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({super.key});
+
   @override
   _WelcomeScreenState createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProviderStateMixin {
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   final List<Map<String, dynamic>> _slides = [
     {
       'image': 'assets/images/onboarding_1.png',
       'title': 'Find Your Perfect Match',
-      'description': 'Discover people who share your interests and preferences.',
+      'description':
+          'Discover people who share your interests and preferences.',
     },
     {
       'image': 'assets/images/onboarding_2.png',
       'title': 'Simple & Fun',
-      'description': 'Our smart matching algorithm helps you connect with compatible people.',
+      'description':
+          'Our smart matching algorithm helps you connect with compatible people.',
     },
     {
       'image': 'assets/images/onboarding_3.png',
@@ -34,19 +39,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.3, 1.0, curve: Curves.easeOut),
       ),
     );
-    
+
     _animationController.forward();
   }
 
@@ -56,11 +61,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
     _pageController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -100,7 +105,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                 ),
               ),
             ),
-            
+
             SafeArea(
               child: Column(
                 children: [
@@ -136,7 +141,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                                         borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.primary.withOpacity(0.3),
+                                            color: AppColors.primary
+                                                .withOpacity(0.3),
                                             blurRadius: 15,
                                             offset: Offset(0, 5),
                                           ),
@@ -186,7 +192,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                                 ),
                                 SizedBox(height: 16),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 32.0),
                                   child: Text(
                                     slide['description'],
                                     textAlign: TextAlign.center,
@@ -203,10 +210,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                       ),
                     ),
                   ),
-                  
+
                   // Indicators and Buttons
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 16.0),
                     child: Column(
                       children: [
                         // Indicators
@@ -219,7 +227,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                               margin: EdgeInsets.symmetric(horizontal: 4.0),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: _currentIndex == entry.key 
+                                color: _currentIndex == entry.key
                                     ? AppColors.primary
                                     : AppColors.primary.withOpacity(0.3),
                               ),
@@ -227,7 +235,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                           }).toList(),
                         ),
                         SizedBox(height: 24),
-                        
+
                         // Action Buttons
                         FadeTransition(
                           opacity: _fadeAnimation,
@@ -238,12 +246,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                                 Expanded(
                                   child: OutlinedButton(
                                     onPressed: () {
-                                      Navigator.pushReplacementNamed(context, '/login');
+                                      Navigator.pushReplacementNamed(
+                                          context, '/login');
                                     },
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppColors.textSecondary,
-                                      side: BorderSide(color: Colors.grey.shade300),
-                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      side: BorderSide(
+                                          color: Colors.grey.shade300),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -270,7 +281,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -290,12 +302,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: () {
-                                      Navigator.pushReplacementNamed(context, '/login');
+                                      Navigator.pushReplacementNamed(
+                                          context, '/login');
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.secondary,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
@@ -326,7 +340,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
       ),
     );
   }
-  
+
   IconData _getIconForSlide(int index) {
     switch (index) {
       case 0:

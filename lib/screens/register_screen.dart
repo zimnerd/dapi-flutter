@@ -9,29 +9,32 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/loading_indicator.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key});
+
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTickerProviderStateMixin {
+class _RegisterScreenState extends ConsumerState<RegisterScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   DateTime? _selectedDate;
   String _selectedGender = 'Male';
-  List<String> _genderOptions = ['Male', 'Female', 'Other'];
-  
+  final List<String> _genderOptions = ['Male', 'Female', 'Other'];
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
-  
+
   String _passwordStrength = '';
   double _strengthBarWidth = 0;
   Color _strengthBarColor = Colors.grey;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -39,28 +42,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation =
+        Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
+
     _passwordController.addListener(_checkPasswordStrength);
-    
+
     _animationController.forward();
   }
 
@@ -73,10 +77,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
     _animationController.dispose();
     super.dispose();
   }
-  
+
   void _checkPasswordStrength() {
     String password = _passwordController.text;
-    
+
     if (password.isEmpty) {
       setState(() {
         _passwordStrength = '';
@@ -85,20 +89,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
       });
       return;
     }
-    
+
     bool hasUppercase = password.contains(RegExp(r'[A-Z]'));
     bool hasLowercase = password.contains(RegExp(r'[a-z]'));
     bool hasDigits = password.contains(RegExp(r'[0-9]'));
-    bool hasSpecialCharacters = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+    bool hasSpecialCharacters =
+        password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
     bool hasMinLength = password.length >= 8;
-    
+
     int strength = 0;
     if (hasUppercase) strength++;
     if (hasLowercase) strength++;
     if (hasDigits) strength++;
     if (hasSpecialCharacters) strength++;
     if (hasMinLength) strength++;
-    
+
     setState(() {
       if (strength <= 1) {
         _passwordStrength = 'Weak';
@@ -135,7 +140,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
         );
         return;
       }
-      
+
       if (!_acceptedTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Please accept the Terms and Privacy Policy')),
@@ -145,15 +150,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
 
       try {
         await ref.read(authStateProvider.notifier).register(
-          _nameController.text.trim(),
-          _emailController.text.trim(),
-          _passwordController.text,
-          _selectedDate,
-          _selectedGender,
-        );
+              _nameController.text.trim(),
+              _emailController.text.trim(),
+              _passwordController.text,
+              _selectedDate,
+              _selectedGender,
+            );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Registration failed: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -163,7 +170,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
     final DateTime now = DateTime.now();
     final DateTime minDate = DateTime(now.year - 100, now.month, now.day);
     final DateTime maxDate = DateTime(now.year - 18, now.month, now.day);
-    
+
     final ThemeData theme = Theme.of(context).copyWith(
       colorScheme: ColorScheme.light(
         primary: AppColors.primary,
@@ -171,7 +178,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
         surface: Colors.white,
         onSurface: AppColors.textPrimary,
       ),
-      dialogBackgroundColor: Colors.white,
+      dialogTheme: DialogThemeData(backgroundColor: Colors.white),
     );
 
     final DateTime? picked = await showDatePicker(
@@ -193,7 +200,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
       });
     }
   }
-  
+
   Widget _buildSocialLoginButton({
     required String iconPath,
     required String label,
@@ -252,9 +259,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
       if (mounted) {
         if (next.status == AuthStatus.authenticated) {
           Navigator.pushReplacementNamed(context, '/profile_creation');
-        } else if (next.status == AuthStatus.unauthenticated && next.errorMessage != null) {
+        } else if (next.status == AuthStatus.unauthenticated &&
+            next.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Registration failed: ${next.errorMessage!}'), backgroundColor: Colors.red),
+            SnackBar(
+                content: Text('Registration failed: ${next.errorMessage!}'),
+                backgroundColor: Colors.red),
           );
         }
       }
@@ -298,7 +308,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                 ),
               ),
             ),
-            
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
@@ -327,7 +336,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.primary.withOpacity(0.3),
+                                            color: AppColors.primary
+                                                .withOpacity(0.3),
                                             blurRadius: 15,
                                             offset: Offset(0, 5),
                                           ),
@@ -360,7 +370,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                 ],
                               ),
                             ),
-                            
                             Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -396,25 +405,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                       ),
                                     ),
                                     SizedBox(height: 24),
-                                    
                                     TextFormField(
                                       controller: _nameController,
                                       decoration: InputDecoration(
                                         labelText: 'Full Name',
                                         hintText: 'Your full name',
-                                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                                        prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
+                                        floatingLabelBehavior:
+                                            FloatingLabelBehavior.always,
+                                        prefixIcon: Icon(Icons.person_outline,
+                                            color: AppColors.primary),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: AppColors.primary,
+                                              width: 2),
                                         ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
@@ -427,26 +444,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                       },
                                     ),
                                     SizedBox(height: 16),
-                                    
                                     TextFormField(
                                       controller: _emailController,
                                       keyboardType: TextInputType.emailAddress,
                                       decoration: InputDecoration(
                                         labelText: 'Email',
                                         hintText: 'Your email address',
-                                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                                        prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
+                                        floatingLabelBehavior:
+                                            FloatingLabelBehavior.always,
+                                        prefixIcon: Icon(Icons.email_outlined,
+                                            color: AppColors.primary),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: AppColors.primary,
+                                              width: 2),
                                         ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
@@ -455,16 +480,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         if (value == null || value.isEmpty) {
                                           return 'Please enter your email';
                                         }
-                                        if (!value.contains('@') || !value.contains('.')) {
+                                        if (!value.contains('@') ||
+                                            !value.contains('.')) {
                                           return 'Please enter a valid email';
                                         }
                                         return null;
                                       },
                                     ),
                                     SizedBox(height: 16),
-                                    
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         TextFormField(
                                           controller: _passwordController,
@@ -472,32 +498,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                           decoration: InputDecoration(
                                             labelText: 'Password',
                                             hintText: 'Create a password',
-                                            floatingLabelBehavior: FloatingLabelBehavior.always,
-                                            prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
+                                            floatingLabelBehavior:
+                                                FloatingLabelBehavior.always,
+                                            prefixIcon: Icon(Icons.lock_outline,
+                                                color: AppColors.primary),
                                             suffixIcon: IconButton(
                                               icon: Icon(
-                                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                                _obscurePassword
+                                                    ? Icons
+                                                        .visibility_off_outlined
+                                                    : Icons.visibility_outlined,
                                                 color: Colors.grey,
                                               ),
-                                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                              onPressed: () => setState(() =>
+                                                  _obscurePassword =
+                                                      !_obscurePassword),
                                             ),
                                             border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: Colors.grey.shade300),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: Colors.grey.shade300),
                                             ),
                                             enabledBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: Colors.grey.shade300),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: Colors.grey.shade300),
                                             ),
                                             focusedBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: AppColors.primary,
+                                                  width: 2),
                                             ),
                                             filled: true,
                                             fillColor: Colors.grey.shade50,
                                           ),
                                           validator: (value) {
-                                            if (value == null || value.isEmpty) {
+                                            if (value == null ||
+                                                value.isEmpty) {
                                               return 'Please enter a password';
                                             }
                                             if (value.length < 6) {
@@ -516,17 +557,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                                     Container(
                                                       height: 4,
                                                       decoration: BoxDecoration(
-                                                        color: Colors.grey.shade200,
-                                                        borderRadius: BorderRadius.circular(2),
+                                                        color: Colors
+                                                            .grey.shade200,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(2),
                                                       ),
                                                     ),
                                                     FractionallySizedBox(
-                                                      widthFactor: _strengthBarWidth,
+                                                      widthFactor:
+                                                          _strengthBarWidth,
                                                       child: Container(
                                                         height: 4,
-                                                        decoration: BoxDecoration(
-                                                          color: _strengthBarColor,
-                                                          borderRadius: BorderRadius.circular(2),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color:
+                                                              _strengthBarColor,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(2),
                                                         ),
                                                       ),
                                                     ),
@@ -556,33 +605,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                       ],
                                     ),
                                     SizedBox(height: 16),
-                                    
                                     TextFormField(
                                       controller: _confirmPasswordController,
                                       obscureText: _obscureConfirmPassword,
                                       decoration: InputDecoration(
                                         labelText: 'Confirm Password',
                                         hintText: 'Confirm your password',
-                                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                                        prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
+                                        floatingLabelBehavior:
+                                            FloatingLabelBehavior.always,
+                                        prefixIcon: Icon(Icons.lock_outline,
+                                            color: AppColors.primary),
                                         suffixIcon: IconButton(
                                           icon: Icon(
-                                            _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                            _obscureConfirmPassword
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined,
                                             color: Colors.grey,
                                           ),
-                                          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                          onPressed: () => setState(() =>
+                                              _obscureConfirmPassword =
+                                                  !_obscureConfirmPassword),
                                         ),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: AppColors.primary,
+                                              width: 2),
                                         ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
@@ -598,33 +659,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                       },
                                     ),
                                     SizedBox(height: 16),
-                                    
                                     GestureDetector(
                                       onTap: () => _selectDate(context),
                                       child: AbsorbPointer(
                                         child: TextFormField(
                                           controller: TextEditingController(
                                             text: _selectedDate != null
-                                                ? DateFormat('MMMM d, yyyy').format(_selectedDate!)
+                                                ? DateFormat('MMMM d, yyyy')
+                                                    .format(_selectedDate!)
                                                 : '',
                                           ),
                                           decoration: InputDecoration(
                                             labelText: 'Date of Birth',
                                             hintText: 'Select your birth date',
-                                            floatingLabelBehavior: FloatingLabelBehavior.always,
-                                            prefixIcon: Icon(Icons.calendar_today, color: AppColors.primary),
-                                            suffixIcon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                            floatingLabelBehavior:
+                                                FloatingLabelBehavior.always,
+                                            prefixIcon: Icon(
+                                                Icons.calendar_today,
+                                                color: AppColors.primary),
+                                            suffixIcon: Icon(
+                                                Icons.arrow_drop_down,
+                                                color: Colors.grey),
                                             border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: Colors.grey.shade300),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: Colors.grey.shade300),
                                             ),
                                             enabledBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: Colors.grey.shade300),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: Colors.grey.shade300),
                                             ),
                                             focusedBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(12),
-                                              borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide(
+                                                  color: AppColors.primary,
+                                                  width: 2),
                                             ),
                                             filled: true,
                                             fillColor: Colors.grey.shade50,
@@ -639,33 +712,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                       ),
                                     ),
                                     SizedBox(height: 16),
-                                    
                                     DropdownButtonFormField<String>(
                                       value: _selectedGender,
                                       decoration: InputDecoration(
                                         labelText: 'Gender',
-                                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                                        prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
+                                        floatingLabelBehavior:
+                                            FloatingLabelBehavior.always,
+                                        prefixIcon: Icon(Icons.person_outline,
+                                            color: AppColors.primary),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: BorderSide(color: AppColors.primary, width: 2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: AppColors.primary,
+                                              width: 2),
                                         ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
                                       ),
-                                      icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                      icon: Icon(Icons.arrow_drop_down,
+                                          color: Colors.grey),
                                       elevation: 2,
                                       isExpanded: true,
                                       dropdownColor: Colors.white,
-                                      items: _genderOptions.map((String gender) {
+                                      items:
+                                          _genderOptions.map((String gender) {
                                         return DropdownMenuItem<String>(
                                           value: gender,
                                           child: Text(gender),
@@ -679,11 +762,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         }
                                       },
                                     ),
-                                    
                                     SizedBox(height: 16),
-                                    
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(
                                           height: 24,
@@ -697,7 +779,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                             },
                                             activeColor: AppColors.primary,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                             ),
                                           ),
                                         ),
@@ -706,7 +789,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                           child: GestureDetector(
                                             onTap: () {
                                               setState(() {
-                                                _acceptedTerms = !_acceptedTerms;
+                                                _acceptedTerms =
+                                                    !_acceptedTerms;
                                               });
                                             },
                                             child: Text.rich(
@@ -714,14 +798,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                                 text: 'I agree to the ',
                                                 style: TextStyle(
                                                   fontSize: 13,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                                 children: [
                                                   TextSpan(
                                                     text: 'Terms of Service',
                                                     style: TextStyle(
                                                       color: AppColors.primary,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                   TextSpan(text: ' and '),
@@ -729,7 +815,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                                     text: 'Privacy Policy',
                                                     style: TextStyle(
                                                       color: AppColors.primary,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                 ],
@@ -739,28 +826,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         ),
                                       ],
                                     ),
-                                    
                                     SizedBox(height: 24),
-                                    
                                     ElevatedButton(
                                       onPressed: isLoading ? null : _register,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.secondary,
                                         foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(vertical: 16),
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 16),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
                                         ),
                                         elevation: 3,
                                       ),
                                       child: isLoading
                                           ? Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
                                               children: [
                                                 SizedBox(
                                                   width: 20,
                                                   height: 20,
-                                                  child: CircularProgressIndicator(
+                                                  child:
+                                                      CircularProgressIndicator(
                                                     color: Colors.white,
                                                     strokeWidth: 3,
                                                   ),
@@ -777,16 +866,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                               ),
                                             ),
                                     ),
-                                    
                                     SizedBox(height: 24),
-                                    
                                     Row(
                                       children: [
                                         Expanded(
-                                          child: Divider(color: Colors.grey.shade300, thickness: 1),
+                                          child: Divider(
+                                              color: Colors.grey.shade300,
+                                              thickness: 1),
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16),
                                           child: Text(
                                             "Or sign up with",
                                             style: TextStyle(
@@ -796,13 +886,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                           ),
                                         ),
                                         Expanded(
-                                          child: Divider(color: Colors.grey.shade300, thickness: 1),
+                                          child: Divider(
+                                              color: Colors.grey.shade300,
+                                              thickness: 1),
                                         ),
                                       ],
                                     ),
-                                    
                                     SizedBox(height: 20),
-                                    
                                     Row(
                                       children: [
                                         Expanded(
@@ -819,7 +909,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         SizedBox(width: 12),
                                         Expanded(
                                           child: _buildSocialLoginButton(
-                                            iconPath: 'assets/icons/facebook.svg',
+                                            iconPath:
+                                                'assets/icons/facebook.svg',
                                             label: 'Facebook',
                                             onTap: () {
                                               // Handle Facebook sign up
@@ -829,9 +920,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                         ),
                                       ],
                                     ),
-                                    
                                     SizedBox(height: 12),
-                                    
                                     _buildSocialLoginButton(
                                       iconPath: 'assets/icons/apple.svg',
                                       label: 'Continue with Apple',
@@ -844,7 +933,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                 ),
                               ),
                             ),
-                            
                             Padding(
                               padding: const EdgeInsets.only(top: 24.0),
                               child: Row(
@@ -852,10 +940,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> with SingleTick
                                 children: [
                                   Text(
                                     "Already have an account? ",
-                                    style: TextStyle(color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                        color: AppColors.textSecondary),
                                   ),
                                   GestureDetector(
-                                    onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+                                    onTap: () => Navigator.pushReplacementNamed(
+                                        context, '/login'),
                                     child: Text(
                                       "Sign In",
                                       style: TextStyle(

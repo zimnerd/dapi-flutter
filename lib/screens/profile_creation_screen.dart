@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../models/profile.dart';
 import '../providers/auth_provider.dart' show userIdProvider;
-import '../providers/profile_provider.dart' show profileServiceProvider, storageServiceProvider, userProfileProvider;
+import '../providers/profile_provider.dart'
+    show profileServiceProvider, storageServiceProvider, userProfileProvider;
 import '../utils/colors.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
@@ -16,7 +17,7 @@ import '../services/storage_service.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileCreationScreen extends ConsumerStatefulWidget {
-  const ProfileCreationScreen({Key? key}) : super(key: key);
+  const ProfileCreationScreen({super.key});
 
   @override
   _ProfileCreationScreenState createState() => _ProfileCreationScreenState();
@@ -32,19 +33,31 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
   final List<XFile> _selectedPhotos = [];
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
-  
+
   String _location = '';
   String _errorMessage = '';
   bool _agreedToGuidelines = false;
-  
+
   // Interest selection
-  List<String> _availableInterests = [
-    'Hiking', 'Reading', 'Cooking', 'Travel', 'Photography',
-    'Movies', 'Music', 'Sports', 'Art', 'Technology',
-    'Fitness', 'Dancing', 'Gaming', 'Yoga', 'Meditation',
+  final List<String> _availableInterests = [
+    'Hiking',
+    'Reading',
+    'Cooking',
+    'Travel',
+    'Photography',
+    'Movies',
+    'Music',
+    'Sports',
+    'Art',
+    'Technology',
+    'Fitness',
+    'Dancing',
+    'Gaming',
+    'Yoga',
+    'Meditation',
   ];
-  List<String> _selectedInterests = [];
-  
+  final List<String> _selectedInterests = [];
+
   // Preference settings
   RangeValues _ageRangeValues = RangeValues(18, 50);
   double _maxDistance = 30;
@@ -56,7 +69,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
     _occupationController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _pickImage() async {
     if (_selectedPhotos.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,13 +84,13 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       });
     }
   }
-  
+
   void _removePhoto(int index) {
     setState(() {
       _selectedPhotos.removeAt(index);
     });
   }
-  
+
   void _toggleInterest(String interest) {
     setState(() {
       if (_selectedInterests.contains(interest)) {
@@ -87,11 +100,12 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       }
     });
   }
-  
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
         context: context,
-        initialDate: _selectedBirthDate ?? DateTime.now().subtract(Duration(days: 365 * 18)),
+        initialDate: _selectedBirthDate ??
+            DateTime.now().subtract(Duration(days: 365 * 18)),
         firstDate: DateTime(1920, 1),
         lastDate: DateTime.now().subtract(Duration(days: 365 * 18)));
     if (picked != null && picked != _selectedBirthDate) {
@@ -100,11 +114,15 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       });
     }
   }
-  
+
   Future<void> _submitProfile() async {
-    if (!_formKey.currentState!.validate() || _selectedBirthDate == null || _selectedPhotos.isEmpty) {
+    if (!_formKey.currentState!.validate() ||
+        _selectedBirthDate == null ||
+        _selectedPhotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete all fields and add at least one photo.')),
+        const SnackBar(
+            content:
+                Text('Please complete all fields and add at least one photo.')),
       );
       return;
     }
@@ -140,7 +158,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         final url = await storageService.uploadProfileImage(photoFile, userId);
         uploadedPhotoUrls.add(url);
       }
-      
+
       final profileData = profile.toJson();
       profileData['photoUrls'] = uploadedPhotoUrls;
       profileData.remove('id');
@@ -150,10 +168,10 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
 
       ref.invalidate(userProfileProvider);
       if (mounted) {
-         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-         );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -163,13 +181,13 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       }
     } finally {
       if (mounted) {
-         setState(() {
-           _isLoading = false;
-         });
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,7 +203,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                   children: [
                     // Custom step indicator
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -201,7 +220,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                         ],
                       ),
                     ),
-                    
+
                     // Step content
                     Expanded(
                       child: Padding(
@@ -218,7 +237,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Navigation buttons
                     Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -239,20 +258,20 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ),
     );
   }
-  
+
   Widget _buildStepCircle(int step, String title) {
     bool isActive = 0 >= step;
     bool isCurrent = 0 == step;
-    
+
     return Column(
       children: [
         Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: isCurrent 
+            color: isCurrent
                 ? Theme.of(context).colorScheme.primary
-                : isActive 
+                : isActive
                     ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
                     : Colors.grey.shade300,
             shape: BoxShape.circle,
@@ -270,20 +289,20 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildStepLine(int step) {
     bool isActive = 0 > step;
-    
+
     return Expanded(
       child: Container(
         height: 2,
-        color: isActive 
+        color: isActive
             ? Theme.of(context).colorScheme.primary
             : Colors.grey.shade300,
       ),
     );
   }
-  
+
   Widget _buildBasicInfoStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +411,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildPhotosStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +505,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildInterestsStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +529,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
               label: Text(interest),
               selected: isSelected,
               onSelected: (_) => _toggleInterest(interest),
-              selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              selectedColor:
+                  Theme.of(context).colorScheme.primary.withOpacity(0.3),
               checkmarkColor: Theme.of(context).colorScheme.primary,
             );
           }).toList(),
@@ -524,7 +544,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildPreferencesStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,7 +622,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                 _errorMessage = '';
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Location fetching not implemented yet.')),
+                SnackBar(
+                    content: Text('Location fetching not implemented yet.')),
               );
             },
           ),
@@ -619,7 +640,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildRulesOfEngagementStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,19 +653,22 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         _buildGuidelineItem(
           icon: Icons.verified_user,
           title: 'Be Authentic',
-          description: 'Use recent photos and be honest in your profile. Authenticity builds trust.',
+          description:
+              'Use recent photos and be honest in your profile. Authenticity builds trust.',
         ),
         SizedBox(height: 16),
         _buildGuidelineItem(
           icon: Icons.security,
           title: 'Stay Safe',
-          description: 'Meet in public places first. Let someone know where you\'re going.',
+          description:
+              'Meet in public places first. Let someone know where you\'re going.',
         ),
         SizedBox(height: 16),
         _buildGuidelineItem(
           icon: Icons.sentiment_satisfied_alt,
           title: 'Be Respectful',
-          description: 'Treat others as you wish to be treated. Respect boundaries and consent.',
+          description:
+              'Treat others as you wish to be treated. Respect boundaries and consent.',
         ),
         SizedBox(height: 16),
         _buildGuidelineItem(
@@ -656,7 +680,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         _buildGuidelineItem(
           icon: Icons.thumb_down_off_alt,
           title: 'Zero Tolerance for Harassment',
-          description: 'Unsolicited messages, hate speech, and discrimination are not allowed.',
+          description:
+              'Unsolicited messages, hate speech, and discrimination are not allowed.',
         ),
         SizedBox(height: 24),
         CheckboxListTile(
@@ -672,7 +697,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   Widget _buildGuidelineItem({
     required IconData icon,
     required String title,
@@ -703,8 +728,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       ],
     );
   }
-  
+
   int min(int a, int b) {
     return a < b ? a : b;
   }
-} 
+}

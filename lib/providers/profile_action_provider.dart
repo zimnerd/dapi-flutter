@@ -42,23 +42,25 @@ class ProfileActionState {
 class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
   final ProfileService _profileService;
 
-  ProfileActionNotifier(this._profileService) : super(const ProfileActionState());
+  ProfileActionNotifier(this._profileService)
+      : super(const ProfileActionState());
 
   Future<bool> likeProfile(String profileId) async {
     if (state.isProcessing) return false;
-    
+
     state = state.copyWith(isProcessing: true, error: null);
-    
+
     try {
       await _profileService.likeProfile(profileId);
-      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
-        ..['$profileId'] = ProfileAction.like;
-      
+      final updatedActions =
+          Map<String, ProfileAction>.from(state.recentActions)
+            ..[profileId] = ProfileAction.like;
+
       state = state.copyWith(
         isProcessing: false,
         recentActions: updatedActions,
       );
-      
+
       logger.info('Successfully liked profile: $profileId');
       return true;
     } catch (e) {
@@ -73,19 +75,20 @@ class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
 
   Future<bool> dislikeProfile(String profileId) async {
     if (state.isProcessing) return false;
-    
+
     state = state.copyWith(isProcessing: true, error: null);
-    
+
     try {
       await _profileService.dislikeProfile(profileId);
-      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
-        ..['$profileId'] = ProfileAction.dislike;
-      
+      final updatedActions =
+          Map<String, ProfileAction>.from(state.recentActions)
+            ..[profileId] = ProfileAction.dislike;
+
       state = state.copyWith(
         isProcessing: false,
         recentActions: updatedActions,
       );
-      
+
       logger.info('Successfully disliked profile: $profileId');
       return true;
     } catch (e) {
@@ -100,19 +103,20 @@ class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
 
   Future<bool> superlikeProfile(String profileId) async {
     if (state.isProcessing) return false;
-    
+
     state = state.copyWith(isProcessing: true, error: null);
-    
+
     try {
       await _profileService.superlikeProfile(profileId);
-      final updatedActions = Map<String, ProfileAction>.from(state.recentActions)
-        ..['$profileId'] = ProfileAction.superlike;
-      
+      final updatedActions =
+          Map<String, ProfileAction>.from(state.recentActions)
+            ..[profileId] = ProfileAction.superlike;
+
       state = state.copyWith(
         isProcessing: false,
         recentActions: updatedActions,
       );
-      
+
       logger.info('Successfully superliked profile: $profileId');
       return true;
     } catch (e) {
@@ -130,7 +134,7 @@ class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
   }
 
   ProfileAction? getProfileAction(String profileId) {
-    return state.recentActions['$profileId'];
+    return state.recentActions[profileId];
   }
 
   void clearError() {
@@ -138,7 +142,8 @@ class ProfileActionNotifier extends StateNotifier<ProfileActionState> {
   }
 }
 
-final profileActionProvider = StateNotifierProvider<ProfileActionNotifier, ProfileActionState>((ref) {
+final profileActionProvider =
+    StateNotifierProvider<ProfileActionNotifier, ProfileActionState>((ref) {
   final profileService = ref.watch(profileServiceProvider);
   return ProfileActionNotifier(profileService);
-}); 
+});

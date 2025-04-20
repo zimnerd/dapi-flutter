@@ -9,7 +9,7 @@ import '../screens/profile_screen.dart';
 import '../config/app_config.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
@@ -17,7 +17,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final BiometricService _biometricService = BiometricService();
-  
+
   bool _darkModeEnabled = false;
   bool _notificationsEnabled = true;
   bool _locationEnabled = true;
@@ -25,23 +25,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _biometricAvailable = false;
   bool _isLoading = true;
   String? _userEmail;
-  
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
   }
-  
+
   Future<void> _loadSettings() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final biometricAvailable = await _biometricService.isBiometricAvailable();
       final biometricEnabled = await _biometricService.isBiometricEnabled();
       _userEmail = ref.read(userEmailProvider);
-      
+
       setState(() {
         _biometricAvailable = biometricAvailable;
         _biometricEnabled = biometricEnabled;
@@ -50,36 +50,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       print('Error loading biometric settings: $e');
     } finally {
       if (mounted) {
-         setState(() {
-           _isLoading = false;
-         });
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
-  
+
   Future<void> _toggleBiometricAuth(bool value) async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       if (value) {
         final email = ref.read(userEmailProvider);
-        
+
         if (email != null && email.isNotEmpty) {
           final success = await _biometricService.enableBiometrics(email);
           if (mounted) {
-             setState(() {
-               _biometricEnabled = success;
-             });
+            setState(() {
+              _biometricEnabled = success;
+            });
           }
         } else {
           if (mounted) {
             setState(() {
-               _biometricEnabled = false;
+              _biometricEnabled = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Unable to enable biometric login. User email not found.')),
+              const SnackBar(
+                  content: Text(
+                      'Unable to enable biometric login. User email not found.')),
             );
           }
         }
@@ -87,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final success = await _biometricService.disableBiometrics();
         if (mounted) {
           setState(() {
-             _biometricEnabled = !success;
+            _biometricEnabled = !success;
           });
         }
       }
@@ -99,25 +101,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       }
     } finally {
-       if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-       }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _logout() async {
-     await ref.read(authStateProvider.notifier).logout();
-     if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-     }
+    await ref.read(authStateProvider.notifier).logout();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
   }
-  
+
   void _showApiConfigDialog() {
-    final TextEditingController apiUrlController = TextEditingController(text: AppConfig.apiBaseUrl);
-    final TextEditingController socketUrlController = TextEditingController(text: AppConfig.socketUrl);
-    
+    final TextEditingController apiUrlController =
+        TextEditingController(text: AppConfig.apiBaseUrl);
+    final TextEditingController socketUrlController =
+        TextEditingController(text: AppConfig.socketUrl);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -153,7 +157,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // For now, just show a toast message
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('URL configuration saved (demo only)')),
+                const SnackBar(
+                    content: Text('URL configuration saved (demo only)')),
               );
             },
             child: const Text('Save'),
@@ -162,21 +167,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Settings',
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primary),
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -191,7 +198,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _buildSettingsItem(
                             icon: Icons.person_outline,
                             title: 'Edit Profile',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileScreen())),
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ProfileScreen())),
                           ),
                           const Divider(),
                           _buildSettingsItem(
@@ -208,9 +218,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // App Settings Section
                     _buildSectionHeader('App Settings'),
                     _buildSettingsCard(
@@ -253,8 +263,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             _buildSwitchItem(
                               icon: Icons.fingerprint,
                               title: 'Biometric Login',
-                              subtitle: _biometricEnabled 
-                                  ? 'Enabled for ${_userEmail ?? "your account"}' 
+                              subtitle: _biometricEnabled
+                                  ? 'Enabled for ${_userEmail ?? "your account"}'
                                   : 'Quick login with fingerprint or face',
                               value: _biometricEnabled,
                               onChanged: _toggleBiometricAuth,
@@ -263,9 +273,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Developer Options Section
                     _buildSectionHeader('Developer Options'),
                     _buildSettingsCard(
@@ -275,7 +285,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             icon: Icons.cable,
                             title: 'WebSocket Tester',
                             subtitle: 'Test real-time chat connection',
-                            onTap: () => Navigator.pushNamed(context, '/websocket-test'),
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/websocket-test'),
                           ),
                           const Divider(),
                           _buildSettingsItem(
@@ -287,9 +298,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Support Section
                     _buildSectionHeader('Support'),
                     _buildSettingsCard(
@@ -315,11 +326,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Logout Button
-                    Container(
+                    SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _logout,
@@ -332,7 +343,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: const Text('Logout',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -341,7 +354,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
     );
   }
-  
+
   Widget _buildSectionHeader(String title, {Color color = Colors.black87}) {
     return Padding(
       padding: const EdgeInsets.only(left: 16.0, bottom: 12.0),
@@ -355,8 +368,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
-  
-  Widget _buildSettingsCard({required Widget child, Color color = Colors.white}) {
+
+  Widget _buildSettingsCard(
+      {required Widget child, Color color = Colors.white}) {
     return Container(
       decoration: BoxDecoration(
         color: color,
@@ -372,7 +386,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: child,
     );
   }
-  
+
   Widget _buildSettingsItem({
     required IconData icon,
     required String title,
@@ -422,7 +436,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildSwitchItem({
     required IconData icon,
     required String title,
@@ -469,4 +483,4 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
-} 
+}

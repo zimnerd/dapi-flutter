@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
-import 'api_client.dart';
 import '../providers/providers.dart';
 
 // Define a Settings model class
@@ -11,13 +8,13 @@ class UserSettings {
   final bool notificationsEnabled;
   final bool locationSharing;
   final bool darkMode;
-  
+
   UserSettings({
     this.notificationsEnabled = true,
     this.locationSharing = true,
     this.darkMode = false,
   });
-  
+
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     return UserSettings(
       notificationsEnabled: json['notifications_enabled'] ?? true,
@@ -25,7 +22,7 @@ class UserSettings {
       darkMode: json['dark_mode'] ?? false,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'notifications_enabled': notificationsEnabled,
@@ -33,7 +30,7 @@ class UserSettings {
       'dark_mode': darkMode,
     };
   }
-  
+
   UserSettings copyWith({
     bool? notificationsEnabled,
     bool? locationSharing,
@@ -52,13 +49,13 @@ class NotificationSettings {
   final bool newMatches;
   final bool newMessages;
   final bool appUpdates;
-  
+
   NotificationSettings({
     this.newMatches = true,
     this.newMessages = true,
     this.appUpdates = true,
   });
-  
+
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
     return NotificationSettings(
       newMatches: json['new_matches'] ?? true,
@@ -66,7 +63,7 @@ class NotificationSettings {
       appUpdates: json['app_updates'] ?? true,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'new_matches': newMatches,
@@ -74,7 +71,7 @@ class NotificationSettings {
       'app_updates': appUpdates,
     };
   }
-  
+
   NotificationSettings copyWith({
     bool? newMatches,
     bool? newMessages,
@@ -93,13 +90,13 @@ class PrivacySettings {
   final bool showOnlineStatus;
   final bool showDistance;
   final bool showLastActive;
-  
+
   PrivacySettings({
     this.showOnlineStatus = true,
     this.showDistance = true,
     this.showLastActive = true,
   });
-  
+
   factory PrivacySettings.fromJson(Map<String, dynamic> json) {
     return PrivacySettings(
       showOnlineStatus: json['show_online_status'] ?? true,
@@ -107,7 +104,7 @@ class PrivacySettings {
       showLastActive: json['show_last_active'] ?? true,
     );
   }
-  
+
   Map<String, dynamic> toJson() {
     return {
       'show_online_status': showOnlineStatus,
@@ -115,7 +112,7 @@ class PrivacySettings {
       'show_last_active': showLastActive,
     };
   }
-  
+
   PrivacySettings copyWith({
     bool? showOnlineStatus,
     bool? showDistance,
@@ -132,15 +129,15 @@ class PrivacySettings {
 // Settings Service
 class SettingsService {
   final Dio _dio;
-  
+
   SettingsService(this._dio);
-  
+
   // Get user settings
   Future<UserSettings> getUserSettings() async {
     try {
       print('⟹ [SettingsService] Fetching user settings');
       final response = await _dio.get(AppEndpoints.settings);
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully fetched user settings');
         return UserSettings.fromJson(response.data);
@@ -158,7 +155,7 @@ class SettingsService {
       return UserSettings();
     }
   }
-  
+
   // Update user settings
   Future<UserSettings> updateUserSettings(UserSettings settings) async {
     try {
@@ -167,7 +164,7 @@ class SettingsService {
         AppEndpoints.settings,
         data: settings.toJson(),
       );
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully updated user settings');
         return UserSettings.fromJson(response.data);
@@ -180,24 +177,25 @@ class SettingsService {
       }
     } catch (e) {
       print('⟹ [SettingsService] Error updating user settings: $e');
-      
+
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print('⟹ [SettingsService] Endpoint not found, simulating successful update');
+        print(
+            '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }
-      
+
       // For other errors, rethrow
       rethrow;
     }
   }
-  
+
   // Get notification settings
   Future<NotificationSettings> getNotificationSettings() async {
     try {
       print('⟹ [SettingsService] Fetching notification settings');
       final response = await _dio.get(AppEndpoints.notifications);
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully fetched notification settings');
         return NotificationSettings.fromJson(response.data);
@@ -215,16 +213,17 @@ class SettingsService {
       return NotificationSettings();
     }
   }
-  
+
   // Update notification settings
-  Future<NotificationSettings> updateNotificationSettings(NotificationSettings settings) async {
+  Future<NotificationSettings> updateNotificationSettings(
+      NotificationSettings settings) async {
     try {
       print('⟹ [SettingsService] Updating notification settings');
       final response = await _dio.patch(
         AppEndpoints.notifications,
         data: settings.toJson(),
       );
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully updated notification settings');
         return NotificationSettings.fromJson(response.data);
@@ -237,24 +236,25 @@ class SettingsService {
       }
     } catch (e) {
       print('⟹ [SettingsService] Error updating notification settings: $e');
-      
+
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print('⟹ [SettingsService] Endpoint not found, simulating successful update');
+        print(
+            '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }
-      
+
       // For other errors, rethrow
       rethrow;
     }
   }
-  
+
   // Get privacy settings
   Future<PrivacySettings> getPrivacySettings() async {
     try {
       print('⟹ [SettingsService] Fetching privacy settings');
       final response = await _dio.get(AppEndpoints.privacy);
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully fetched privacy settings');
         return PrivacySettings.fromJson(response.data);
@@ -272,16 +272,17 @@ class SettingsService {
       return PrivacySettings();
     }
   }
-  
+
   // Update privacy settings
-  Future<PrivacySettings> updatePrivacySettings(PrivacySettings settings) async {
+  Future<PrivacySettings> updatePrivacySettings(
+      PrivacySettings settings) async {
     try {
       print('⟹ [SettingsService] Updating privacy settings');
       final response = await _dio.patch(
         AppEndpoints.privacy,
         data: settings.toJson(),
       );
-      
+
       if (response.statusCode == 200 && response.data != null) {
         print('⟹ [SettingsService] Successfully updated privacy settings');
         return PrivacySettings.fromJson(response.data);
@@ -294,13 +295,14 @@ class SettingsService {
       }
     } catch (e) {
       print('⟹ [SettingsService] Error updating privacy settings: $e');
-      
+
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print('⟹ [SettingsService] Endpoint not found, simulating successful update');
+        print(
+            '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }
-      
+
       // For other errors, rethrow
       rethrow;
     }
@@ -311,4 +313,4 @@ class SettingsService {
 final settingsServiceProvider = Provider<SettingsService>((ref) {
   final dio = ref.watch(dioProvider);
   return SettingsService(dio);
-}); 
+});

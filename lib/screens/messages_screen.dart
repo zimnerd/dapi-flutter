@@ -16,7 +16,7 @@ final conversationsLoadingProvider = StateProvider<bool>((ref) => false);
 final conversationsErrorProvider = StateProvider<String?>((ref) => null);
 
 class MessagesScreen extends ConsumerStatefulWidget {
-  const MessagesScreen({Key? key}) : super(key: key);
+  const MessagesScreen({super.key});
 
   @override
   _MessagesScreenState createState() => _MessagesScreenState();
@@ -26,7 +26,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize socket connection when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Make sure auth service is properly initialized before proceeding
@@ -35,36 +35,36 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       _loadConversations();
     });
   }
-  
+
   Future<void> _ensureAuthServiceInitialized() async {
     final chatService = ref.read(chatServiceProvider);
     final authService = ref.read(authServiceProvider);
-    
+
     // Explicitly initialize the auth service in the chat service
     chatService.initializeAuthService(authService);
     print('Auth service explicitly initialized in messages screen');
-    
+
     // Small delay to ensure initialization completes
     await Future.delayed(const Duration(milliseconds: 100));
   }
-  
+
   void _initializeChat() {
     final chatService = ref.read(chatServiceProvider);
     chatService.initSocket(); // Initialize socket
-    
+
     // Listen for new messages and update conversations list
     chatService.onNewMessage.listen((message) {
       _loadConversations(); // Refresh conversations when a new message arrives
     });
   }
-  
+
   Future<void> _loadConversations() async {
     final chatService = ref.read(chatServiceProvider);
-    
+
     // Set loading state
     ref.read(conversationsLoadingProvider.notifier).state = true;
     ref.read(conversationsErrorProvider.notifier).state = null;
-    
+
     try {
       final conversations = await chatService.getConversations();
       ref.read(conversationsProvider.notifier).state = conversations;
@@ -72,7 +72,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     } catch (e) {
       print('Error loading conversations: $e');
       ref.read(conversationsLoadingProvider.notifier).state = false;
-      ref.read(conversationsErrorProvider.notifier).state = 'Could not load conversations';
+      ref.read(conversationsErrorProvider.notifier).state =
+          'Could not load conversations';
     }
   }
 
@@ -80,11 +81,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     try {
       // Convert dynamic conversation to Conversation model if needed
       final conversationModel = Conversation.fromJson(conversation);
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ConversationScreen(conversation: conversationModel),
+          builder: (context) =>
+              ConversationScreen(conversation: conversationModel),
         ),
       ).then((_) {
         // Refresh conversations when returning from conversation screen
@@ -212,4 +214,4 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       body: _buildConversationsList(),
     );
   }
-} 
+}

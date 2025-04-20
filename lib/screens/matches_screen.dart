@@ -18,13 +18,14 @@ import '../providers/providers.dart';
 import '../utils/logger.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
-  const MatchesScreen({Key? key}) : super(key: key);
+  const MatchesScreen({super.key});
 
   @override
   _MatchesScreenState createState() => _MatchesScreenState();
 }
 
-class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTickerProviderStateMixin {
+class _MatchesScreenState extends ConsumerState<MatchesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
   List<Profile> _matches = [];
@@ -51,13 +52,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
       _isLoading = true;
       _error = null;
     });
-    
+
     try {
-      await Future.wait([
-        _fetchMatches(),
-        _fetchLikes(),
-        _fetchConversations()
-      ]);
+      await Future.wait(
+          [_fetchMatches(), _fetchLikes(), _fetchConversations()]);
     } catch (e) {
       setState(() {
         _error = "Failed to load data. Please try again.";
@@ -101,13 +99,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
     try {
       final chatService = ref.read(chatServiceProvider);
       final dynamicConversations = await chatService.getConversations();
-      
+
       // Convert dynamic data to Conversation objects
       final conversations = dynamicConversations.map((data) {
         // Create Conversation object from JSON data
         return Conversation.fromJson(data);
       }).toList();
-      
+
       setState(() {
         _conversations = conversations;
       });
@@ -119,7 +117,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
   Future<void> _startConversation(Profile match) async {
     try {
       final chatService = ref.read(chatServiceProvider);
-      
+
       // Try to create conversation via API
       Conversation conversation;
       try {
@@ -131,16 +129,17 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
         // Create a mock conversation as fallback
         final currentUserId = ref.read(userIdProvider);
         final currentUserName = ref.read(userNameProvider);
-        
+
         if (currentUserId == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Cannot create conversation: Not logged in')),
+              const SnackBar(
+                  content: Text('Cannot create conversation: Not logged in')),
             );
           }
           return;
         }
-        
+
         // Create a local conversation object for demo purposes
         conversation = Conversation(
           id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
@@ -169,7 +168,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
           unreadCount: 0,
         );
       }
-      
+
       // Navigate to conversation screen
       if (mounted) {
         Navigator.push(
@@ -184,7 +183,8 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start conversation: ${e.toString()}')),
+          SnackBar(
+              content: Text('Failed to start conversation: ${e.toString()}')),
         );
       }
     }
@@ -272,10 +272,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
         itemCount: _conversations.length,
         itemBuilder: (context, index) {
           if (index >= _conversations.length) {
-            _logger.error("Index out of range in conversation list: $index/${_conversations.length}");
+            _logger.error(
+                "Index out of range in conversation list: $index/${_conversations.length}");
             return const SizedBox.shrink();
           }
-          
+
           final conversation = _conversations[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
@@ -301,7 +302,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
   Widget _buildLikesTab() {
     final isPremiumAsync = ref.watch(premiumProvider);
     bool isPremium = false;
-    
+
     // Extract the value from AsyncValue
     isPremiumAsync.whenData((value) {
       isPremium = value;
@@ -319,11 +320,15 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Icon(Icons.favorite_outline, size: 70, color: AppColors.primary.withOpacity(0.6)),
+              Icon(Icons.favorite_outline,
+                  size: 70, color: AppColors.primary.withOpacity(0.6)),
               const SizedBox(height: 16),
               Text(
                 'See Who Likes You!',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -331,7 +336,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Text(
                   'Upgrade to Premium to see everyone who already liked your profile and match instantly.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppColors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -340,13 +348,18 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
                 width: 200,
                 height: 44,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.star_border_purple500_outlined, size: 18),
+                  icon: const Icon(Icons.star_border_purple500_outlined,
+                      size: 18),
                   label: const Text('Go Premium'),
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PremiumScreen()));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const PremiumScreen()));
                   },
                   style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),
@@ -411,4 +424,4 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
       ),
     );
   }
-} 
+}

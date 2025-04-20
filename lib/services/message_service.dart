@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/app_config.dart';
-import 'package:dio/dio.dart';
-import '../models/message.dart';
 
 class MessageService {
   final storage = FlutterSecureStorage();
-  
+
   Future<List<Map<String, dynamic>>> getConversations() async {
     try {
       final token = await storage.read(key: 'token');
@@ -60,7 +58,8 @@ class MessageService {
     }
   }
 
-  Future<Map<String, dynamic>> sendMessage(String receiverId, String text) async {
+  Future<Map<String, dynamic>> sendMessage(
+      String receiverId, String text) async {
     try {
       final token = await storage.read(key: 'token');
       if (token == null) {
@@ -106,7 +105,8 @@ class MessageService {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to mark message as read: ${response.statusCode}');
+        throw Exception(
+            'Failed to mark message as read: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error marking message as read: $e');
@@ -138,4 +138,4 @@ class MessageService {
       throw Exception('Error getting unread count: $e');
     }
   }
-} 
+}

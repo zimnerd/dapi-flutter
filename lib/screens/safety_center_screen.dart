@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart'; // For launching URLs
 import '../utils/colors.dart'; // Assuming AppColors
 
 class SafetyCenterScreen extends StatelessWidget {
-  const SafetyCenterScreen({Key? key}) : super(key: key);
+  const SafetyCenterScreen({super.key});
 
   // Helper to launch URLs safely
   Future<void> _launchURL(String urlString) async {
@@ -20,8 +20,10 @@ class SafetyCenterScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Safety Center'),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onSurface,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ??
+            Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor ??
+            Theme.of(context).colorScheme.onSurface,
         elevation: Theme.of(context).appBarTheme.elevation ?? 1.0,
       ),
       body: ListView(
@@ -30,8 +32,9 @@ class SafetyCenterScreen extends StatelessWidget {
           Text(
             'Your safety is our priority. Find resources and tips below.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -53,12 +56,12 @@ class SafetyCenterScreen extends StatelessWidget {
             icon: Icons.block,
             title: 'Blocking Users',
             subtitle: 'Manage users you have blocked.',
-             onTap: () {
+            onTap: () {
               // TODO: Navigate to blocked users list screen
               print('Blocking Users tapped');
             },
           ),
-           _buildSafetyTile(
+          _buildSafetyTile(
             context,
             icon: Icons.security_outlined,
             title: 'Profile Verification',
@@ -72,12 +75,12 @@ class SafetyCenterScreen extends StatelessWidget {
 
           // --- Tips & Resources Section ---
           _buildSectionHeader(context, 'Tips & Resources'),
-           _buildSafetyTile(
+          _buildSafetyTile(
             context,
             icon: Icons.lightbulb_outline,
             title: 'Safe Dating Tips',
             subtitle: 'Advice for meeting online matches safely.',
-             onTap: () {
+            onTap: () {
               // TODO: Navigate to safe dating tips screen/article
               print('Safe Dating Tips tapped');
             },
@@ -88,11 +91,11 @@ class SafetyCenterScreen extends StatelessWidget {
             title: 'Online Safety Guide',
             subtitle: 'Protecting your personal information.',
             onTap: () {
-               // TODO: Navigate to online safety guide screen/article
+              // TODO: Navigate to online safety guide screen/article
               print('Online Safety Guide tapped');
             },
           ),
-           _buildSafetyTile(
+          _buildSafetyTile(
             context,
             icon: Icons.groups_outlined,
             title: 'Community Guidelines',
@@ -106,27 +109,29 @@ class SafetyCenterScreen extends StatelessWidget {
 
           // --- External Resources Section ---
           _buildSectionHeader(context, 'External Resources'),
-           _buildSafetyTile(
+          _buildSafetyTile(
             context,
             icon: Icons.emergency_outlined,
             title: 'Emergency Help',
             subtitle: 'Find resources for immediate assistance.',
-             onTap: () {
+            onTap: () {
               // TODO: Link to relevant external emergency resources (e.g., RAINN, local hotlines)
               // Example: _launchURL('https://www.rainn.org');
-               print('Emergency Help tapped');
-               _launchURL('https://www.google.com/search?q=emergency+help+resources'); // Placeholder Search
+              print('Emergency Help tapped');
+              _launchURL(
+                  'https://www.google.com/search?q=emergency+help+resources'); // Placeholder Search
             },
           ),
-           _buildSafetyTile(
+          _buildSafetyTile(
             context,
             icon: Icons.health_and_safety_outlined,
             title: 'Health & Wellbeing',
             subtitle: 'Resources for mental and sexual health.',
             onTap: () {
-               // TODO: Link to relevant external health resources
-               print('Health & Wellbeing tapped');
-                _launchURL('https://www.google.com/search?q=mental+sexual+health+resources'); // Placeholder Search
+              // TODO: Link to relevant external health resources
+              print('Health & Wellbeing tapped');
+              _launchURL(
+                  'https://www.google.com/search?q=mental+sexual+health+resources'); // Placeholder Search
             },
           ),
         ],
@@ -141,28 +146,33 @@ class SafetyCenterScreen extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
-        ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
       ),
     );
   }
 
   // Helper widget for safety list tiles
-  Widget _buildSafetyTile(BuildContext context, {
+  Widget _buildSafetyTile(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+      leading:
+          Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+      subtitle: Text(subtitle,
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+      contentPadding:
+          const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       // hoverColor: Theme.of(context).colorScheme.primary.withOpacity(0.05),
     );
   }
-} 
+}

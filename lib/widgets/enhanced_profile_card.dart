@@ -22,7 +22,7 @@ class EnhancedProfileCard extends StatefulWidget {
   final VoidCallback? onStackFinished;
 
   const EnhancedProfileCard({
-    Key? key,
+    super.key,
     required this.profiles,
     required this.onLike,
     required this.onDislike,
@@ -30,7 +30,7 @@ class EnhancedProfileCard extends StatefulWidget {
     this.showActions = true,
     this.initialIndex = 0,
     this.onStackFinished,
-  }) : super(key: key);
+  });
 
   @override
   _EnhancedProfileCardState createState() => _EnhancedProfileCardState();
@@ -39,10 +39,10 @@ class EnhancedProfileCard extends StatefulWidget {
 class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
   late CardSwiperController controller;
   int currentIndex = 0;
-  
+
   // Add PageController for photo navigation
   final Map<String, PageController> _photoControllers = {};
-  
+
   // Add current page tracking map
   final Map<String, int> _currentPhotoIndices = {};
 
@@ -51,15 +51,16 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
     super.initState();
     controller = CardSwiperController();
     currentIndex = widget.initialIndex;
-    
+
     // Initialize page controllers for each profile
     for (final profile in widget.profiles) {
       _photoControllers[profile.id] = PageController();
       _currentPhotoIndices[profile.id] = 0; // Initialize page index to 0
       print('Created page controller for profile ${profile.id}');
     }
-    
-    developer.log('EnhancedProfileCard initialized', name: 'EnhancedProfileCard');
+
+    developer.log('EnhancedProfileCard initialized',
+        name: 'EnhancedProfileCard');
   }
 
   @override
@@ -74,9 +75,9 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   void _handleSwipe(int index, CardSwiperDirection direction) {
     if (index >= widget.profiles.length) return;
-    
+
     final profile = widget.profiles[index];
-    
+
     switch (direction) {
       case CardSwiperDirection.right:
         HapticFeedback.mediumImpact();
@@ -93,13 +94,14 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
       default:
         break;
     }
-    
+
     setState(() {
       currentIndex = index + 1;
     });
-    
+
     // Check if we've reached the end of the stack
-    if (currentIndex >= widget.profiles.length && widget.onStackFinished != null) {
+    if (currentIndex >= widget.profiles.length &&
+        widget.onStackFinished != null) {
       widget.onStackFinished!();
     }
   }
@@ -115,9 +117,10 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   @override
   Widget build(BuildContext context) {
-    developer.log('Building EnhancedProfileCard with ${widget.profiles.length} profiles', 
-                  name: 'EnhancedProfileCard');
-    
+    developer.log(
+        'Building EnhancedProfileCard with ${widget.profiles.length} profiles',
+        name: 'EnhancedProfileCard');
+
     if (widget.profiles.isEmpty) {
       return const Center(
         child: Text('No profiles available'),
@@ -131,7 +134,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
             controller: controller,
             cardsCount: widget.profiles.length,
             initialIndex: currentIndex,
-            onSwipe: (int index, int? previousIndex, CardSwiperDirection direction) {
+            onSwipe:
+                (int index, int? previousIndex, CardSwiperDirection direction) {
               _handleSwipe(index, direction);
               return true; // Allow the swipe
             },
@@ -141,20 +145,22 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               // Handle undo if needed
               return true;
             },
-            cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+            cardBuilder:
+                (context, index, percentThresholdX, percentThresholdY) {
               if (index >= widget.profiles.length) {
                 return Container();
               }
               // Add debug log for each card build
-              developer.log('Building card for profile ${widget.profiles[index].name}', 
-                           name: 'EnhancedProfileCard');
-                           
-              return _buildProfileCard(widget.profiles[index], percentThresholdX.toDouble(), percentThresholdY.toDouble());
+              developer.log(
+                  'Building card for profile ${widget.profiles[index].name}',
+                  name: 'EnhancedProfileCard');
+
+              return _buildProfileCard(widget.profiles[index],
+                  percentThresholdX.toDouble(), percentThresholdY.toDouble());
             },
           ),
         ),
-        if (widget.showActions)
-          _buildActionButtons(),
+        if (widget.showActions) _buildActionButtons(),
       ],
     );
   }
@@ -252,16 +258,17 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   // Update card content to use PageView with explicit tap areas
   Widget _buildCardContent(Profile profile) {
-    developer.log('Building card content for ${profile.name}', name: 'EnhancedProfileCard');
-    
+    developer.log('Building card content for ${profile.name}',
+        name: 'EnhancedProfileCard');
+
     // Get or create a PageController for this profile
-    final pageController = _photoControllers[profile.id] ?? 
-      (_photoControllers[profile.id] = PageController());
-    
+    final pageController = _photoControllers[profile.id] ??
+        (_photoControllers[profile.id] = PageController());
+
     // Get current page index with fallback
     final currentPhotoIndex = _currentPhotoIndices[profile.id] ?? 0;
     final totalPhotos = profile.photoUrls.length;
-    
+
     return GestureDetector(
       // Double tap to view full profile
       onDoubleTap: () => _navigateToProfileDetails(context, profile),
@@ -276,8 +283,9 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
             physics: ClampingScrollPhysics(), // Prevent horizontal scrolling
             itemBuilder: (context, index) {
               final imageUrl = profile.photoUrls[index];
-              print('CONSOLE: Building photo $index for ${profile.id}: ${imageUrl.substring(0, min(20, imageUrl.length))}...');
-              
+              print(
+                  'CONSOLE: Building photo $index for ${profile.id}: ${imageUrl.substring(0, min(20, imageUrl.length))}...');
+
               return ImageHelper.getNetworkImageWithFallback(
                 imageUrl: imageUrl,
                 gender: profile.gender,
@@ -285,7 +293,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               );
             },
           ),
-          
+
           // ARROW BUTTONS - clearly visible on the left and right edges
           if (profile.photoUrls.length > 1)
             Positioned.fill(
@@ -307,10 +315,10 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                             final newIndex = currentPhotoIndex - 1;
                             _currentPhotoIndices[profile.id] = newIndex;
                             pageController.jumpToPage(newIndex);
-                            
+
                             // Force update state
                             setState(() {});
-                            
+
                             // Vibrate
                             HapticFeedback.selectionClick();
                           }
@@ -331,7 +339,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                         ),
                       ),
                     ),
-                  
+
                   // RIGHT ARROW
                   if (currentPhotoIndex < profile.photoUrls.length - 1)
                     Align(
@@ -341,15 +349,16 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                         onTap: () {
                           print('CONSOLE: RIGHT ARROW TAPPED');
                           // Direct navigation
-                          if (currentPhotoIndex < profile.photoUrls.length - 1) {
+                          if (currentPhotoIndex <
+                              profile.photoUrls.length - 1) {
                             // Both change the page controller and update state directly
                             final newIndex = currentPhotoIndex + 1;
                             _currentPhotoIndices[profile.id] = newIndex;
                             pageController.jumpToPage(newIndex);
-                            
+
                             // Force update state
                             setState(() {});
-                            
+
                             // Vibrate
                             HapticFeedback.selectionClick();
                           }
@@ -373,14 +382,13 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                 ],
               ),
             ),
-            
+
           // Swipe instruction overlay that only shows for 5 seconds
-          if (profile.photoUrls.length > 1)
-            _SwipeInstructionOverlay(),
-          
+          if (profile.photoUrls.length > 1) _SwipeInstructionOverlay(),
+
           // Profile details at the bottom
           _buildProfileDetails(profile),
-          
+
           // Visual indicator for double tap
           Positioned(
             bottom: 100,
@@ -404,7 +412,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               ),
             ),
           ),
-          
+
           // Photo counter with tappable dots
           if (profile.photoUrls.length > 1)
             Positioned(
@@ -415,7 +423,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(16),
@@ -488,13 +497,14 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               size: 30,
             ),
           ),
-          
+
           // INFO button (new)
           FloatingActionButton(
             heroTag: 'infoBtn',
             onPressed: () {
               if (currentIndex < widget.profiles.length) {
-                _navigateToProfileDetails(context, widget.profiles[currentIndex]);
+                _navigateToProfileDetails(
+                    context, widget.profiles[currentIndex]);
               }
             },
             backgroundColor: Colors.white,
@@ -506,7 +516,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               size: 24,
             ),
           ),
-          
+
           // Super like button
           FloatingActionButton(
             heroTag: 'superLikeBtn',
@@ -525,7 +535,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               size: 24,
             ),
           ),
-          
+
           // Like button
           FloatingActionButton(
             heroTag: 'likeBtn',
@@ -609,7 +619,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
               runSpacing: 6,
               children: profile.interests.take(3).map((interest) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16),
@@ -633,12 +644,13 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 // Add a separate widget for the swipe instruction that auto-hides
 class _SwipeInstructionOverlay extends StatefulWidget {
   @override
-  _SwipeInstructionOverlayState createState() => _SwipeInstructionOverlayState();
+  _SwipeInstructionOverlayState createState() =>
+      _SwipeInstructionOverlayState();
 }
 
 class _SwipeInstructionOverlayState extends State<_SwipeInstructionOverlay> {
   bool _visible = true;
-  
+
   @override
   void initState() {
     super.initState();
@@ -651,11 +663,11 @@ class _SwipeInstructionOverlayState extends State<_SwipeInstructionOverlay> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (!_visible) return SizedBox.shrink();
-    
+
     return Positioned(
       top: 50,
       left: 0,
@@ -679,4 +691,4 @@ class _SwipeInstructionOverlayState extends State<_SwipeInstructionOverlay> {
       ),
     );
   }
-} 
+}

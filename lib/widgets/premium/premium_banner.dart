@@ -8,29 +8,30 @@ class PremiumBanner extends ConsumerWidget {
   final bool compact;
 
   const PremiumBanner({
-    Key? key,
+    super.key,
     this.message = 'Unlock premium features to enhance your dating experience!',
     this.compact = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPremium = ref.watch(premiumProvider);
-    
+
     // Don't show banner if user is already premium
     return isPremium.when(
       data: (hasPremium) {
         if (hasPremium) {
           return const SizedBox.shrink();
         }
-        
+
         return _buildBanner(context);
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => _buildBanner(context), // Show banner on error (assume non-premium)
+      error: (_, __) =>
+          _buildBanner(context), // Show banner on error (assume non-premium)
     );
   }
-  
+
   Widget _buildBanner(BuildContext context) {
     return GestureDetector(
       onTap: () {
@@ -90,4 +91,4 @@ class PremiumBanner extends ConsumerWidget {
       ),
     );
   }
-} 
+}

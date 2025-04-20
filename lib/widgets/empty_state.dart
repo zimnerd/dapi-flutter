@@ -9,13 +9,13 @@ class EmptyState extends StatelessWidget {
   final Widget? action;
 
   const EmptyState({
-    Key? key,
+    super.key,
     this.title,
     required this.message,
     this.submessage,
     this.icon,
     this.action,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,9 @@ class EmptyState extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: title != null ? AppColors.textSecondary : AppColors.textPrimary,
+                color: title != null
+                    ? AppColors.textSecondary
+                    : AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -74,4 +76,4 @@ class EmptyState extends StatelessWidget {
       ),
     );
   }
-} 
+}

@@ -7,12 +7,12 @@ class AnimatedTapFeedback extends StatefulWidget {
   final double scaleFactor;
 
   const AnimatedTapFeedback({
-    Key? key,
+    super.key,
     required this.child,
     this.onTap,
     this.duration = const Duration(milliseconds: 150),
     this.scaleFactor = 0.95,
-  }) : super(key: key);
+  });
 
   @override
   _AnimatedTapFeedbackState createState() => _AnimatedTapFeedbackState();
@@ -31,7 +31,8 @@ class _AnimatedTapFeedbackState extends State<AnimatedTapFeedback>
       duration: widget.duration,
       reverseDuration: widget.duration * 0.5, // Faster reverse animation
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
+    _scaleAnimation =
+        Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Curves.easeInOut,
@@ -71,4 +72,4 @@ class _AnimatedTapFeedbackState extends State<AnimatedTapFeedback>
       ),
     );
   }
-} 
+}

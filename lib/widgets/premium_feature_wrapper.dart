@@ -8,29 +8,29 @@ class PremiumFeatureWrapper extends ConsumerWidget {
   final String featureName;
   final String description;
   final IconData icon;
-  
+
   const PremiumFeatureWrapper({
-    Key? key,
+    super.key,
     required this.child,
     required this.featureName,
     required this.description,
     this.icon = Icons.lock,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPremiumAsync = ref.watch(premiumProvider);
     bool isPremium = false;
-    
+
     // Extract the value from AsyncValue
     isPremiumAsync.whenData((value) {
       isPremium = value;
     });
-    
+
     if (isPremium) {
       return child;
     }
-    
+
     return GestureDetector(
       onTap: () => _showPremiumDialog(context),
       child: Stack(
@@ -95,4 +95,4 @@ class PremiumFeatureWrapper extends ConsumerWidget {
       ),
     );
   }
-} 
+}

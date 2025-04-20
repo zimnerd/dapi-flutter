@@ -1,7 +1,5 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_client.dart';
-import '../services/auth_service.dart' as auth_service;
 import 'providers.dart'; // Import providers.dart for dioProvider and authServiceProvider
 
 // We already have a dioProvider in providers.dart, so let's consider this a specialized network provider
@@ -23,4 +21,4 @@ final networkApiClientProvider = Provider<ApiClient>((ref) {
 });
 
 // Remove the networkServiceProvider since NetworkService isn't defined
-// If needed, create a proper NetworkService class and implement it 
+// If needed, create a proper NetworkService class and implement it

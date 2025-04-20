@@ -1,10 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart'; // Assuming User model exists
-import '../models/login_response.dart'; // Import the new login response model
-import '../services/api_client.dart';
+// Import the new login response model
 import '../utils/logger.dart';
 import '../config/app_config.dart';
 import 'providers.dart'; // Import providers.dart for access to dioProvider and secureStorageProvider
@@ -60,9 +56,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final storage = _ref.read(secureStorageProvider);
       final token = await storage.read(key: AppStorageKeys.token);
-      
+
       _logger.debug('Access token exists: ${token != null}');
-      
+
       if (token != null) {
         // Optionally fetch user details here if needed upon app start
         final user = await _getCurrentUserFromPrefs();
@@ -76,9 +72,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _logger.error('Error checking initial auth status: $e');
       _logger.error('Stack trace: $stackTrace');
       state = AuthState(
-        status: AuthStatus.unauthenticated, 
-        errorMessage: 'Failed to check authentication: $e'
-      );
+          status: AuthStatus.unauthenticated,
+          errorMessage: 'Failed to check authentication: $e');
     }
   }
 
@@ -91,7 +86,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final userName = prefs.getString(AppStorageKeys.userName);
       final profileId = prefs.getString('profileId');
 
-      _logger.debug('User info from prefs - userId: ${userId != null}, email: ${userEmail != null}, name: ${userName != null}, profileId: ${profileId != null}');
+      _logger.debug(
+          'User info from prefs - userId: ${userId != null}, email: ${userEmail != null}, name: ${userName != null}, profileId: ${profileId != null}');
 
       if (userId != null && userEmail != null && userName != null) {
         _logger.debug('Successfully retrieved user from preferences');
@@ -114,18 +110,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login(String email, String password) async {
     _logger.debug('Attempting login for email: $email');
     state = state.copyWith(status: AuthStatus.authenticating);
-    
+
     try {
       final dio = _ref.read(dioProvider);
       final authService = _ref.read(authServiceProvider);
       _logger.debug('Making login API request');
-      
-      await authService.login(email, password);
-      
-      _logger.info('Login successful for: $email');
-      
-      checkAuth();
 
+      await authService.login(email, password);
+
+      _logger.info('Login successful for: $email');
+
+      checkAuth();
     } on ApiException catch (e, stackTrace) {
       _logger.error('Login API error: ${e.message}');
       _logger.error('Stack trace: $stackTrace');
@@ -143,30 +138,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> register(String name, String email, String password, [DateTime? birthDate, String? gender]) async {
+  Future<void> register(String name, String email, String password,
+      [DateTime? birthDate, String? gender]) async {
     _logger.debug('Attempting registration for email: $email');
     state = state.copyWith(status: AuthStatus.authenticating);
 
     try {
       final authService = _ref.read(authServiceProvider);
-      
+
       String? formattedBirthDate;
       if (birthDate != null) {
         formattedBirthDate = birthDate.toIso8601String();
       }
 
       await authService.register(
-        name, 
-        email, 
-        password, 
-        formattedBirthDate ?? '', 
-        gender ?? 'other'
-      );
-      
-      _logger.info('Registration successful for: $email');
-      
-      checkAuth();
+          name, email, password, formattedBirthDate ?? '', gender ?? 'other');
 
+      _logger.info('Registration successful for: $email');
+
+      checkAuth();
     } on ApiException catch (e, stackTrace) {
       _logger.error('Registration API error: ${e.message}');
       _logger.error('Stack trace: $stackTrace');
@@ -271,4 +261,4 @@ final authErrorMessageProvider = Provider<String?>((ref) {
 });
 
 // NOTE: We removed the duplicate sharedPreferencesProvider definition here
-// It is now only defined in providers.dart 
+// It is now only defined in providers.dart

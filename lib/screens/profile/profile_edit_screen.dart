@@ -5,7 +5,7 @@ import '../../providers/providers.dart';
 import '../../utils/colors.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
-  const ProfileEditScreen({Key? key}) : super(key: key);
+  const ProfileEditScreen({super.key});
 
   @override
   ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
@@ -13,15 +13,14 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _isLoading = false;
-  
+
   void _handleSubmit() async {
     try {
       setState(() => _isLoading = true);
       final profileService = ref.read(profileServiceProvider);
-      
+
       // Placeholder for profile update logic
       // ... rest of the method
-      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -34,7 +33,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,9 +48,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Profile form fields will go here
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   ElevatedButton(
                     onPressed: _handleSubmit,
                     style: ElevatedButton.styleFrom(
@@ -65,4 +64,4 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             ),
     );
   }
-} 
+}

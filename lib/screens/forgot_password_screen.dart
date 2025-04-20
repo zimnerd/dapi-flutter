@@ -6,49 +6,52 @@ import '../widgets/animated_tap_feedback.dart';
 import 'login_screen.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
-  const ForgotPasswordScreen({Key? key}) : super(key: key);
+  const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> with SingleTickerProviderStateMixin {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _emailSent = false;
   String _errorMessage = '';
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   // Remove direct initialization
   // final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
-    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
+
+    _slideAnimation =
+        Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Interval(0.0, 0.65, curve: Curves.easeOut),
       ),
     );
-    
+
     _animationController.forward();
   }
 
@@ -90,7 +93,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -139,7 +142,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
                 ),
               ),
             ),
-            
+
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
@@ -169,7 +172,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
                                         borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.primary.withOpacity(0.3),
+                                            color: AppColors.primary
+                                                .withOpacity(0.3),
                                             blurRadius: 15,
                                             offset: Offset(0, 5),
                                           ),
@@ -194,7 +198,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
                                 ],
                               ),
                             ),
-                            
+
                             // Form Card
                             Container(
                               decoration: BoxDecoration(
@@ -209,7 +213,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
                                 ],
                               ),
                               padding: const EdgeInsets.all(24.0),
-                              child: _emailSent 
+                              child: _emailSent
                                   ? _buildSuccessContent()
                                   : _buildResetForm(),
                             ),
@@ -226,7 +230,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
       ),
     );
   }
-  
+
   Widget _buildResetForm() {
     return Form(
       key: _formKey,
@@ -250,7 +254,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
             ),
           ),
           SizedBox(height: 24),
-          
+
           // Email Field
           TextFormField(
             controller: _emailController,
@@ -285,7 +289,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
               return null;
             },
           ),
-          
+
           // Error Message
           if (_errorMessage.isNotEmpty) ...[
             SizedBox(height: 16),
@@ -309,9 +313,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
               ),
             ),
           ],
-          
+
           SizedBox(height: 24),
-          
+
           // Reset Button
           ElevatedButton(
             onPressed: _isLoading ? null : _resetPassword,
@@ -348,9 +352,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
                     ),
                   ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Back to Login
           Center(
             child: TextButton(
@@ -368,7 +372,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
       ),
     );
   }
-  
+
   Widget _buildSuccessContent() {
     return Column(
       children: [
@@ -426,10 +430,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
         SizedBox(height: 16),
         ElevatedButton(
           onPressed: () => Navigator.pushNamed(
-            context, 
-            '/reset-password-confirmation',
-            arguments: {'email': _emailController.text.trim()}
-          ),
+              context, '/reset-password-confirmation',
+              arguments: {'email': _emailController.text.trim()}),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: AppColors.primary,
@@ -467,4 +469,4 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> wit
       ],
     );
   }
-} 
+}
