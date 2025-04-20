@@ -206,7 +206,7 @@ class ProfileService {
         _logger.info('Successfully updated profile: $profileId');
         return Profile.fromJson(response.data);
       } else {
-        _logger.warn('Failed to update profile: ${response.statusCode}');
+        _logger.warn('Failed to update profile $profileId: ${response.statusCode}');
         throw ApiException(Constants.errorProfileUpdateFailed, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
@@ -505,6 +505,168 @@ class ProfileService {
       maxDistance: 50,
       genderPreference: 'all',
     );
+  }
+
+  // Get mutual matches (connections)
+  Future<List<Profile>> getMutualMatches({int? limit, int? page}) async {
+    _logger.debug('Getting mutual matches: limit=$limit, page=$page');
+    try {
+      final queryParams = <String, dynamic>{};
+      if (limit != null) queryParams['limit'] = limit;
+      if (page != null) queryParams['page'] = page;
+      
+      final response = await _dio.get(
+        '${AppConfig.apiBaseUrl}/api/matches/connections',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> profilesJson;
+        
+        if (response.data is List) {
+          profilesJson = response.data;
+        } else if (response.data is Map && response.data['data'] != null) {
+          profilesJson = response.data['data'];
+        } else {
+          _logger.error('Unexpected response format for mutual matches: ${response.data.runtimeType}');
+          throw ApiException(Constants.errorFailedToLoadMatches);
+        }
+        
+        final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
+        _logger.info('Successfully retrieved ${profiles.length} mutual matches');
+        return profiles;
+      } else {
+        _logger.warn('Failed to get mutual matches: ${response.statusCode}');
+        throw ApiException(Constants.errorFailedToLoadMatches, statusCode: response.statusCode);
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error getting mutual matches: ${e.message}');
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for mutual matches in debug mode');
+        return List.generate(5, (_) => _generateMockProfile());
+      } else {
+        rethrow;
+      }
+    } catch (e) {
+      _logger.error('Unexpected error getting mutual matches: $e');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for mutual matches in debug mode');
+        return List.generate(5, (_) => _generateMockProfile());
+      } else {
+        throw ApiException(Constants.errorGeneric);
+      }
+    }
+  }
+  
+  // Get profiles that liked you
+  Future<List<Profile>> getProfilesWhoLikedMe({int? limit, int? page}) async {
+    _logger.debug('Getting profiles who liked me: limit=$limit, page=$page');
+    try {
+      final queryParams = <String, dynamic>{};
+      if (limit != null) queryParams['limit'] = limit;
+      if (page != null) queryParams['page'] = page;
+      
+      final response = await _dio.get(
+        '${AppConfig.apiBaseUrl}/api/matches/likes/me',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> profilesJson;
+        
+        if (response.data is List) {
+          profilesJson = response.data;
+        } else if (response.data is Map && response.data['data'] != null) {
+          profilesJson = response.data['data'];
+        } else {
+          _logger.error('Unexpected response format for likes received: ${response.data.runtimeType}');
+          throw ApiException(Constants.errorFailedToLoadMatches);
+        }
+        
+        final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
+        _logger.info('Successfully retrieved ${profiles.length} profiles who liked me');
+        return profiles;
+      } else {
+        _logger.warn('Failed to get profiles who liked me: ${response.statusCode}');
+        throw ApiException(Constants.errorFailedToLoadMatches, statusCode: response.statusCode);
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error getting profiles who liked me: ${e.message}');
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for likes received in debug mode');
+        return List.generate(3, (_) => _generateMockProfile());
+      } else {
+        rethrow;
+      }
+    } catch (e) {
+      _logger.error('Unexpected error getting profiles who liked me: $e');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for likes received in debug mode');
+        return List.generate(3, (_) => _generateMockProfile());
+      } else {
+        throw ApiException(Constants.errorGeneric);
+      }
+    }
+  }
+  
+  // Get profiles you liked
+  Future<List<Profile>> getProfilesILiked({int? limit, int? page}) async {
+    _logger.debug('Getting profiles I liked: limit=$limit, page=$page');
+    try {
+      final queryParams = <String, dynamic>{};
+      if (limit != null) queryParams['limit'] = limit;
+      if (page != null) queryParams['page'] = page;
+      
+      final response = await _dio.get(
+        '${AppConfig.apiBaseUrl}/api/matches/likes/sent',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> profilesJson;
+        
+        if (response.data is List) {
+          profilesJson = response.data;
+        } else if (response.data is Map && response.data['data'] != null) {
+          profilesJson = response.data['data'];
+        } else {
+          _logger.error('Unexpected response format for likes sent: ${response.data.runtimeType}');
+          throw ApiException(Constants.errorFailedToLoadMatches);
+        }
+        
+        final profiles = profilesJson.map((json) => Profile.fromJson(json)).toList();
+        _logger.info('Successfully retrieved ${profiles.length} profiles I liked');
+        return profiles;
+      } else {
+        _logger.warn('Failed to get profiles I liked: ${response.statusCode}');
+        throw ApiException(Constants.errorFailedToLoadMatches, statusCode: response.statusCode);
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error getting profiles I liked: ${e.message}');
+      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for likes sent in debug mode');
+        return List.generate(4, (_) => _generateMockProfile());
+      } else {
+        rethrow;
+      }
+    } catch (e) {
+      _logger.error('Unexpected error getting profiles I liked: $e');
+      
+      if (kDebugMode) {
+        _logger.debug('Returning mock profiles for likes sent in debug mode');
+        return List.generate(4, (_) => _generateMockProfile());
+      } else {
+        throw ApiException(Constants.errorGeneric);
+      }
+    }
   }
 }
 

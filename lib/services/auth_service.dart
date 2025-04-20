@@ -509,6 +509,93 @@ class AuthService {
     }
   }
 
+  // Delete user account
+  Future<bool> deleteAccount() async {
+    _logger.info('Deleting user account');
+    try {
+      final response = await _dio.delete(
+        '${AppConfig.apiBaseUrl}/api/users/me',
+      );
+      
+      if (response.statusCode == 200) {
+        _logger.info('Account deleted successfully');
+        // Clear all user data after successful deletion
+        await logout();
+        return true;
+      } else {
+        _logger.warn('Account deletion failed with status: ${response.statusCode}');
+        throw ApiException(
+          response.data?['message'] ?? Constants.errorGeneric, 
+          statusCode: response.statusCode
+        );
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error during account deletion: ${e.message}');
+      _handleDioError(e, defaultMessage: 'Failed to delete account');
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Error during account deletion: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
+    }
+  }
+
+  // Add user verification request
+  Future<bool> requestVerification() async {
+    _logger.info('Requesting account verification');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}/api/users/verify/request',
+      );
+      
+      if (response.statusCode == 200) {
+        _logger.info('Verification request sent successfully');
+        return true;
+      } else {
+        _logger.warn('Verification request failed with status: ${response.statusCode}');
+        throw ApiException(
+          response.data?['message'] ?? 'Verification request failed', 
+          statusCode: response.statusCode
+        );
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error during verification request: ${e.message}');
+      _handleDioError(e, defaultMessage: 'Failed to request verification');
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Error during verification request: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
+    }
+  }
+  
+  // Confirm verification with token
+  Future<bool> confirmVerification(String token) async {
+    _logger.info('Confirming account verification');
+    try {
+      final response = await _dio.post(
+        '${AppConfig.apiBaseUrl}/api/users/verify/confirm',
+        data: {'token': token},
+      );
+      
+      if (response.statusCode == 200) {
+        _logger.info('Verification confirmed successfully');
+        return true;
+      } else {
+        _logger.warn('Verification confirmation failed with status: ${response.statusCode}');
+        throw ApiException(
+          response.data?['message'] ?? 'Verification confirmation failed', 
+          statusCode: response.statusCode
+        );
+      }
+    } on DioException catch (e) {
+      _logger.error('Dio error during verification confirmation: ${e.message}');
+      _handleDioError(e, defaultMessage: 'Failed to confirm verification');
+      rethrow;
+    } catch (e, s) {
+      _logger.error('Error during verification confirmation: $e', e, s);
+      throw ApiException(Constants.errorGeneric);
+    }
+  }
+
   // Helper method to handle Dio errors and throw ApiException
   void _handleDioError(DioException e, {String? defaultMessage}) {
     String errorMessage = defaultMessage ?? Constants.errorGeneric;
