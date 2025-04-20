@@ -107,17 +107,24 @@ class ProfilePrompt {
 
 @immutable
 class ProfileEditState {
-  final Profile? initialProfile; // The profile loaded initially
+  final Profile? initialProfile;
   final String name;
   final DateTime birthDate;
   final String gender;
   final String bio;
   final String location;
   final String occupation;
+  final String? education;
   final List<String> interests;
-  final List<ProfilePrompt> prompts; // <-- NEW: Add prompts list
-  final XFile? pickedImageFile; // For temporary image selection
-  final AsyncValue<void> saveState; // State of the save operation
+  final List<String> photoUrls;
+  final List<ProfilePrompt> prompts;
+  final XFile? pickedImageFile;
+  final bool isVerified;
+  final int? minAgePreference;
+  final int? maxAgePreference;
+  final int? maxDistance;
+  final String? genderPreference;
+  final AsyncValue<void> saveState;
 
   const ProfileEditState({
     this.initialProfile,
@@ -127,85 +134,58 @@ class ProfileEditState {
     required this.bio,
     this.location = '',
     this.occupation = '',
+    this.education,
     required this.interests,
-    required this.prompts, // <-- Initialize prompts
+    required this.photoUrls,
+    required this.prompts,
     this.pickedImageFile,
-    this.saveState = const AsyncValue.data(
-        null), // Initial state is success (no operation pending)
+    this.isVerified = false,
+    this.minAgePreference,
+    this.maxAgePreference,
+    this.maxDistance,
+    this.genderPreference,
+    this.saveState = const AsyncValue.data(null),
   });
 
-  // Initial state factory
   factory ProfileEditState.initial() {
-    // Provide sensible defaults, maybe load from a default Profile if needed
     return ProfileEditState(
       name: '',
-      birthDate: DateTime.now()
-          .subtract(Duration(days: 365 * 18)), // Default to 18 years ago
+      birthDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
       gender: 'other',
       bio: '',
       location: '',
       occupation: '',
+      education: null,
       interests: [],
-      prompts: [], // <-- Initialize empty prompts
+      photoUrls: [],
+      prompts: [],
+      isVerified: false,
+      minAgePreference: null,
+      maxAgePreference: null,
+      maxDistance: null,
+      genderPreference: null,
     );
   }
 
-  // Create state from an existing profile
-  factory ProfileEditState.fromProfile(Profile profile) {
-    // Safe access for nullable fields
-    final birthDate =
-        profile.birthDate ?? DateTime.now().subtract(Duration(days: 365 * 18));
-    final gender = profile.gender ?? 'other';
-    final bio = profile.bio ?? '';
-
-    // Handle location which could be a Map or String
-    String locationStr = '';
-    if (profile.location is Map) {
-      final locationMap = profile.location as Map;
-      locationStr =
-          '${locationMap['city'] ?? ''}, ${locationMap['country'] ?? ''}';
-    } else if (profile.location is String) {
-      locationStr = profile.location as String;
-    }
-
-    // Convert prompts from List<Map<String, String>> to List<ProfilePrompt>
-    final List<ProfilePrompt> promptsList = [];
-    if (profile.prompts.isNotEmpty) {
-      for (final promptMap in profile.prompts) {
-        promptsList.add(ProfilePrompt(
-          question: promptMap['question'] ?? '',
-          answer: promptMap['answer'] ?? '',
-        ));
-      }
-    }
-
-    return ProfileEditState(
-      initialProfile: profile,
-      name: profile.name,
-      birthDate: birthDate,
-      gender: gender,
-      bio: bio,
-      location: locationStr,
-      occupation: profile.occupation ?? '',
-      interests: List<String>.from(profile.interests),
-      prompts: promptsList,
-      saveState: const AsyncValue.data(null),
-    );
-  }
-
-  // CopyWith method for immutability
   ProfileEditState copyWith({
-    Profile? initialProfile, // Allow updating initial profile if necessary
+    Profile? initialProfile,
     String? name,
     DateTime? birthDate,
     String? gender,
     String? bio,
     String? location,
     String? occupation,
+    String? education,
     List<String>? interests,
-    List<ProfilePrompt>? prompts, // <-- Add prompts to copyWith
+    List<String>? photoUrls,
+    List<ProfilePrompt>? prompts,
     XFile? pickedImageFile,
-    bool clearPickedImage = false, // Flag to explicitly clear the picked image
+    bool? isVerified,
+    int? minAgePreference,
+    int? maxAgePreference,
+    int? maxDistance,
+    String? genderPreference,
+    bool clearPickedImage = false,
     AsyncValue<void>? saveState,
   }) {
     return ProfileEditState(
@@ -216,75 +196,19 @@ class ProfileEditState {
       bio: bio ?? this.bio,
       location: location ?? this.location,
       occupation: occupation ?? this.occupation,
+      education: education ?? this.education,
       interests: interests ?? this.interests,
-      prompts: prompts ?? this.prompts, // <-- Handle prompts copy
+      photoUrls: photoUrls ?? this.photoUrls,
+      prompts: prompts ?? this.prompts,
       pickedImageFile:
           clearPickedImage ? null : pickedImageFile ?? this.pickedImageFile,
+      isVerified: isVerified ?? this.isVerified,
+      minAgePreference: minAgePreference ?? this.minAgePreference,
+      maxAgePreference: maxAgePreference ?? this.maxAgePreference,
+      maxDistance: maxDistance ?? this.maxDistance,
+      genderPreference: genderPreference ?? this.genderPreference,
       saveState: saveState ?? this.saveState,
     );
-  }
-
-  // Helper to check if changes have been made
-  bool get hasChanges {
-    if (initialProfile == null)
-      return true; // If no initial profile, assume changes
-
-    // Convert current prompts to format for comparison
-    final List<Map<String, String>> currentPromptsList = prompts
-        .map((p) => {'question': p.question, 'answer': p.answer})
-        .toList();
-
-    // Prepare location comparison
-    String initialLocationStr = '';
-    if (initialProfile!.location is Map) {
-      final locationMap = initialProfile!.location as Map;
-      initialLocationStr =
-          '${locationMap['city'] ?? ''}, ${locationMap['country'] ?? ''}';
-    } else if (initialProfile!.location is String) {
-      initialLocationStr = initialProfile!.location as String;
-    }
-
-    return name != initialProfile!.name ||
-        birthDate != initialProfile!.birthDate ||
-        gender != (initialProfile!.gender ?? '') ||
-        bio != (initialProfile!.bio ?? '') ||
-        location != initialLocationStr ||
-        occupation != (initialProfile!.occupation ?? '') ||
-        !_listEquals(interests, initialProfile!.interests) ||
-        !_arePromptsEqual(currentPromptsList, initialProfile!.prompts) ||
-        pickedImageFile != null;
-  }
-
-  // Helper for list equality (consider using collection package for more robust check)
-  bool _listEquals(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    final sortedA = List<String>.from(a)..sort();
-    final sortedB = List<String>.from(b)..sort();
-    for (int i = 0; i < sortedA.length; i++) {
-      if (sortedA[i] != sortedB[i]) return false;
-    }
-    return true;
-  }
-
-  // Helper for prompts equality
-  bool _arePromptsEqual(
-      List<Map<String, String>> a, List<Map<String, String>> b) {
-    if (a.length != b.length) return false;
-
-    // Simple comparison - check if each item in a has a matching item in b
-    for (var aItem in a) {
-      bool foundMatch = false;
-      for (var bItem in b) {
-        if (aItem['question'] == bItem['question'] &&
-            aItem['answer'] == bItem['answer']) {
-          foundMatch = true;
-          break;
-        }
-      }
-      if (!foundMatch) return false;
-    }
-
-    return true;
   }
 }
 
@@ -292,16 +216,58 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
   final ProfileService _profileService;
   final StorageService _storageService;
   final String _userId;
-  final Ref _ref; // FIX: Add ref field
+  final Ref _ref;
 
-  // FIX: Accept Ref in constructor
   ProfileEditNotifier(
       this._profileService, this._storageService, this._userId, this._ref)
       : super(ProfileEditState.initial());
 
   // Initialize the state with the user's current profile
-  void initialize(Profile profile) {
-    state = ProfileEditState.fromProfile(profile);
+  Future<void> initialize() async {
+    try {
+      final profile = await _profileService.getCurrentUserProfile();
+      if (profile != null) {
+        _updateFromProfile(profile);
+      }
+    } catch (e) {
+      print('Error initializing profile: $e');
+    }
+  }
+
+  void _updateFromProfile(Profile profile) {
+    String locationStr = '';
+    if (profile.location != null) {
+      locationStr = profile.location.toString();
+    }
+
+    List<ProfilePrompt> promptsList = [];
+    if (profile.prompts.isNotEmpty) {
+      promptsList = profile.prompts
+          .map((promptMap) => ProfilePrompt(
+                question: promptMap['question'] ?? '',
+                answer: promptMap['answer'] ?? '',
+              ))
+          .toList();
+    }
+
+    state = state.copyWith(
+      initialProfile: profile,
+      name: profile.name,
+      birthDate: profile.birthDate ?? state.birthDate,
+      gender: profile.gender ?? state.gender,
+      bio: profile.bio ?? state.bio,
+      location: locationStr,
+      occupation: profile.occupation ?? state.occupation,
+      education: profile.education,
+      interests: List<String>.from(profile.interests),
+      photoUrls: List<String>.from(profile.photoUrls),
+      prompts: promptsList,
+      isVerified: profile.isVerified,
+      minAgePreference: profile.minAgePreference,
+      maxAgePreference: profile.maxAgePreference,
+      maxDistance: profile.maxDistance,
+      genderPreference: profile.genderPreference,
+    );
   }
 
   // Update methods for each field
@@ -314,6 +280,8 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
       state = state.copyWith(location: location);
   void updateOccupation(String occupation) =>
       state = state.copyWith(occupation: occupation);
+  void updateEducation(String? education) =>
+      state = state.copyWith(education: education);
 
   void addInterest(String interest) {
     if (interest.trim().isNotEmpty &&
@@ -327,14 +295,11 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
         interests: state.interests.where((i) => i != interest).toList());
   }
 
-  // --- Methods for managing prompts ---
   void addPrompt(ProfilePrompt prompt) {
-    // Prevent adding duplicate questions or exceeding a limit (e.g., 3)
     if (state.prompts.length < 3 &&
         !state.prompts.any((p) => p.question == prompt.question)) {
       state = state.copyWith(prompts: [...state.prompts, prompt]);
     }
-    // Optionally show feedback if limit reached or question exists
   }
 
   void updatePromptAnswer(int index, String answer) {
@@ -342,13 +307,6 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
       final updatedPrompts = List<ProfilePrompt>.from(state.prompts);
       updatedPrompts[index] = updatedPrompts[index].copyWith(answer: answer);
       state = state.copyWith(prompts: updatedPrompts);
-    }
-  }
-
-  void updatePromptAnswerByQuestion(String question, String answer) {
-    final index = state.prompts.indexWhere((p) => p.question == question);
-    if (index != -1) {
-      updatePromptAnswer(index, answer);
     }
   }
 
@@ -360,91 +318,56 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
     }
   }
 
-  void removePromptByQuestion(String question) {
-    final index = state.prompts.indexWhere((p) => p.question == question);
-    if (index != -1) {
-      removePrompt(index);
-    }
-  }
-  // --- End of Prompt Methods ---
-
   void setPickedImage(XFile? imageFile) {
     state = state.copyWith(pickedImageFile: imageFile);
   }
 
-  // Method to save the profile (uploads image if changed)
   Future<void> saveProfile() async {
-    if (!state.hasChanges) {
-      print("No changes detected, skipping save.");
-      state =
-          state.copyWith(saveState: AsyncValue.data(null)); // Reset save state
-      return;
-    }
-
-    state = state.copyWith(saveState: AsyncValue.loading());
-
     try {
-      String? imageUrl = state.initialProfile?.photoUrls.isNotEmpty == true
-          ? state.initialProfile!.photoUrls.first
-          : null;
+      state = state.copyWith(saveState: const AsyncValue.loading());
 
       // Upload new image if one was picked
+      List<String> updatedPhotoUrls = List<String>.from(state.photoUrls);
       if (state.pickedImageFile != null) {
-        imageUrl = await _storageService.uploadProfileImage(
+        final imageUrl = await _storageService.uploadProfileImage(
             state.pickedImageFile!, _userId);
+        if (imageUrl != null) {
+          updatedPhotoUrls.insert(0, imageUrl);
+        }
       }
 
-      // Convert List<ProfilePrompt> to List<Map<String, String>> for the Profile model
-      final List<Map<String, String>> promptsList = state.prompts
+      // Convert prompts to the expected format
+      final List<Map<String, String>> promptsData = state.prompts
           .map((p) => {'question': p.question, 'answer': p.answer})
           .toList();
 
-      // Prepare profile data for update
-      final updatedProfileData = {
+      final updatedProfile = await _profileService.updateProfile(_userId, {
         'name': state.name,
         'birth_date': state.birthDate.toIso8601String(),
         'gender': state.gender,
-        'bio': state.bio,
-        'location': {'city': state.location, 'country': ''}, // Simplify for now
-        'occupation': state.occupation,
+        'photo_urls': updatedPhotoUrls,
         'interests': state.interests,
-        'prompts': promptsList,
-        'photos': imageUrl != null ? [imageUrl] : [],
-      };
+        'location': state.location,
+        'occupation': state.occupation,
+        'education': state.education,
+        'bio': state.bio,
+        'prompts': promptsData,
+        'min_age_preference': state.minAgePreference,
+        'max_age_preference': state.maxAgePreference,
+        'max_distance': state.maxDistance,
+        'gender_preference': state.genderPreference,
+      });
 
-      // Call the service to update the profile in the backend
-      print("[ProfileEditNotifier] Simulating profile update...");
-      await Future.delayed(
-          const Duration(seconds: 1)); // Simulate network delay
-      print("[ProfileEditNotifier] Profile update simulation complete.");
-
-      // Update successful - create a Profile object from the saved state
-      final newInitialProfile = Profile(
-        id: _userId,
-        name: state.name,
-        birthDate: state.birthDate,
-        gender: state.gender,
-        bio: state.bio,
-        location: {'city': state.location, 'country': ''},
-        occupation: state.occupation,
-        interests: state.interests,
-        prompts: promptsList,
-        photoUrls: imageUrl != null ? [imageUrl] : [],
-        isVerified: state.initialProfile?.isVerified ?? false,
-      );
-
-      state = state.copyWith(
-          initialProfile: newInitialProfile,
-          pickedImageFile: null, // Clear picked image after successful save
-          clearPickedImage: true,
-          saveState: AsyncValue.data(null));
-
-      // Also refresh the main user profile provider to reflect changes globally
-      _ref.invalidate(userProfileProvider);
-    } catch (e, stackTrace) {
-      print(
-          'Failed to save profile: $e\n$stackTrace'); // Combine error and stacktrace
-      state = state.copyWith(saveState: AsyncValue.error(e, stackTrace));
+      if (updatedProfile != null) {
+        _updateFromProfile(updatedProfile);
+        // Refresh the main user profile provider
+        _ref.invalidate(userProfileProvider);
+      }
+    } catch (e) {
+      print('Error saving profile: $e');
+      state =
+          state.copyWith(saveState: AsyncValue.error(e, StackTrace.current));
+      rethrow;
     }
   }
 }

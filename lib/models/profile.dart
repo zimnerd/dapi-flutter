@@ -10,7 +10,7 @@ class Profile {
   final String? gender;
   final List<String> photoUrls;
   final List<String> interests;
-  final Map<String, dynamic>? location;
+  final dynamic location;
   final double? distance;
   final String? occupation;
   final String? education;
@@ -21,6 +21,9 @@ class Profile {
   final int? maxAgePreference;
   final int? maxDistance;
   final String? genderPreference;
+  final List<String> profilePictures;
+  final bool isPremium;
+  final DateTime lastActive;
 
   const Profile({
     required this.id,
@@ -41,6 +44,9 @@ class Profile {
     this.maxAgePreference,
     this.maxDistance,
     this.genderPreference,
+    required this.profilePictures,
+    required this.isPremium,
+    required this.lastActive,
   });
 
   // Static method to calculate age from birthdate
@@ -61,20 +67,15 @@ class Profile {
 
   // Factory constructor to create Profile from JSON
   factory Profile.fromJson(Map<String, dynamic> json) {
-    // Handle potential null/type variations from different API responses
-    final id = json['id']?.toString() ?? '';
-
     // Handle birthDate - can come as String or DateTime
     DateTime? parsedBirthDate;
     if (json['birth_date'] != null) {
-      // Try to parse the birth_date from string
       try {
         parsedBirthDate = DateTime.parse(json['birth_date'].toString());
       } catch (e) {
         print('Error parsing birth_date: $e');
       }
     } else if (json['birthDate'] != null) {
-      // Try alternative key
       try {
         parsedBirthDate = DateTime.parse(json['birthDate'].toString());
       } catch (e) {
@@ -87,22 +88,9 @@ class Profile {
     if (json['photos'] != null) {
       try {
         if (json['photos'] is List) {
-          final photosList = json['photos'] as List<dynamic>;
-
-          // Handle different formats: simple string array or objects with url field
-          if (photosList.isNotEmpty) {
-            if (photosList[0] is String) {
-              // Direct array of strings
-              photos = photosList.map((e) => e.toString()).toList();
-            } else if (photosList[0] is Map) {
-              // Array of objects with url field
-              photos = photosList
-                  .map((photo) =>
-                      photo is Map ? (photo['url'] ?? '').toString() : '')
-                  .where((url) => url.isNotEmpty)
-                  .toList();
-            }
-          }
+          photos = (json['photos'] as List<dynamic>)
+              .map((e) => e.toString())
+              .toList();
         }
       } catch (e) {
         print('Error parsing photos: $e');
@@ -138,14 +126,6 @@ class Profile {
           [];
     }
 
-    // Handle location - could be a string or a map
-    Map<String, dynamic>? locationMap;
-    if (json['location'] is Map) {
-      locationMap = json['location'] as Map<String, dynamic>;
-    } else if (json['location'] is String) {
-      locationMap = {'city': json['location'], 'country': ''};
-    }
-
     // Handle prompts
     List<Map<String, String>> promptsList = [];
     if (json['prompts'] != null) {
@@ -160,14 +140,14 @@ class Profile {
     }
 
     return Profile(
-      id: id,
+      id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString() ?? json['userId']?.toString(),
       name: json['name']?.toString() ?? '',
       birthDate: parsedBirthDate,
       gender: json['gender']?.toString(),
       photoUrls: photos,
       interests: parsedInterests,
-      location: locationMap,
+      location: json['location'],
       distance: json['distance'] != null
           ? double.tryParse(json['distance'].toString())
           : null,
@@ -193,6 +173,11 @@ class Profile {
               : null,
       genderPreference: json['gender_preference']?.toString() ??
           json['genderPreference']?.toString(),
+      profilePictures: photos,
+      isPremium: json['isPremium'] as bool? ?? false,
+      lastActive: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -217,6 +202,9 @@ class Profile {
       'max_age_preference': maxAgePreference,
       'max_distance': maxDistance,
       'gender_preference': genderPreference,
+      'profilePictures': profilePictures,
+      'isPremium': isPremium,
+      'lastActive': lastActive.toIso8601String(),
     };
   }
 
@@ -229,7 +217,7 @@ class Profile {
     String? gender,
     List<String>? photoUrls,
     List<String>? interests,
-    Map<String, dynamic>? location,
+    dynamic location,
     double? distance,
     String? occupation,
     String? education,
@@ -240,6 +228,9 @@ class Profile {
     int? maxAgePreference,
     int? maxDistance,
     String? genderPreference,
+    List<String>? profilePictures,
+    bool? isPremium,
+    DateTime? lastActive,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -260,6 +251,9 @@ class Profile {
       maxAgePreference: maxAgePreference ?? this.maxAgePreference,
       maxDistance: maxDistance ?? this.maxDistance,
       genderPreference: genderPreference ?? this.genderPreference,
+      profilePictures: profilePictures ?? this.profilePictures,
+      isPremium: isPremium ?? this.isPremium,
+      lastActive: lastActive ?? this.lastActive,
     );
   }
 
@@ -277,7 +271,7 @@ class Profile {
         other.gender == gender &&
         listEquals(other.photoUrls, photoUrls) &&
         listEquals(other.interests, interests) &&
-        mapEquals(other.location, location) &&
+        other.location == location &&
         other.distance == distance &&
         other.occupation == occupation &&
         other.education == education &&
@@ -287,30 +281,34 @@ class Profile {
         other.minAgePreference == minAgePreference &&
         other.maxAgePreference == maxAgePreference &&
         other.maxDistance == maxDistance &&
-        other.genderPreference == genderPreference;
+        other.genderPreference == genderPreference &&
+        listEquals(other.profilePictures, profilePictures) &&
+        other.isPremium == isPremium &&
+        other.lastActive == lastActive;
   }
 
   @override
   int get hashCode {
     return Object.hash(
       id,
-      userId,
       name,
-      birthDate,
+      bio,
+      age,
       gender,
-      Object.hashAll(photoUrls),
       Object.hashAll(interests),
       location,
-      distance,
-      occupation,
-      education,
-      bio,
-      isVerified,
-      Object.hashAll(prompts),
       minAgePreference,
       maxAgePreference,
       maxDistance,
       genderPreference,
+      Object.hashAll(profilePictures),
+      isPremium,
+      lastActive,
     );
+  }
+
+  @override
+  String toString() {
+    return 'Profile(id: $id, name: $name, age: $age, gender: $gender, location: $location, isPremium: $isPremium)';
   }
 }

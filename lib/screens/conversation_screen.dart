@@ -156,29 +156,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         print(
             '📋 COMPARISON: Received ID: $receivedConvId vs Expected ID: $expectedConvId');
 
-        // Add message only if it belongs to this conversation
-        // Check for exact match or if either contains the other (to handle prefix variations)
-        bool isMatchingConversation = receivedConvId == expectedConvId ||
-            (receivedConvId.contains(expectedConvId) &&
-                !expectedConvId.isEmpty) ||
-            (expectedConvId.contains(receivedConvId) &&
-                !receivedConvId.isEmpty);
-
-        if (isMatchingConversation) {
+        // Check if the message belongs to this conversation
+        if (receivedConvId == expectedConvId) {
           print('✅ MATCH: Message belongs to this conversation');
           setState(() {
-            // Avoid duplicates if message was already added optimistically
-            if (!_messages.any((m) => m.id == message.id)) {
-              _messages.add(message);
-            }
-            _messages.sort(
-                (a, b) => a.timestamp.compareTo(b.timestamp)); // Ensure order
+            // Remove any optimistic version of this message
+            _messages.removeWhere((m) =>
+                m.text == message.text &&
+                m.senderId == message.senderId &&
+                m.status == MessageStatus.sending);
+
+            // Add the confirmed message
+            _messages.add(message);
+            _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
           });
+
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _scrollToBottom());
+
           // Mark as read if received while screen is active
           if (message.senderId != _currentUserId) {
-            chatService.markConversationAsRead(widget.conversation.id);
+            ref
+                .read(chatServiceProvider)
+                .markConversationAsRead(widget.conversation.id);
           }
         } else {
           print('❌ NO MATCH: Message is for another conversation');
@@ -249,15 +249,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _typingTimer?.cancel(); // Stop typing timer on send
     chatService.stopTyping(recipientId); // Ensure stop typing is emitted
 
-    // Optimistically add message to UI
+    // Use the actual conversation ID instead of generating a temporary one
     final optimisticMessage = Message(
-      id: 'temp-${DateTime.now().millisecondsSinceEpoch}', // Temporary ID
-      conversationId: widget.conversation.id,
+      id: 'msg-${DateTime.now().millisecondsSinceEpoch}',
+      conversationId: widget.conversation.id, // Use the actual conversation ID
       senderId: currentUserId,
       text: text,
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
     );
+
     setState(() {
       _messages.add(optimisticMessage);
       _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));

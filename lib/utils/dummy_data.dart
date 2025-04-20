@@ -2,6 +2,7 @@ import '../models/conversation.dart';
 import '../models/profile.dart';
 import '../models/message.dart';
 import '../models/user.dart';
+import '../models/match.dart';
 
 class DummyData {
   static List<Profile> getProfiles() {
@@ -11,21 +12,28 @@ class DummyData {
         name: 'Sarah Johnson',
         birthDate: DateTime.now().subtract(const Duration(days: 365 * 28)),
         gender: 'female',
-        photoUrls: ['assets/images/profile1.jpg'],
+        photoUrls: ['https://example.com/photo1.jpg'],
         interests: ['Travel', 'Photography', 'Coffee'],
         location: {'city': 'New York', 'country': 'USA'},
         bio: 'Adventure seeker and coffee lover',
         prompts: [
           {'question': 'Favorite place', 'answer': 'Paris, France'},
-          {'question': 'Perfect date', 'answer': 'Coffee and a walk in the park'},
+          {
+            'question': 'Perfect date',
+            'answer': 'Coffee and a walk in the park'
+          },
         ],
+        isVerified: true,
+        profilePictures: ['https://example.com/photo1.jpg'],
+        isPremium: false,
+        lastActive: DateTime.now(),
       ),
       Profile(
         id: '2',
         name: 'James Smith',
         birthDate: DateTime.now().subtract(const Duration(days: 365 * 32)),
         gender: 'male',
-        photoUrls: ['assets/images/profile2.jpg'],
+        photoUrls: ['https://example.com/photo2.jpg'],
         interests: ['Music', 'Cooking', 'Hiking'],
         location: {'city': 'Los Angeles', 'country': 'USA'},
         bio: 'Music lover and foodie',
@@ -33,6 +41,10 @@ class DummyData {
           {'question': 'Favorite food', 'answer': 'Italian cuisine'},
           {'question': 'Hobby', 'answer': 'Playing guitar'},
         ],
+        isVerified: true,
+        profilePictures: ['https://example.com/photo2.jpg'],
+        isPremium: true,
+        lastActive: DateTime.now(),
       ),
       // Add more dummy profiles as needed
     ];
@@ -43,7 +55,7 @@ class DummyData {
   static List<Conversation> getConversations() {
     final profiles = getProfiles();
     final DateTime now = DateTime.now();
-    
+
     // Ensure we have enough profiles to create conversations
     if (profiles.length < 4) {
       print('⟹ [DummyData] Not enough profiles, adding dummy profiles');
@@ -54,7 +66,7 @@ class DummyData {
           name: 'Emma Williams',
           birthDate: DateTime.now().subtract(const Duration(days: 365 * 27)),
           gender: 'female',
-          photoUrls: ['assets/images/profile3.jpg'],
+          photoUrls: ['https://example.com/photo3.jpg'],
           interests: ['Reading', 'Yoga', 'Art'],
           location: {'city': 'Chicago', 'country': 'USA'},
           bio: 'Bookworm and yoga enthusiast',
@@ -62,27 +74,38 @@ class DummyData {
             {'question': 'Favorite book', 'answer': 'Pride and Prejudice'},
             {'question': 'Hobby', 'answer': 'Painting landscapes'},
           ],
+          isVerified: true,
+          profilePictures: ['https://example.com/photo3.jpg'],
+          isPremium: false,
+          lastActive: DateTime.now(),
         ),
         Profile(
           id: 'dummy2',
           name: 'Michael Brown',
           birthDate: DateTime.now().subtract(const Duration(days: 365 * 30)),
           gender: 'male',
-          photoUrls: ['assets/images/profile4.jpg'],
+          photoUrls: ['https://example.com/photo4.jpg'],
           interests: ['Running', 'Technology', 'Movies'],
           location: {'city': 'San Francisco', 'country': 'USA'},
           bio: 'Tech enthusiast and film buff',
           prompts: [
-            {'question': 'Favorite movie', 'answer': 'The Shawshank Redemption'},
+            {
+              'question': 'Favorite movie',
+              'answer': 'The Shawshank Redemption'
+            },
             {'question': 'Hobby', 'answer': 'Building apps'},
           ],
+          isVerified: true,
+          profilePictures: ['https://example.com/photo4.jpg'],
+          isPremium: true,
+          lastActive: DateTime.now(),
         ),
         Profile(
           id: 'dummy3',
           name: 'Olivia Davis',
           birthDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
           gender: 'female',
-          photoUrls: ['assets/images/profile5.jpg'],
+          photoUrls: ['https://example.com/photo5.jpg'],
           interests: ['Music', 'Travel', 'Food'],
           location: {'city': 'Seattle', 'country': 'USA'},
           bio: 'Music lover and foodie',
@@ -90,13 +113,17 @@ class DummyData {
             {'question': 'Favorite cuisine', 'answer': 'Italian'},
             {'question': 'Dream destination', 'answer': 'Japan'},
           ],
+          isVerified: true,
+          profilePictures: ['https://example.com/photo5.jpg'],
+          isPremium: false,
+          lastActive: DateTime.now(),
         ),
         Profile(
           id: 'dummy4',
           name: 'William Johnson',
           birthDate: DateTime.now().subtract(const Duration(days: 365 * 29)),
           gender: 'male',
-          photoUrls: ['assets/images/profile6.jpg'],
+          photoUrls: ['https://example.com/photo6.jpg'],
           interests: ['Fitness', 'Gaming', 'Cooking'],
           location: {'city': 'Austin', 'country': 'USA'},
           bio: 'Gym enthusiast and amateur chef',
@@ -104,16 +131,20 @@ class DummyData {
             {'question': 'Favorite game', 'answer': 'The Witcher 3'},
             {'question': 'Specialty dish', 'answer': 'Homemade pasta'},
           ],
+          isVerified: true,
+          profilePictures: ['https://example.com/photo6.jpg'],
+          isPremium: true,
+          lastActive: DateTime.now(),
         ),
       ]);
     }
-    
+
     // Safety check - ensure we have at least 4 profiles after adding dummies
     if (profiles.isEmpty) {
       print('⟹ [DummyData] ERROR: No profiles available for conversations');
       return [];
     }
-    
+
     List<User> createParticipantsFromProfile(Profile profile) {
       return [
         User(
@@ -123,21 +154,22 @@ class DummyData {
         ),
         User(
           id: profile.id.toString(),
-          email: "${profile.name.toLowerCase().replaceAll(' ', '.')}@example.com",
+          email:
+              "${profile.name.toLowerCase().replaceAll(' ', '.')}@example.com",
           name: profile.name,
         )
       ];
     }
-    
+
     // Get safe profiles - use modulo to ensure we never go out of bounds
     final int profileCount = profiles.length;
     print('⟹ [DummyData] Creating conversations with $profileCount profiles');
-    
+
     final Profile profile0 = profiles[0 % profileCount];
     final Profile profile1 = profiles[1 % profileCount];
     final Profile profile2 = profiles[2 % profileCount];
     final Profile profile3 = profiles[3 % profileCount];
-    
+
     // Create conversations
     return [
       Conversation(
@@ -205,7 +237,7 @@ class DummyData {
 
   static List<Message> getMessages(String conversationId) {
     final DateTime now = DateTime.now();
-    
+
     switch (conversationId) {
       case 'conv1':
         return [
@@ -280,7 +312,8 @@ class DummyData {
             id: '4',
             conversationId: conversationId,
             senderId: 'currentUserId',
-            text: 'No, but I\'ve heard it\'s beautiful! I\'ll have to check it out.',
+            text:
+                'No, but I\'ve heard it\'s beautiful! I\'ll have to check it out.',
             timestamp: now.subtract(Duration(days: 2, hours: 1)),
             status: MessageStatus.sent,
           ),
@@ -300,7 +333,84 @@ class DummyData {
 
   static List<Profile> getMatches() {
     final allProfiles = getProfiles();
-    
+
     return allProfiles.take(3).toList();
   }
-} 
+
+  static List<Match> getDummyMatches() {
+    return [
+      Match(
+        id: '1',
+        matchedUser: Profile(
+          id: '3',
+          name: 'Emma Wilson',
+          birthDate: DateTime(1994, 3, 10),
+          gender: 'female',
+          photoUrls: ['https://example.com/photo3.jpg'],
+          interests: ['Art', 'Reading', 'Yoga'],
+          location: {'city': 'London', 'country': 'UK'},
+          bio: 'Art lover and bookworm',
+          isVerified: true,
+          profilePictures: ['https://example.com/photo3.jpg'],
+          isPremium: false,
+          lastActive: DateTime.now(),
+        ),
+        matchedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      Match(
+        id: '2',
+        matchedUser: Profile(
+          id: '4',
+          name: 'David Kim',
+          birthDate: DateTime(1992, 11, 5),
+          gender: 'male',
+          photoUrls: ['https://example.com/photo4.jpg'],
+          interests: ['Sports', 'Movies', 'Travel'],
+          location: {'city': 'Los Angeles', 'country': 'USA'},
+          bio: 'Sports fanatic and movie buff',
+          isVerified: true,
+          profilePictures: ['https://example.com/photo4.jpg'],
+          isPremium: true,
+          lastActive: DateTime.now(),
+        ),
+        matchedAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Match(
+        id: '3',
+        matchedUser: Profile(
+          id: '5',
+          name: 'Sophia Martinez',
+          birthDate: DateTime(1996, 7, 20),
+          gender: 'female',
+          photoUrls: ['https://example.com/photo5.jpg'],
+          interests: ['Dancing', 'Food', 'Music'],
+          location: {'city': 'Miami', 'country': 'USA'},
+          bio: 'Salsa dancer and foodie',
+          isVerified: true,
+          profilePictures: ['https://example.com/photo5.jpg'],
+          isPremium: false,
+          lastActive: DateTime.now(),
+        ),
+        matchedAt: DateTime.now().subtract(const Duration(hours: 12)),
+      ),
+      Match(
+        id: '4',
+        matchedUser: Profile(
+          id: '6',
+          name: 'James Taylor',
+          birthDate: DateTime(1991, 4, 15),
+          gender: 'male',
+          photoUrls: ['https://example.com/photo6.jpg'],
+          interests: ['Hiking', 'Photography', 'Cooking'],
+          location: {'city': 'Seattle', 'country': 'USA'},
+          bio: 'Outdoor enthusiast and amateur chef',
+          isVerified: true,
+          profilePictures: ['https://example.com/photo6.jpg'],
+          isPremium: true,
+          lastActive: DateTime.now(),
+        ),
+        matchedAt: DateTime.now().subtract(const Duration(hours: 6)),
+      ),
+    ];
+  }
+}

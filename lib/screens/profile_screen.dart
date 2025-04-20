@@ -38,8 +38,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialization logic moved to build method's post frame callback
-    // to ensure providers are ready and initial profile data is available.
+    // Initialize the profile edit state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profile = ref.read(userProfileProvider).value;
+      if (profile != null) {
+        ref.read(profileEditProvider.notifier).initialize();
+      }
+    });
   }
 
   // Dispose controllers correctly
@@ -258,7 +263,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   profile?.id) {
                 // Read notifier again inside callback if needed
                 if (profile != null) {
-                  ref.read(profileEditProvider.notifier).initialize(profile);
+                  ref.read(profileEditProvider.notifier).initialize();
                 }
               }
 

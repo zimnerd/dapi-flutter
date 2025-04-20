@@ -27,6 +27,7 @@ import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
 import 'widgets/websocket_tester.dart'; // Add import for WebSocketTester
 import 'utils/websocket_debug.dart'; // Import the WebSocketDebugMonitor
+import 'models/conversation.dart'; // Add import for Conversation model
 
 final appLogger = Logger('App');
 
@@ -114,12 +115,28 @@ class MyApp extends ConsumerWidget {
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/conversation') {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => ConversationScreen(
-              conversation: args['conversation'],
-            ),
-          );
+          // Handle both conversation ID and conversation object
+          final args = settings.arguments;
+          if (args is Map<String, dynamic>) {
+            return MaterialPageRoute(
+              builder: (context) => ConversationScreen(
+                conversation: args['conversation'],
+              ),
+            );
+          } else if (args is String) {
+            // Create a minimal conversation object with just the ID
+            return MaterialPageRoute(
+              builder: (context) => ConversationScreen(
+                conversation: Conversation(
+                  id: args,
+                  participants: [], // Will be populated when screen loads
+                  lastMessage: null,
+                  createdAt: DateTime.now(),
+                  unreadCount: 0,
+                ),
+              ),
+            );
+          }
         }
         if (settings.name == '/reset-password-confirmation') {
           final args = settings.arguments as Map<String, dynamic>?;

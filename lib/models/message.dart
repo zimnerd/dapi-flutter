@@ -1,5 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+enum MessageStatus {
+  sending,
+  sent,
+  delivered,
+  read,
+  failed,
+}
+
 @immutable
 class Message {
   final String id;
@@ -212,14 +220,6 @@ class Message {
         metadata != null ? Object.hashAll(metadata!.values) : 0,
         reactions != null ? Object.hashAll(reactions!) : 0,
       );
-}
-
-enum MessageStatus {
-  sending,
-  sent,
-  delivered,
-  read,
-  failed,
 }
 
 extension MessageStatusExtension on MessageStatus {

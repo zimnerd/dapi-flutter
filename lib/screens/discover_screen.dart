@@ -285,8 +285,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         name: 'Guest User',
         photoUrls: [],
         interests: [],
-        isVerified: false,
-        prompts: [],
+        profilePictures: [],
+        isPremium: false,
+        lastActive: DateTime.now(),
       );
     }
 

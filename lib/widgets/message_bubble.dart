@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/message.dart';
+import '../utils/colors.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -9,13 +10,13 @@ class MessageBubble extends StatelessWidget {
   final bool isPremium;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isFromCurrentUser,
     required this.showAvatar,
     this.participantAvatarUrl,
     this.isPremium = false,
-  }) : super(key: key);
+  });
 
   Widget _buildReadReceiptIcon(MessageStatus status) {
     IconData iconData = Icons.help_outline;
@@ -52,6 +53,14 @@ class MessageBubble extends StatelessWidget {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
+  ImageProvider _getAvatarImage() {
+    if (participantAvatarUrl != null &&
+        participantAvatarUrl!.startsWith('http')) {
+      return NetworkImage(participantAvatarUrl!);
+    }
+    return const AssetImage('assets/images/placeholder_user.png');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -65,10 +74,7 @@ class MessageBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8.0, bottom: 20),
               child: CircleAvatar(
-                backgroundImage: participantAvatarUrl != null
-                    ? NetworkImage(participantAvatarUrl!)
-                    : const AssetImage('assets/images/placeholder_user.png')
-                        as ImageProvider,
+                backgroundImage: _getAvatarImage(),
                 radius: 16,
               ),
             )
@@ -101,16 +107,13 @@ class MessageBubble extends StatelessWidget {
               children: [
                 Text(
                   _formatTime(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                 ),
                 if (isFromCurrentUser)
                   Padding(
                     padding: const EdgeInsets.only(left: 4.0),
                     child: _buildReadReceiptIcon(message.status),
-                  )
+                  ),
               ],
             ),
           ),

@@ -21,17 +21,56 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    // Handle participants that might be strings (user IDs) or maps
+    List<User> parseParticipants(dynamic participantsData) {
+      if (participantsData is List) {
+        return participantsData.map((p) {
+          if (p is Map<String, dynamic>) {
+            return User.fromJson(p);
+          } else if (p is String) {
+            // If participant is a string (user ID), create a minimal User object
+            return User(
+              id: p,
+              email: '$p@unknown.com', // Placeholder email
+              name: 'Unknown User',
+              profilePictures: null,
+            );
+          } else {
+            throw FormatException('Invalid participant data format: $p');
+          }
+        }).toList();
+      }
+      return [];
+    }
+
+    // Handle lastMessage that might be a string or a map
+    Message? parseLastMessage(dynamic messageData) {
+      if (messageData == null) return null;
+
+      if (messageData is Map<String, dynamic>) {
+        return Message.fromJson(
+          messageData['id'] as String? ?? 'unknown',
+          messageData,
+        );
+      } else if (messageData is String) {
+        // If message is a string, create a simple Message object
+        return Message.fromJson(
+          'unknown',
+          {
+            'text': messageData,
+            'timestamp': DateTime.now().toIso8601String(),
+            'senderId': '',
+            'status': 'sent',
+          },
+        );
+      }
+      return null;
+    }
+
     return Conversation(
       id: json['id'] as String,
-      participants: (json['participants'] as List)
-          .map((p) => User.fromJson(p as Map<String, dynamic>))
-          .toList(),
-      lastMessage: json['lastMessage'] != null
-          ? Message.fromJson(
-              (json['lastMessage'] as Map<String, dynamic>)['id'] as String? ??
-                  'unknown',
-              json['lastMessage'] as Map<String, dynamic>)
-          : null,
+      participants: parseParticipants(json['participants']),
+      lastMessage: parseLastMessage(json['lastMessage']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)

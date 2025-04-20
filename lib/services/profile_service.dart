@@ -545,6 +545,9 @@ class ProfileService {
       maxAgePreference: 45,
       maxDistance: 50,
       genderPreference: 'all',
+      profilePictures: [photo, secondPhoto],
+      isPremium: false,
+      lastActive: DateTime.now(),
     );
   }
 

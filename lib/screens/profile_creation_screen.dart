@@ -148,6 +148,13 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         bio: _bioController.text,
         interests: _selectedInterests.toList(),
         photoUrls: _selectedPhotos.map((photo) => photo.path).toList(),
+        location: {
+          'city': _location,
+          'country': 'Unknown', // You might want to add country selection
+        },
+        profilePictures: _selectedPhotos.map((photo) => photo.path).toList(),
+        isPremium: false,
+        lastActive: DateTime.now(),
       );
 
       final profileService = ref.read(profileServiceProvider);

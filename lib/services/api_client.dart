@@ -8,6 +8,10 @@ import '../utils/logger.dart';
 import '../utils/constants.dart';
 import 'auth_service.dart';
 import '../utils/exceptions.dart';
+import '../models/match.dart';
+import '../models/profile.dart';
+import '../models/conversation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Auth Interceptor for handling token authentication
 class AuthInterceptor extends Interceptor {
@@ -542,4 +546,61 @@ class ApiClient {
     _logger.error('API Error: $errorMessage');
     throw Exception(errorMessage);
   }
+
+  // Get user's matches
+  Future<List<Match>> getMatches() async {
+    try {
+      final response = await _dio.get('/api/matches');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Match.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching matches: $e');
+      rethrow;
+    }
+  }
+
+  // Get user's likes
+  Future<List<Profile>> getLikes() async {
+    try {
+      final response = await _dio.get('/api/likes');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Profile.fromJson(json['likedByUser'])).toList();
+    } catch (e) {
+      print('Error fetching likes: $e');
+      rethrow;
+    }
+  }
+
+  // Get matches without conversations (for carousel)
+  Future<List<Match>> getNewMatches() async {
+    try {
+      final response = await _dio.get('/api/matches/new');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Match.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching new matches: $e');
+      rethrow;
+    }
+  }
+
+  // Get user's conversations
+  Future<List<Conversation>> getConversations() async {
+    try {
+      final response = await _dio.get('/api/conversations');
+      final List<dynamic> data = response.data;
+      return data.map((json) => Conversation.fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching conversations: $e');
+      rethrow;
+    }
+  }
 }
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final dio = Dio(BaseOptions(
+    baseUrl: AppConfig.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 3),
+  ));
+  return ApiClient(dio);
+});
