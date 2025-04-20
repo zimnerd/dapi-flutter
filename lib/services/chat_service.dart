@@ -24,17 +24,34 @@ class ChatService {
   final Logger _logger = Logger('ChatService');
   
   IO.Socket? _socket;
+  
+  // Stream controllers for various events
   final StreamController<Message> _messageController = StreamController.broadcast();
   final StreamController<Map<String, bool>> _typingStatusController = StreamController.broadcast();
+  final StreamController<Map<String, dynamic>> _readReceiptController = StreamController.broadcast();
+  final StreamController<Message> _groupMessageController = StreamController.broadcast();
+  final StreamController<Map<String, dynamic>> _onlineStatusController = StreamController.broadcast();
+  final StreamController<List<dynamic>> _chatroomsController = StreamController.broadcast();
+  final StreamController<Map<String, int>> _unreadCountsController = StreamController.broadcast();
+  final StreamController<String> _errorController = StreamController.broadcast();
   
   // Expose streams
   Stream<Message> get messageStream => _messageController.stream;
   Stream<Map<String, bool>> get typingStatusStream => _typingStatusController.stream;
+  Stream<Map<String, dynamic>> get readReceiptStream => _readReceiptController.stream;
+  Stream<Message> get groupMessageStream => _groupMessageController.stream;
+  Stream<Map<String, dynamic>> get onlineStatusStream => _onlineStatusController.stream;
+  Stream<List<dynamic>> get chatroomsStream => _chatroomsController.stream;
+  Stream<Map<String, int>> get unreadCountsStream => _unreadCountsController.stream;
+  Stream<String> get errorStream => _errorController.stream;
+  
+  // Connection status
+  bool get isConnected => _socket?.connected ?? false;
   
   // Store current typing status locally
   final Map<String, bool> _typingUsers = {};
 
-  ChatService(this._dio, this._authService, this._ref); // Update constructor
+  ChatService(this._dio, this._authService, this._ref);
 
   Future<void> initSocket() async {
     if (_socket != null && _socket!.connected) {
@@ -47,48 +64,58 @@ class ChatService {
 
     if (token == null) {
       _logger.error("Cannot initialize socket: No auth token found.");
+      _errorController.add("Authentication required: No token found");
       return;
     }
     
     final socketUrl = AppConfig.socketUrl; // Use the getter from AppConfig
     _logger.info("Connecting to socket at: $socketUrl");
 
-    // IO.Socket socket = IO.io('http://<YOUR_SERVER_ADDRESS>', ...
-    // Make sure the URL is correct and accessible
     _socket = IO.io(socketUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'forceNew': true, // Ensures a new connection attempt
       'auth': {
         'token': token
-      }
+      },
+      'reconnection': true,
+      'reconnectionAttempts': 5,
+      'reconnectionDelay': 1000,
+      'reconnectionDelayMax': 5000,
+      'timeout': 20000,
     });
 
+    _setupEventListeners();
+    _setupReconnection();
+    
+    // Connect the socket
+    _socket!.connect();
+  }
+
+  void _setupEventListeners() {
+    // Connection events
     _socket!.onConnect((_) {
       _logger.info('Socket connected: ${_socket!.id}');
-      // Potentially join rooms or perform other actions upon connection
     });
 
     _socket!.onConnectError((data) {
       _logger.error('Socket connection error: $data');
-      // Handle connection errors (e.g., show message to user, attempt reconnect)
+      _errorController.add("Connection error: ${data.toString()}");
     });
 
     _socket!.onError((data) {
       _logger.error('Socket error: $data');
+      _errorController.add("Socket error: ${data.toString()}");
     });
 
     _socket!.onDisconnect((_) {
       _logger.info('Socket disconnected');
-      // Handle disconnection (e.g., attempt reconnect, update UI state)
     });
 
-    // Listen for new messages
+    // Private messaging events
     _socket!.on('new_message', (data) {
       _logger.chat('Received new message: $data');
       try {
-        // Assuming data includes conversationId - adjust if needed
-        // If conversationId isn't directly available, need to fetch or determine it
         final String conversationId = data['conversation_id'] ?? 'unknown_conversation'; 
         final message = Message.fromJson(conversationId, data);
         _messageController.add(message);
@@ -97,51 +124,134 @@ class ChatService {
       }
     });
     
-    // Listen for typing indicators
+    // Typing indicators
     _socket!.on('user_typing', (data) {
-       _logger.chat('Received user_typing event: $data');
-       if (data is Map && data.containsKey('senderId')) {
-         final senderId = data['senderId'].toString();
-         _typingUsers[senderId] = true;
-         _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
-       }
+      _logger.chat('Received user_typing event: $data');
+      if (data is Map && data.containsKey('senderId')) {
+        final senderId = data['senderId'].toString();
+        _typingUsers[senderId] = true;
+        _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
+      }
     });
 
     _socket!.on('user_stopped_typing', (data) {
       _logger.chat('Received user_stopped_typing event: $data');
       if (data is Map && data.containsKey('senderId')) {
-         final senderId = data['senderId'].toString();
-         _typingUsers[senderId] = false;
-         _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
-       }
+        final senderId = data['senderId'].toString();
+        _typingUsers[senderId] = false;
+        _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
+      }
     });
     
-    // Connect the socket
-    _socket!.connect();
+    // Read receipts
+    _socket!.on('messages_read', (data) {
+      _logger.chat('Received read receipt: $data');
+      _readReceiptController.add(data);
+    });
+    
+    // Group chat events
+    _socket!.on('new_group_message', (data) {
+      _logger.chat('Received group message: $data');
+      try {
+        final String roomId = data['room_id'] ?? 'unknown_room';
+        final message = Message.fromJson(roomId, data);
+        _groupMessageController.add(message);
+      } catch (e) {
+        _logger.error('Error parsing incoming group message: $e\nData: $data');
+      }
+    });
+    
+    _socket!.on('chatroom_created', (data) {
+      _logger.chat('Chatroom created: $data');
+    });
+    
+    _socket!.on('chatroom_joined', (data) {
+      _logger.chat('Joined chatroom: $data');
+    });
+    
+    _socket!.on('chatrooms_list', (data) {
+      _logger.chat('Received chatrooms list');
+      if (data is List) {
+        _chatroomsController.add(data);
+      }
+    });
+    
+    // Presence/online status
+    _socket!.on('user_presence_changed', (data) {
+      _logger.chat('Received user presence change: $data');
+      _onlineStatusController.add(data);
+    });
+    
+    _socket!.on('user_online', (data) {
+      _logger.chat('User online notification: $data');
+      _onlineStatusController.add(data);
+    });
+    
+    // Unread counts
+    _socket!.on('unread_counts', (data) {
+      _logger.chat('Received unread counts: $data');
+      if (data is Map) {
+        _unreadCountsController.add(Map<String, int>.from(data));
+      }
+    });
+    
+    // General events - log all events for debugging
+    _socket!.onAny((event, data) {
+      _logger.debug('⬇️ Socket event: $event, data: $data');
+    });
+  }
+  
+  void _setupReconnection() {
+    _socket!.onReconnect((attempt) {
+      _logger.info('Socket reconnected after $attempt attempts');
+      // Re-authenticate after reconnection
+      _authService.getAccessToken().then((token) {
+        if (token != null) {
+          _socket!.emit('authenticate', {'token': token});
+        }
+      });
+    });
+    
+    _socket!.onReconnectAttempt((attempt) {
+      _logger.info('Attempting to reconnect: attempt $attempt');
+    });
+    
+    _socket!.onReconnectError((error) {
+      _logger.error('Reconnection error: $error');
+    });
+    
+    _socket!.onReconnectFailed((_) {
+      _logger.error('Socket reconnection failed after maximum attempts');
+      _errorController.add("Connection failed: Maximum reconnection attempts reached");
+    });
   }
 
-  // Send message via WebSocket
-  void sendPrivateMessage(String recipientId, String text) {
+  // Private messaging
+  void sendPrivateMessage(String recipientId, String text, {String? mediaUrl}) {
     if (_socket == null || !_socket!.connected) {
       _logger.warn("Socket not connected. Cannot send message.");
-      // Optionally: attempt to reconnect or queue the message
+      _errorController.add("Cannot send message: disconnected");
       return;
     }
+    
     _logger.chat("Sending private message via socket to $recipientId");
-    _socket!.emit('private_message', {
+    final messageData = {
       'recipientId': recipientId,
       'message': text,
-    });
+    };
     
-    // TODO: Handle 'message_sent' acknowledgement from server if needed
-    // socket.once('message_sent', (data) => ... );
+    if (mediaUrl != null) {
+      messageData['mediaUrl'] = mediaUrl;
+    }
+    
+    _socket!.emit('private_message', messageData);
   }
 
   // Emit typing events
   void startTyping(String recipientId) {
-     if (_socket == null || !_socket!.connected) return;
-     _logger.chat("Emitting start_typing to $recipientId");
-     _socket!.emit('start_typing', {'recipientId': recipientId});
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Emitting start_typing to $recipientId");
+    _socket!.emit('start_typing', {'recipientId': recipientId});
   }
 
   void stopTyping(String recipientId) {
@@ -149,14 +259,152 @@ class ChatService {
     _logger.chat("Emitting stop_typing to $recipientId");
     _socket!.emit('stop_typing', {'recipientId': recipientId});
   }
+  
+  // Load conversation history
+  void loadConversationHistory(String conversationId, {int limit = 50, String? before}) {
+    if (_socket == null || !_socket!.connected) {
+      _errorController.add("Cannot load messages: disconnected");
+      return;
+    }
+    
+    _logger.chat("Loading conversation history for: $conversationId");
+    
+    final requestData = {
+      'conversationId': conversationId,
+      'limit': limit,
+    };
+    
+    if (before != null) {
+      requestData['before'] = before;
+    }
+    
+    _socket!.emit('load_conversation', requestData);
+  }
+  
+  // Mark messages as read
+  void markMessagesAsRead(List<String> messageIds, String conversationId) {
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Marking messages as read: $messageIds");
+    _socket!.emit('mark_read', {
+      'messageIds': messageIds,
+      'conversationId': conversationId
+    });
+  }
+  
+  // Get unread message counts
+  void getUnreadCounts() {
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Requesting unread message counts");
+    _socket!.emit('get_unread_counts');
+  }
+  
+  // Group chat methods
+  void createChatroom(String name, List<String> memberIds) {
+    if (_socket == null || !_socket!.connected) {
+      _errorController.add("Cannot create chatroom: disconnected");
+      return;
+    }
+    
+    _logger.chat("Creating chatroom: $name with members: $memberIds");
+    _socket!.emit('create_chatroom', {
+      'name': name,
+      'members': memberIds
+    });
+  }
+
+  void joinChatroom(String roomId) {
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Joining chatroom: $roomId");
+    _socket!.emit('join_chatroom', {'roomId': roomId});
+  }
+
+  void leaveChatroom(String roomId) {
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Leaving chatroom: $roomId");
+    _socket!.emit('leave_chatroom', {'roomId': roomId});
+  }
+
+  void sendGroupMessage(String roomId, String text, {String? mediaUrl}) {
+    if (_socket == null || !_socket!.connected) {
+      _errorController.add("Cannot send group message: disconnected");
+      return;
+    }
+    
+    _logger.chat("Sending group message to room: $roomId");
+    
+    final messageData = {
+      'roomId': roomId,
+      'content': text,
+    };
+    
+    if (mediaUrl != null) {
+      messageData['mediaUrl'] = mediaUrl;
+    }
+    
+    _socket!.emit('group_message', messageData);
+  }
+
+  void loadGroupMessages(String roomId, {int limit = 50, String? before}) {
+    if (_socket == null || !_socket!.connected) {
+      _errorController.add("Cannot load group messages: disconnected");
+      return;
+    }
+    
+    _logger.chat("Loading group messages for room: $roomId");
+    
+    final requestData = {
+      'roomId': roomId,
+      'limit': limit,
+    };
+    
+    if (before != null) {
+      requestData['before'] = before;
+    }
+    
+    _socket!.emit('load_group_conversation', requestData);
+  }
+  
+  // Get all chatrooms the user is a member of
+  void getChatrooms() {
+    if (_socket == null || !_socket!.connected) return;
+    _logger.chat("Requesting user's chatrooms");
+    _socket!.emit('get_chatrooms');
+  }
+  
+  // Presence/online status
+  void updatePresence(String status) {
+    if (_socket == null || !_socket!.connected) return;
+    // Valid statuses: 'online', 'away', 'busy', 'offline'
+    _logger.chat("Updating presence status to: $status");
+    _socket!.emit('update_presence', {'status': status});
+  }
+
+  // Force disconnect and reconnect (useful for handling token refresh)
+  void reconnect() {
+    _logger.info('Forcing socket reconnection');
+    _socket?.disconnect();
+    
+    // Short delay before reconnecting
+    Future.delayed(const Duration(milliseconds: 500), () {
+      initSocket();
+    });
+  }
 
   // Dispose method
   void dispose() {
     _logger.info("Disposing ChatService and disconnecting socket.");
     _socket?.disconnect();
     _socket?.dispose();
+    
+    // Close all stream controllers
     _messageController.close();
     _typingStatusController.close();
+    _readReceiptController.close();
+    _groupMessageController.close();
+    _onlineStatusController.close();
+    _chatroomsController.close();
+    _unreadCountsController.close();
+    _errorController.close();
   }
   
   // --- Existing HTTP methods ---

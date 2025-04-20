@@ -4,8 +4,8 @@ import '../models/profile.dart';
 import '../models/conversation.dart';
 import '../widgets/empty_state.dart';
 import '../utils/colors.dart';
-import '../utils/dummy_data.dart';
 import '../services/chat_service.dart';
+import '../services/profile_service.dart';
 import 'chat_screen.dart';
 import '../widgets/match_card.dart';
 import '../widgets/conversation_card.dart';
@@ -23,11 +23,17 @@ class MatchesScreen extends ConsumerStatefulWidget {
 
 class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = false;
+  List<Profile> _matches = [];
+  List<Profile> _likes = [];
+  List<Conversation> _conversations = [];
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchInitialData();
   }
 
   @override
@@ -36,24 +42,116 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
     super.dispose();
   }
 
+  Future<void> _fetchInitialData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    
+    try {
+      await Future.wait([
+        _fetchMatches(),
+        _fetchLikes(),
+        _fetchConversations()
+      ]);
+    } catch (e) {
+      setState(() {
+        _error = "Failed to load data. Please try again.";
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _fetchMatches() async {
-    print("Fetching matches...");
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final profileService = ref.read(profileServiceProvider);
+      // We'll use the discover API to get matches for now
+      final matches = await profileService.getDiscoverProfiles(limit: 20);
+      setState(() {
+        _matches = matches;
+      });
+    } catch (e) {
+      print("Error fetching matches: $e");
+      // Don't set error here, we'll let the parent method handle it
+    }
+  }
+
+  Future<void> _fetchLikes() async {
+    try {
+      final profileService = ref.read(profileServiceProvider);
+      // This would be a separate API endpoint in a real app
+      // For now we'll just use a subset of discover profiles
+      final likes = await profileService.getDiscoverProfiles(limit: 10);
+      setState(() {
+        _likes = likes;
+      });
+    } catch (e) {
+      print("Error fetching likes: $e");
+    }
   }
 
   Future<void> _fetchConversations() async {
-    print("Fetching conversations...");
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final chatService = ref.read(chatServiceProvider);
+      final conversations = await chatService.getConversations();
+      setState(() {
+        _conversations = conversations;
+      });
+    } catch (e) {
+      print("Error fetching conversations: $e");
+    }
   }
 
   Future<void> _startConversation(Profile match) async {
-    print("Starting conversation with ${match.name}");
+    try {
+      final chatService = ref.read(chatServiceProvider);
+      final conversation = await chatService.createConversation(match.id);
+      
+      // Navigate to conversation screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConversationScreen(
+              conversation: conversation,
+            ),
+          ),
+        ).then((_) => _fetchConversations());
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start conversation: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   Widget _buildMatchesTab() {
-    final matches = DummyData.getMatches();
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (matches.isEmpty) {
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchInitialData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_matches.isEmpty) {
       return const Center(
         child: Text('No matches yet. Keep swiping!'),
       );
@@ -69,11 +167,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemCount: matches.length,
+        itemCount: _matches.length,
         itemBuilder: (context, index) {
           return MatchCard(
-            profile: matches[index],
-            onTap: () => _startConversation(matches[index]),
+            profile: _matches[index],
+            onTap: () => _startConversation(_matches[index]),
           );
         },
       ),
@@ -81,9 +179,27 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
   }
 
   Widget _buildConversationsTab() {
-    final conversations = DummyData.getConversations();
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (conversations.isEmpty) {
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchInitialData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_conversations.isEmpty) {
       return const Center(
         child: Text('No conversations yet. Start chatting with your matches!'),
       );
@@ -93,14 +209,14 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
       onRefresh: _fetchConversations,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: conversations.length,
+        itemCount: _conversations.length,
         itemBuilder: (context, index) {
-          if (index >= conversations.length) {
-            print("⟹ [MatchesScreen] Index out of range in conversation list: $index/${conversations.length}");
+          if (index >= _conversations.length) {
+            print("⟹ [MatchesScreen] Index out of range in conversation list: $index/${_conversations.length}");
             return const SizedBox.shrink();
           }
           
-          final conversation = conversations[index];
+          final conversation = _conversations[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: ConversationCard(
@@ -130,6 +246,10 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
     isPremiumAsync.whenData((value) {
       isPremium = value;
     });
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (!isPremium) {
       return Center(
@@ -176,13 +296,29 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
       );
     }
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('People who liked you will appear here.', style: TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 20),
-        ],
+    if (_likes.isEmpty) {
+      return const Center(
+        child: Text('No one has liked you yet. Keep improving your profile!'),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchLikes,
+      child: GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: _likes.length,
+        itemBuilder: (context, index) {
+          return MatchCard(
+            profile: _likes[index],
+            onTap: () => _startConversation(_likes[index]),
+          );
+        },
       ),
     );
   }
@@ -196,12 +332,13 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> with SingleTicker
           controller: _tabController,
           tabs: const [
             Tab(text: 'Matches'),
-            Tab(icon: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [Icon(Icons.favorite_border), SizedBox(width: 4), Text('Likes')],
-            )),
+            Tab(text: 'Likes'),
             Tab(text: 'Conversations'),
           ],
+          labelColor: Colors.black,
+          unselectedLabelColor: Colors.black54,
+          indicatorColor: AppColors.primary,
+          indicatorWeight: 3.0,
         ),
       ),
       body: TabBarView(
