@@ -51,14 +51,19 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       return;
     }
     
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-      
       final chatService = ref.read(chatServiceProvider);
-      final conversations = await chatService.getConversations();
+      final dynamicConversations = await chatService.getConversations();
+      
+      // Convert dynamic data to Conversation objects
+      final conversations = dynamicConversations.map((data) {
+        return Conversation.fromJson(data);
+      }).toList();
       
       setState(() {
         _conversations = conversations;

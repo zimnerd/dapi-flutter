@@ -19,7 +19,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
     try {
       print('⟹ [PremiumScreen] Initiating premium subscription');
       final subscriptionService = SubscriptionService();
-      await subscriptionService.subscribeToPremium();
+      await subscriptionService.subscribeToPremium('monthly');
       print('⟹ [PremiumScreen] Premium subscription successful');
       
       if (mounted) {
@@ -83,7 +83,11 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     ),
                     const SizedBox(height: 16.0),
                     Text(
-                      isPremium ? 'You are a Premium Member!' : 'Upgrade to Premium',
+                      isPremium.when(
+                        data: (value) => value ? 'You are a Premium Member!' : 'Upgrade to Premium',
+                        loading: () => 'Loading...',
+                        error: (_, __) => 'Upgrade to Premium',
+                      ),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24.0,
@@ -92,9 +96,13 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                     ),
                     const SizedBox(height: 8.0),
                     Text(
-                      isPremium
-                          ? 'Enjoy all the exclusive features'
-                          : 'Unlock the full potential of your dating experience',
+                      isPremium.when(
+                        data: (value) => value
+                            ? 'Enjoy all the exclusive features'
+                            : 'Unlock the full potential of your dating experience',
+                        loading: () => 'Loading your premium status...',
+                        error: (_, __) => 'Unlock the full potential of your dating experience',
+                      ),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16.0,
@@ -155,7 +163,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
               const SizedBox(height: 24.0),
               
               // Pricing
-              if (!isPremium) ...[
+              if (isPremium is AsyncData && isPremium.value == false) ...[
                 const Text(
                   'Pricing',
                   style: TextStyle(
@@ -287,7 +295,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
                       ),
                       const SizedBox(height: 16.0),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _subscribeToPremium,
+                        onPressed: _isLoading ? null : () => _subscribeToPremium(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5445),
                           padding: const EdgeInsets.symmetric(vertical: 12.0),

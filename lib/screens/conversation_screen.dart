@@ -39,23 +39,24 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   void initState() {
     super.initState();
-    _currentUserId = ref.read(userIdProvider);
-    _loadParticipantAndInitialMessages();
+    _loadInitialData();
     _initWebSocket();
     
     _messageController.addListener(_handleTyping);
   }
   
-  Future<void> _loadParticipantAndInitialMessages() async {
-    setState(() {
-      _isLoadingInitialMessages = true;
-      _initialError = null;
-    });
+  Future<void> _loadInitialData() async {
     try {
-      // Determine participant ID
+      setState(() {
+        _isLoadingInitialMessages = true;
+      });
+      
+      // Get current user ID from ProviderScope
+      _currentUserId = ref.read(userIdProvider);
+      
+      // Determine which participant is the other person (not current user)
       final participantId = widget.conversation.participants
-                            .firstWhere((p) => p.id != _currentUserId, orElse: () => widget.conversation.participants.first)
-                            .id; // Handle case where current user might not be in participants list locally
+          .firstWhere((p) => p.id != _currentUserId).id;
       
       // Fetch participant details if needed (assuming Conversation model has basic info)
       _participant = widget.conversation.participants.firstWhere((p) => p.id == participantId);
@@ -63,7 +64,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       // Fetch initial messages via HTTP
       final initialMessages = await ref.read(chatServiceProvider).getMessages(widget.conversation.id);
       setState(() {
-        _messages = initialMessages;
+        // Convert dynamic messages to Message objects
+        _messages = initialMessages.map((data) => 
+          Message.fromJson(data['id'] as String, data as Map<String, dynamic>)
+        ).toList();
         _isLoadingInitialMessages = false;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -85,8 +89,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     chatService.initSocket(); // Initialize connection
 
     // Listen for incoming messages from the stream
-    final messageSubscription = ref.listenManual(messageStreamProvider, (prev, AsyncValue<Message> next) {
-      next.whenData((message) {
+    final messageSubscription = ref.listenManual(messageStreamProvider, (prev, AsyncValue<Map<String, dynamic>> next) {
+      next.whenData((messageData) {
+        // Convert dynamic message to Message object
+        final message = Message.fromJson(
+          messageData['id'] as String, 
+          messageData as Map<String, dynamic>
+        );
+        
         // Add message only if it belongs to this conversation
         if (message.conversationId == widget.conversation.id) {
           setState(() {

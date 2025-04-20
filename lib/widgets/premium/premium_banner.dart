@@ -18,10 +18,20 @@ class PremiumBanner extends ConsumerWidget {
     final isPremium = ref.watch(premiumProvider);
     
     // Don't show banner if user is already premium
-    if (isPremium) {
-      return const SizedBox.shrink();
-    }
-
+    return isPremium.when(
+      data: (hasPremium) {
+        if (hasPremium) {
+          return const SizedBox.shrink();
+        }
+        
+        return _buildBanner(context);
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => _buildBanner(context), // Show banner on error (assume non-premium)
+    );
+  }
+  
+  Widget _buildBanner(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(

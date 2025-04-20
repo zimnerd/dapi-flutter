@@ -1,675 +1,637 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'dart:async'; // For StreamController
-
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 import '../models/conversation.dart';
 import '../models/message.dart';
-import '../models/profile.dart';
-import '../models/match.dart';
+import '../services/auth_service.dart';
 import '../utils/logger.dart';
-import '../utils/constants.dart';
-import '../utils/exceptions.dart'; // Import custom exception
-import '../config/app_config.dart';
-import 'api_client.dart';
-import 'auth_service.dart'; // Import AuthService
 
+// Event models for WebSockets
+class TypingEvent {
+  final String userId;
+  final String conversationId;
+  final bool isTyping;
+  
+  TypingEvent({required this.userId, required this.conversationId, required this.isTyping});
+}
+
+class ReadReceiptEvent {
+  final String userId;
+  final String conversationId;
+  
+  ReadReceiptEvent({required this.userId, required this.conversationId});
+}
+
+class OnlineStatusEvent {
+  final String userId;
+  final bool isOnline;
+  
+  OnlineStatusEvent({required this.userId, required this.isOnline});
+}
+
+/// ChatService handles all chat-related operations, including:
+/// - WebSocket connection for real-time messaging
+/// - Fetching conversations and messages
+/// - Sending and receiving messages
+/// - Typing indicators
+/// - Read receipts
+/// - Online status tracking
+/// - Group chat functionality
 class ChatService {
-  final Dio _dio;
-  final AuthService _authService; // Store AuthService instance
-  final ProviderRef _ref; // Store Ref for reading providers
-  final Logger _logger = Logger('ChatService');
-  
-  IO.Socket? _socket;
-  
-  // Stream controllers for various events
-  final StreamController<Message> _messageController = StreamController.broadcast();
-  final StreamController<Map<String, bool>> _typingStatusController = StreamController.broadcast();
-  final StreamController<Map<String, dynamic>> _readReceiptController = StreamController.broadcast();
-  final StreamController<Message> _groupMessageController = StreamController.broadcast();
-  final StreamController<Map<String, dynamic>> _onlineStatusController = StreamController.broadcast();
-  final StreamController<List<dynamic>> _chatroomsController = StreamController.broadcast();
-  final StreamController<Map<String, int>> _unreadCountsController = StreamController.broadcast();
-  final StreamController<String> _errorController = StreamController.broadcast();
-  
-  // Expose streams
-  Stream<Message> get messageStream => _messageController.stream;
-  Stream<Map<String, bool>> get typingStatusStream => _typingStatusController.stream;
-  Stream<Map<String, dynamic>> get readReceiptStream => _readReceiptController.stream;
-  Stream<Message> get groupMessageStream => _groupMessageController.stream;
-  Stream<Map<String, dynamic>> get onlineStatusStream => _onlineStatusController.stream;
-  Stream<List<dynamic>> get chatroomsStream => _chatroomsController.stream;
-  Stream<Map<String, int>> get unreadCountsStream => _unreadCountsController.stream;
-  Stream<String> get errorStream => _errorController.stream;
-  
-  // Connection status
-  bool get isConnected => _socket?.connected ?? false;
-  
-  // Store current typing status locally
-  final Map<String, bool> _typingUsers = {};
-
-  ChatService(this._dio, this._authService, this._ref);
-
-  Future<void> initSocket() async {
-    if (_socket != null && _socket!.connected) {
-      _logger.info("Socket already connected.");
-      return;
+  // Singleton instance
+  static final ChatService _instance = ChatService._internal();
+  factory ChatService() => _instance;
+  ChatService._internal() {
+    // Initialize services and controllers
+    try {
+      // Initialize stream controllers (without initializing AuthService here)
+      _messagesController = StreamController<Map<String, dynamic>>.broadcast();
+      _typingController = StreamController<Map<String, dynamic>>.broadcast();
+      _readReceiptController = StreamController<Map<String, dynamic>>.broadcast();
+      _onlineStatusController = StreamController<Map<String, dynamic>>.broadcast();
+      _errorController = StreamController<String>.broadcast();
+      _groupMessagesController = StreamController<Map<String, dynamic>>.broadcast();
+      _roomUpdatesController = StreamController<Map<String, dynamic>>.broadcast();
+    } catch (e) {
+      print('Error initializing ChatService: $e');
     }
-
-    _logger.info("Initializing WebSocket connection...");
-    final token = await _authService.getAccessToken();
-
-    if (token == null) {
-      _logger.error("Cannot initialize socket: No auth token found.");
-      _errorController.add("Authentication required: No token found");
-      return;
-    }
-    
-    final socketUrl = AppConfig.socketUrl; // Use the getter from AppConfig
-    _logger.info("Connecting to socket at: $socketUrl");
-
-    _socket = IO.io(socketUrl, <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': true,
-      'forceNew': true, // Ensures a new connection attempt
-      'auth': {
-        'token': token
-      },
-      'reconnection': true,
-      'reconnectionAttempts': 5,
-      'reconnectionDelay': 1000,
-      'reconnectionDelayMax': 5000,
-      'timeout': 20000,
-    });
-
-    _setupEventListeners();
-    _setupReconnection();
-    
-    // Connect the socket
-    _socket!.connect();
   }
 
-  void _setupEventListeners() {
-    // Connection events
-    _socket!.onConnect((_) {
-      _logger.info('Socket connected: ${_socket!.id}');
-    });
+  // Socket instance
+  IO.Socket? _socket;
+  
+  // Services
+  AuthService? _authService;
+  final Dio _dio = Dio();
+  
+  // Initialize the auth service
+  void initializeAuthService(AuthService authService) {
+    _authService = authService;
+    print('AuthService initialized in ChatService');
+  }
 
-    _socket!.onConnectError((data) {
-      _logger.error('Socket connection error: $data');
-      _errorController.add("Connection error: ${data.toString()}");
-    });
+  // Stream controllers
+  late StreamController<Map<String, dynamic>> _messagesController;
+  late StreamController<Map<String, dynamic>> _typingController;
+  late StreamController<Map<String, dynamic>> _readReceiptController;
+  late StreamController<Map<String, dynamic>> _onlineStatusController;
+  late StreamController<String> _errorController;
+  late StreamController<Map<String, dynamic>> _groupMessagesController;
+  late StreamController<Map<String, dynamic>> _roomUpdatesController;
+  
+  // Streams
+  Stream<Map<String, dynamic>> get onNewMessage => _messagesController.stream;
+  Stream<Map<String, dynamic>> get onTypingEvent => _typingController.stream;
+  Stream<Map<String, dynamic>> get onReadReceipt => _readReceiptController.stream;
+  Stream<Map<String, dynamic>> get onOnlineStatus => _onlineStatusController.stream;
+  Stream<String> get onError => _errorController.stream;
+  Stream<Map<String, dynamic>> get onGroupMessage => _groupMessagesController.stream;
+  Stream<Map<String, dynamic>> get onRoomUpdate => _roomUpdatesController.stream;
+  
+  // Socket connection status
+  bool get isConnected => _socket?.connected ?? false;
 
-    _socket!.onError((data) {
-      _logger.error('Socket error: $data');
-      _errorController.add("Socket error: ${data.toString()}");
-    });
-
-    _socket!.onDisconnect((_) {
-      _logger.info('Socket disconnected');
-    });
-
-    // Private messaging events
-    _socket!.on('new_message', (data) {
-      _logger.chat('Received new message: $data');
-      try {
-        final String conversationId = data['conversation_id'] ?? 'unknown_conversation'; 
-        final message = Message.fromJson(conversationId, data);
-        _messageController.add(message);
-      } catch (e) {
-        _logger.error('Error parsing incoming message: $e\nData: $data');
+  /// Initialize the WebSocket connection
+  Future<void> initSocket() async {
+    if (_authService == null) {
+      print('AuthService not initialized. Call initializeAuthService() first.');
+      _errorController.add('Authentication service not available. Please restart the app.');
+      return;
+    }
+    
+    try {
+      final token = await _authService!.getAccessToken();
+      if (token == null) {
+        print('Failed to initialize socket: No authentication token available');
+        _errorController.add('No authentication token available. Please log in again.');
+        return;
       }
+      
+      // Create socket connection with Socket.IO client
+      print('Initializing socket connection to ${AppConfig.socketUrl}');
+      
+      // Directly use HTTP URL format for WebSocket connection
+      // Force using the non-localhost URL for actual device usage
+      String socketUrl = 'http://dapi.pulsetek.co.za:3001';
+      print('Using socket URL: $socketUrl');
+      
+      _socket = IO.io(
+        socketUrl,
+        IO.OptionBuilder()
+            .setTransports(['websocket'])
+            .enableAutoConnect()
+            .enableReconnection()
+            .setQuery({'token': token})
+            .build(),
+      );
+      
+      // Set up event listeners
+      _setupSocketListeners();
+      print('WebSocket initialized with token');
+    } catch (e) {
+      print('Error initializing WebSocket: $e');
+      _errorController.add('Failed to initialize chat connection: $e');
+    }
+  }
+  
+  // Helper method to get auth token
+  Future<String?> _getAuthToken() async {
+    try {
+      // Use FlutterSecureStorage instead of SharedPreferences
+      final storage = FlutterSecureStorage();
+      final token = await storage.read(key: AppStorageKeys.accessToken);
+      print('Retrieved auth token from secure storage: ${token != null ? 'token found' : 'token not found'}');
+      return token;
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
+    }
+  }
+  
+  /// Connect to the WebSocket server
+  void connect() {
+    if (_socket == null) {
+      print('Socket not initialized. Call initSocket() first.');
+      return;
+    }
+    
+    if (!_socket!.connected) {
+      _socket!.connect();
+      print('Connecting to WebSocket server...');
+    } else {
+      print('Already connected to WebSocket server');
+    }
+  }
+  
+  /// Disconnect from the WebSocket server
+  void disconnect() {
+    _socket?.disconnect();
+    print('Disconnected from WebSocket server');
+  }
+  
+  /// Set up all socket event listeners
+  void _setupSocketListeners() {
+    _socket?.onConnect((_) {
+      print('Connected to WebSocket server');
     });
     
-    // Typing indicators
-    _socket!.on('user_typing', (data) {
-      _logger.chat('Received user_typing event: $data');
-      if (data is Map && data.containsKey('senderId')) {
-        final senderId = data['senderId'].toString();
-        _typingUsers[senderId] = true;
-        _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
-      }
-    });
-
-    _socket!.on('user_stopped_typing', (data) {
-      _logger.chat('Received user_stopped_typing event: $data');
-      if (data is Map && data.containsKey('senderId')) {
-        final senderId = data['senderId'].toString();
-        _typingUsers[senderId] = false;
-        _typingStatusController.add(Map.unmodifiable(_typingUsers)); // Add immutable copy
-      }
+    _socket?.onDisconnect((_) {
+      print('Disconnected from WebSocket server');
     });
     
-    // Read receipts
-    _socket!.on('messages_read', (data) {
-      _logger.chat('Received read receipt: $data');
+    _socket?.onConnectError((error) {
+      print('Connection error: $error');
+      _errorController.add('Connection error: Unable to connect to chat server');
+    });
+    
+    _socket?.onError((error) {
+      print('Socket error: $error');
+      _errorController.add('Chat service error: Please try again later');
+    });
+    
+    // Message events
+    _socket?.on('private_message', (data) {
+      print('Received private message: ${data.toString()}');
+      _messagesController.add(data);
+    });
+    
+    _socket?.on('typing', (data) {
+      print('Typing indicator received: ${data.toString()}');
+      _typingController.add(data);
+    });
+    
+    _socket?.on('read_receipt', (data) {
+      print('Read receipt received: ${data.toString()}');
       _readReceiptController.add(data);
     });
     
+    _socket?.on('status_change', (data) {
+      print('Online status update received: ${data.toString()}');
+      _onlineStatusController.add(data);
+    });
+    
     // Group chat events
-    _socket!.on('new_group_message', (data) {
-      _logger.chat('Received group message: $data');
-      try {
-        final String roomId = data['room_id'] ?? 'unknown_room';
-        final message = Message.fromJson(roomId, data);
-        _groupMessageController.add(message);
-      } catch (e) {
-        _logger.error('Error parsing incoming group message: $e\nData: $data');
-      }
+    _socket?.on('group_message', (data) {
+      print('Received group message: ${data.toString()}');
+      _groupMessagesController.add(data);
     });
     
-    _socket!.on('chatroom_created', (data) {
-      _logger.chat('Chatroom created: $data');
-    });
-    
-    _socket!.on('chatroom_joined', (data) {
-      _logger.chat('Joined chatroom: $data');
-    });
-    
-    _socket!.on('chatrooms_list', (data) {
-      _logger.chat('Received chatrooms list');
-      if (data is List) {
-        _chatroomsController.add(data);
-      }
-    });
-    
-    // Presence/online status
-    _socket!.on('user_presence_changed', (data) {
-      _logger.chat('Received user presence change: $data');
-      _onlineStatusController.add(data);
-    });
-    
-    _socket!.on('user_online', (data) {
-      _logger.chat('User online notification: $data');
-      _onlineStatusController.add(data);
-    });
-    
-    // Unread counts
-    _socket!.on('unread_counts', (data) {
-      _logger.chat('Received unread counts: $data');
-      if (data is Map) {
-        _unreadCountsController.add(Map<String, int>.from(data));
-      }
-    });
-    
-    // General events - log all events for debugging
-    _socket!.onAny((event, data) {
-      _logger.debug('⬇️ Socket event: $event, data: $data');
+    _socket?.on('room_update', (data) {
+      print('Room update received: ${data.toString()}');
+      _roomUpdatesController.add(data);
     });
   }
   
-  void _setupReconnection() {
-    _socket!.onReconnect((attempt) {
-      _logger.info('Socket reconnected after $attempt attempts');
-      // Re-authenticate after reconnection
-      _authService.getAccessToken().then((token) {
-        if (token != null) {
-          _socket!.emit('authenticate', {'token': token});
-        }
-      });
-    });
-    
-    _socket!.onReconnectAttempt((attempt) {
-      _logger.info('Attempting to reconnect: attempt $attempt');
-    });
-    
-    _socket!.onReconnectError((error) {
-      _logger.error('Reconnection error: $error');
-    });
-    
-    _socket!.onReconnectFailed((_) {
-      _logger.error('Socket reconnection failed after maximum attempts');
-      _errorController.add("Connection failed: Maximum reconnection attempts reached");
-    });
-  }
-
-  // Private messaging
-  void sendPrivateMessage(String recipientId, String text, {String? mediaUrl}) {
-    if (_socket == null || !_socket!.connected) {
-      _logger.warn("Socket not connected. Cannot send message.");
-      _errorController.add("Cannot send message: disconnected");
+  /// Send a private message to another user via WebSocket
+  void sendPrivateMessage(String receiverId, String message, {String? mediaUrl}) {
+    if (!isConnected) {
+      print('Not connected to WebSocket server');
+      _errorController.add('Not connected to chat server. Please try again.');
       return;
     }
     
-    _logger.chat("Sending private message via socket to $recipientId");
     final messageData = {
-      'recipientId': recipientId,
-      'message': text,
+      'receiverId': receiverId,
+      'message': message,
+      'timestamp': DateTime.now().toIso8601String(),
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
     };
     
-    if (mediaUrl != null) {
-      messageData['mediaUrl'] = mediaUrl;
-    }
-    
-    _socket!.emit('private_message', messageData);
-  }
-
-  // Emit typing events
-  void startTyping(String recipientId) {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Emitting start_typing to $recipientId");
-    _socket!.emit('start_typing', {'recipientId': recipientId});
-  }
-
-  void stopTyping(String recipientId) {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Emitting stop_typing to $recipientId");
-    _socket!.emit('stop_typing', {'recipientId': recipientId});
+    _socket?.emit('private_message', messageData);
+    print('Sent private message to $receiverId');
   }
   
-  // Load conversation history
-  void loadConversationHistory(String conversationId, {int limit = 50, String? before}) {
-    if (_socket == null || !_socket!.connected) {
-      _errorController.add("Cannot load messages: disconnected");
+  /// Send a message to a group chat
+  void sendGroupMessage(String roomId, String message, {String? mediaUrl}) {
+    if (!isConnected) {
+      print('Not connected to WebSocket server');
+      _errorController.add('Not connected to chat server. Please try again.');
       return;
     }
     
-    _logger.chat("Loading conversation history for: $conversationId");
+    final messageData = {
+      'roomId': roomId,
+      'message': message,
+      'timestamp': DateTime.now().toIso8601String(),
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+    };
     
-    final requestData = {
+    _socket?.emit('group_message', messageData);
+    print('Sent group message to room $roomId');
+  }
+  
+  /// Notify when user starts typing
+  void startTyping(String receiverId) {
+    if (!isConnected) return;
+    
+    _socket?.emit('typing', {
+      'receiverId': receiverId,
+      'isTyping': true,
+    });
+    print('Sent typing indicator to $receiverId');
+  }
+  
+  /// Notify when user stops typing
+  void stopTyping(String receiverId) {
+    if (!isConnected) return;
+    
+    _socket?.emit('typing', {
+      'receiverId': receiverId,
+      'isTyping': false,
+    });
+    print('Sent stop typing indicator to $receiverId');
+  }
+  
+  /// Send read receipt for messages
+  void sendReadReceipt(String conversationId, String messageId) {
+    if (!isConnected) return;
+    
+    _socket?.emit('read_receipt', {
       'conversationId': conversationId,
-      'limit': limit,
-    };
-    
-    if (before != null) {
-      requestData['before'] = before;
-    }
-    
-    _socket!.emit('load_conversation', requestData);
-  }
-  
-  // Mark messages as read
-  void markMessagesAsRead(List<String> messageIds, String conversationId) {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Marking messages as read: $messageIds");
-    _socket!.emit('mark_read', {
-      'messageIds': messageIds,
-      'conversationId': conversationId
+      'messageId': messageId,
+      'timestamp': DateTime.now().toIso8601String(),
     });
+    print('Sent read receipt for message $messageId');
   }
   
-  // Get unread message counts
-  void getUnreadCounts() {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Requesting unread message counts");
-    _socket!.emit('get_unread_counts');
-  }
-  
-  // Group chat methods
-  void createChatroom(String name, List<String> memberIds) {
-    if (_socket == null || !_socket!.connected) {
-      _errorController.add("Cannot create chatroom: disconnected");
-      return;
-    }
+  /// Update online status
+  void updateOnlineStatus(bool isOnline) {
+    if (!isConnected) return;
     
-    _logger.chat("Creating chatroom: $name with members: $memberIds");
-    _socket!.emit('create_chatroom', {
-      'name': name,
-      'members': memberIds
+    _socket?.emit('status_change', {
+      'isOnline': isOnline,
+      'lastSeen': DateTime.now().toIso8601String(),
     });
+    print('Updated online status: $isOnline');
   }
-
-  void joinChatroom(String roomId) {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Joining chatroom: $roomId");
-    _socket!.emit('join_chatroom', {'roomId': roomId});
-  }
-
-  void leaveChatroom(String roomId) {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Leaving chatroom: $roomId");
-    _socket!.emit('leave_chatroom', {'roomId': roomId});
-  }
-
-  void sendGroupMessage(String roomId, String text, {String? mediaUrl}) {
-    if (_socket == null || !_socket!.connected) {
-      _errorController.add("Cannot send group message: disconnected");
-      return;
-    }
+  
+  /// Create a new chat room for group conversations
+  void createChatRoom(String roomName, List<String> memberIds) {
+    if (!isConnected) return;
     
-    _logger.chat("Sending group message to room: $roomId");
+    _socket?.emit('create_room', {
+      'roomName': roomName,
+      'members': memberIds,
+    });
+    print('Created new chat room: $roomName');
+  }
+  
+  /// Join an existing chat room
+  void joinChatRoom(String roomId) {
+    if (!isConnected) return;
     
-    final messageData = {
+    _socket?.emit('join_room', {
       'roomId': roomId,
-      'content': text,
-    };
-    
-    if (mediaUrl != null) {
-      messageData['mediaUrl'] = mediaUrl;
-    }
-    
-    _socket!.emit('group_message', messageData);
-  }
-
-  void loadGroupMessages(String roomId, {int limit = 50, String? before}) {
-    if (_socket == null || !_socket!.connected) {
-      _errorController.add("Cannot load group messages: disconnected");
-      return;
-    }
-    
-    _logger.chat("Loading group messages for room: $roomId");
-    
-    final requestData = {
-      'roomId': roomId,
-      'limit': limit,
-    };
-    
-    if (before != null) {
-      requestData['before'] = before;
-    }
-    
-    _socket!.emit('load_group_conversation', requestData);
-  }
-  
-  // Get all chatrooms the user is a member of
-  void getChatrooms() {
-    if (_socket == null || !_socket!.connected) return;
-    _logger.chat("Requesting user's chatrooms");
-    _socket!.emit('get_chatrooms');
-  }
-  
-  // Presence/online status
-  void updatePresence(String status) {
-    if (_socket == null || !_socket!.connected) return;
-    // Valid statuses: 'online', 'away', 'busy', 'offline'
-    _logger.chat("Updating presence status to: $status");
-    _socket!.emit('update_presence', {'status': status});
-  }
-
-  // Force disconnect and reconnect (useful for handling token refresh)
-  void reconnect() {
-    _logger.info('Forcing socket reconnection');
-    _socket?.disconnect();
-    
-    // Short delay before reconnecting
-    Future.delayed(const Duration(milliseconds: 500), () {
-      initSocket();
     });
+    print('Joined chat room: $roomId');
+  }
+  
+  /// Leave a chat room
+  void leaveChatRoom(String roomId) {
+    if (!isConnected) return;
+    
+    _socket?.emit('leave_room', {
+      'roomId': roomId,
+    });
+    print('Left chat room: $roomId');
+  }
+  
+  /// Get list of all conversations via HTTP (fallback method)
+  Future<List<dynamic>> getConversations() async {
+    return _getConversationsHttp();
+  }
+  
+  /// Get messages for a specific conversation via HTTP (fallback method)
+  Future<List<dynamic>> getMessages(String conversationId) async {
+    return _getMessagesHttp(conversationId);
   }
 
-  // Dispose method
-  void dispose() {
-    _logger.info("Disposing ChatService and disconnecting socket.");
-    _socket?.disconnect();
-    _socket?.dispose();
-    
-    // Close all stream controllers
-    _messageController.close();
-    _typingStatusController.close();
-    _readReceiptController.close();
-    _groupMessageController.close();
-    _onlineStatusController.close();
-    _chatroomsController.close();
-    _unreadCountsController.close();
-    _errorController.close();
+  /// Mark a conversation as read via HTTP (fallback method)
+  Future<bool> markConversationAsRead(String conversationId) async {
+    return _markConversationAsReadHttp(conversationId);
   }
   
-  // --- Existing HTTP methods ---
-  
-  // Get matches list
-  Future<List<Profile>> getMatches() async {
-    _logger.chat('Getting matches...');
+  /// Private method to fetch conversations via HTTP
+  Future<List<dynamic>> _getConversationsHttp() async {
     try {
-      final response = await _dio.get(AppEndpoints.matches);
-      
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Profile.fromJson(json)).toList();
-      } else {
-        // Throw specific ApiException for non-200 status
-        throw ApiException(
-          response.data?['message'] ?? Constants.errorFailedToLoadMatches,
-          statusCode: response.statusCode,
-        );
+      if (_authService == null) {
+        print('AuthService not initialized yet');
+        throw Exception('Authentication service not available');
       }
-    } on DioException catch (e) {
-      _logger.error('Get Matches Dio error: ${e.message}', e);
-      _handleDioError(e); // Throws ApiException
-      // The following line is unreachable but satisfies the compiler
-      throw ApiException(Constants.errorUnknown);
-    } catch (e, s) {
-      _logger.error('Get Matches general error: $e', e, s);
-      throw ApiException(Constants.errorFailedToLoadMatches);
-    }
-  }
-  
-  // Get conversations list
-  Future<List<Conversation>> getConversations() async {
-    _logger.chat('Getting conversations...');
-    try {
-      final response = await _dio.get(AppEndpoints.conversations);
       
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Conversation.fromJson(json)).toList();
-      } else {
-        // Throw specific ApiException for non-200 status
-        throw ApiException(
-          response.data?['message'] ?? Constants.errorFailedToLoadConversations,
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      _logger.error('Get Conversations Dio error: ${e.message}', e);
-      _handleDioError(e); // Throws ApiException
-      // The following line is unreachable but satisfies the compiler
-      throw ApiException(Constants.errorUnknown);
-    } catch (e, s) {
-      _logger.error('Get Conversations general error: $e', e, s);
-      throw ApiException(Constants.errorFailedToLoadConversations);
-    }
-  }
-  
-  // Get messages for a conversation
-  Future<List<Message>> getMessages(String conversationId) async {
-    _logger.chat('Getting messages for conversation $conversationId...');
-    try {
-      // Use correct endpoint - dynamically build it
-      final endpoint = AppEndpoints.conversationMessages(conversationId);
-      _logger.debug("Requesting messages from: ${AppConfig.apiBaseUrl}$endpoint");
-      final response = await _dio.get(endpoint);
+      final token = await _authService!.getAccessToken();
       
-      if (response.statusCode == 200 && response.data is List) {
-        final List<dynamic> data = response.data;
-        // Pass conversationId if needed by fromJson
-        return data.map((json) => Message.fromJson(conversationId, json)).toList(); 
-      } else {
-        _logger.warn("Failed to load messages: Status ${response.statusCode}, Data: ${response.data}");
-        // Throw specific ApiException for non-200 status
-        throw ApiException(
-          response.data?['message'] ?? Constants.errorFailedToLoadMessages,
-          statusCode: response.statusCode,
-        );
+      if (token == null) {
+        print('Failed to fetch conversations: No authentication token available');
+        throw Exception('Authentication token not available');
       }
-    } on DioException catch (e) {
-      _logger.error('Get Messages Dio error: ${e.message}', e);
-      _handleDioError(e); // Throws ApiException
-      // The following line is unreachable but satisfies the compiler
-      throw ApiException(Constants.errorUnknown);
-    } catch (e, s) {
-      _logger.error('Get Messages general error: $e', e, s);
-      throw ApiException(Constants.errorFailedToLoadMessages);
-    }
-  }
-  
-  // Send a message - THIS SHOULD NOW USE WEBSOCKETS
-  Future<Message> sendMessage(String conversationId, String text) async {
-     _logger.warn("sendMessage via HTTP is deprecated. Use sendPrivateMessage via WebSocket.");
-     
-     // We need the recipient's ID to send via WebSocket.
-     // This requires fetching the conversation details first or having it available.
-     // For now, let's throw an error or return a dummy message.
-     
-     // Placeholder: Fetch conversation to get recipientId - This is inefficient!
-     // Better approach: Pass recipientId to this function or handle sending in UI 
-     // after fetching conversation details.
-     /*
-     try {
-       final conversation = await getConversationDetails(conversationId); // Assuming such a method exists
-       final recipientId = conversation.participants.firstWhere((p) => p.id != _authService.getCurrentUserIdSync()).id; // Needs sync user ID access
-       sendPrivateMessage(recipientId, text);
-       // We can't easily return the Message object here as it's async via socket.
-       // The UI should react to the messageStreamProvider instead.
-       return Message(id: 'temp-${DateTime.now().millisecondsSinceEpoch}', conversationId: conversationId, senderId: 'me', text: text, timestamp: DateTime.now());
-     } catch (e) {
-       _logger.error("Error trying to send message via WebSocket fallback: $e");
-       throw Exception("Failed to send message. WebSocket error.");
-     }
-     */
-     throw UnimplementedError("Use sendPrivateMessage via WebSocket. Requires recipientId.");
-  }
-  
-  // Mark conversation as read
-  Future<void> markConversationAsRead(String conversationId) async {
-    _logger.chat('Marking conversation $conversationId as read...');
-    try {
-      // Use correct endpoint
-      final response = await _dio.post('/api/conversations/$conversationId/read'); 
       
-      if (response.statusCode != 200) {
-         _logger.warn("Failed to mark conversation as read: Status ${response.statusCode}, Data: ${response.data}");
-        // Don't throw, just log
-      }
-    } on DioException catch (e) {
-      _logger.error('Mark Read Dio error: ${e.message}');
-      // Not throwing here to prevent UI disruption over non-critical operation
-    } catch (e) {
-      _logger.error('Mark Read general error: $e');
-      // Not throwing here to prevent UI disruption over non-critical operation
-    }
-  }
-  
-  // Create new conversation
-  Future<Conversation> createConversation(String userId) async { // userId should be String
-    _logger.chat('Creating conversation with user $userId...');
-    try {
-       // Use correct endpoint
-      final response = await _dio.post(
-        AppEndpoints.conversations, 
-        data: {
-          // Assuming backend expects 'userId' or 'recipientId'
-          'recipientId': userId, 
+      // Configure Dio properly with base URL and timeout
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
         },
+      ));
+      
+      print('Fetching conversations from: ${AppConfig.apiBaseUrl}${AppEndpoints.conversations}');
+      final response = await dio.get(AppEndpoints.conversations);
+      
+      if (response.statusCode == 200) {
+        // Debug the response format to help identify structure
+        print('Response data structure: ${response.data.runtimeType}');
+        print('Response keys: ${response.data is Map ? (response.data as Map).keys.toList() : "Not a map"}');
+        
+        // Extract and validate conversations data
+        dynamic conversationsData;
+        
+        if (response.data is Map && response.data.containsKey('data')) {
+          // Standard API format with data field
+          conversationsData = response.data['data'];
+          print('Found data field in response with type: ${conversationsData.runtimeType}');
+        } else if (response.data is List) {
+          // Direct list format
+          conversationsData = response.data;
+          print('Response is direct list with length: ${conversationsData.length}');
+        } else {
+          // Unknown format
+          print('Unknown response format: ${response.data}');
+          conversationsData = [];
+        }
+        
+        // Ensure conversations is a List<dynamic>
+        List<dynamic> conversations = [];
+        
+        if (conversationsData is List) {
+          conversations = conversationsData;
+        } else {
+          print('Conversations data is not a list: ${conversationsData}');
+        }
+        
+        print('Successfully processed ${conversations.length} conversations');
+        
+        // Transform to expected format if needed
+        return conversations.map((conv) {
+          try {
+            // Just return the original data for now, will be processed by Conversation.fromJson
+            return conv;
+          } catch (e) {
+            print('Error processing conversation: $e');
+            return null;
+          }
+        }).where((conv) => conv != null).toList();
+      } else {
+        print('Error fetching conversations: ${response.statusCode}');
+        throw Exception('Failed to fetch conversations: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching conversations: $e');
+      rethrow;
+    }
+  }
+  
+  /// Private method to fetch messages via HTTP
+  Future<List<dynamic>> _getMessagesHttp(String conversationId) async {
+    try {
+      if (_authService == null) {
+        print('AuthService not initialized yet');
+        throw Exception('Authentication service not available');
+      }
+      
+      final token = await _authService!.getAccessToken();
+      
+      if (token == null) {
+        print('Failed to fetch messages: No authentication token available');
+        throw Exception('Authentication token not available');
+      }
+      
+      // Configure Dio properly with base URL and timeout
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+      ));
+      
+      final endpoint = AppEndpoints.conversationMessages(conversationId);
+      print('Fetching messages from: ${AppConfig.apiBaseUrl}$endpoint');
+      
+      final response = await dio.get(endpoint);
+      
+      if (response.statusCode == 200) {
+        print('Successfully fetched ${response.data['data']?.length ?? 0} messages');
+        return response.data['data'] ?? [];
+      } else {
+        print('Error fetching messages: ${response.statusCode}');
+        throw Exception('Failed to fetch messages: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching messages: $e');
+      rethrow;
+    }
+  }
+  
+  /// Private method to mark conversation as read via HTTP
+  Future<bool> _markConversationAsReadHttp(String conversationId) async {
+    try {
+      if (_authService == null) {
+        print('AuthService not initialized yet');
+        throw Exception('Authentication service not available');
+      }
+      
+      final token = await _authService!.getAccessToken();
+      
+      if (token == null) {
+        print('Failed to mark conversation as read: No authentication token available');
+        throw Exception('Authentication token not available');
+      }
+      
+      // Configure Dio properly with base URL and timeout
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+      ));
+      
+      print('Marking conversation as read: ${conversationId}/read');
+      final response = await dio.post('${AppEndpoints.conversations}/$conversationId/read');
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error marking conversation as read: $e');
+      return false;
+    }
+  }
+  
+  /// Create a new conversation
+  Future<dynamic> createConversation(String recipientId) async {
+    try {
+      if (_authService == null) {
+        print('AuthService not initialized yet');
+        throw Exception('Authentication service not available');
+      }
+      
+      final token = await _authService!.getAccessToken();
+      
+      if (token == null) {
+        print('Failed to create conversation: No authentication token available');
+        throw Exception('Authentication token not available');
+      }
+      
+      // Configure Dio properly with base URL and timeout
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+      ));
+      
+      print('Creating conversation with recipient: $recipientId');
+      final response = await dio.post(
+        AppEndpoints.conversations,
+        data: {'recipient_id': recipientId},
       );
       
-      if (response.statusCode == 201 && response.data != null) {
-         _logger.info("Conversation created successfully: ${response.data['id']}");
-        return Conversation.fromJson(response.data);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Conversation created successfully');
+        return response.data['data'];
       } else {
-        _logger.warn("Failed to create conversation: Status ${response.statusCode}, Data: ${response.data}");
-        throw DioException(
-          requestOptions: response.requestOptions,
-          response: response,
-          error: 'Failed to create conversation (status ${response.statusCode})',
-        );
+        print('Error creating conversation: ${response.statusCode}');
+        throw Exception('Failed to create conversation: ${response.statusCode}');
       }
-    } on DioException catch (e) {
-      _logger.error('Create Conversation Dio error: ${e.message}, Response: ${e.response?.data}');
-      // Use _handleDioError for consistency
-      _handleDioError(e); 
-      rethrow; // Rethrow the ApiException
-    } catch (e, s) {
-      _logger.error('Create Conversation general error: $e', e, s); // Add stack trace
-      throw ApiException(Constants.errorGeneric); // Throw generic ApiException
+    } catch (e) {
+      print('Error creating conversation: $e');
+      rethrow;
     }
   }
   
-  // Delete a conversation
-  Future<void> deleteConversation(String conversationId) async {
-    _logger.chat('Deleting conversation $conversationId...');
+  /// Delete a conversation
+  Future<bool> deleteConversation(String conversationId) async {
     try {
-      // Use correct endpoint
-      final response = await _dio.delete('/api/conversations/$conversationId'); 
-      
-      if (response.statusCode != 200 && response.statusCode != 204) {
-         _logger.warn("Failed to delete conversation: Status ${response.statusCode}, Data: ${response.data}");
-        // Throw specific ApiException for non-200 status
-        throw ApiException(
-          response.data?['message'] ?? 'Failed to delete conversation',
-          statusCode: response.statusCode,
-        );
+      if (_authService == null) {
+        print('AuthService not initialized yet');
+        throw Exception('Authentication service not available');
       }
-       _logger.info("Conversation $conversationId deleted successfully.");
-    } on DioException catch (e) {
-      _logger.error('Delete Conversation Dio error: ${e.message}, Response: ${e.response?.data}');
-      // Use _handleDioError for consistency
-      _handleDioError(e);
-      rethrow; // Rethrow the ApiException
-    } catch (e, s) {
-      _logger.error('Delete Conversation general error: $e', e, s); // Add stack trace
-      throw ApiException(Constants.errorGeneric); // Throw generic ApiException
+      
+      final token = await _authService!.getAccessToken();
+      
+      if (token == null) {
+        print('Failed to delete conversation: No authentication token available');
+        throw Exception('Authentication token not available');
+      }
+      
+      // Configure Dio properly with base URL and timeout
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        receiveTimeout: const Duration(milliseconds: AppConfig.networkTimeoutMs),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token'
+        },
+      ));
+      
+      print('Deleting conversation: $conversationId');
+      final response = await dio.delete('${AppEndpoints.conversations}/$conversationId');
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting conversation: $e');
+      return false;
     }
   }
-
-  // Helper method to handle Dio errors and throw ApiException
-  void _handleDioError(DioException e) {
-    final String message;
-    int? statusCode = e.response?.statusCode;
-
-    // Prefer server message if available
-    final serverMessage = e.response?.data?['message'];
-    if (serverMessage != null && serverMessage is String && serverMessage.isNotEmpty) {
-        message = serverMessage;
-    } else {
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-        case DioExceptionType.receiveTimeout:
-          message = Constants.errorNetworkTimeout;
-          break;
-        case DioExceptionType.badResponse:
-          switch (statusCode) {
-            case 400:
-              message = Constants.errorBadRequest;
-              break;
-            case 401:
-              message = Constants.errorUnauthorized;
-              break;
-            case 403:
-              message = Constants.errorForbidden;
-              break;
-            case 404:
-              message = Constants.errorNotFound;
-              break;
-            case 429:
-               message = Constants.errorRateLimit;
-               break;
-            case 500:
-            case 502:
-            case 503:
-            case 504:
-              message = Constants.errorServer;
-              break;
-            default:
-              message = Constants.errorResponseFormat; // Or a more generic server error
-          }
-          break;
-        case DioExceptionType.cancel:
-          message = Constants.errorRequestCancelled;
-          break;
-        case DioExceptionType.connectionError:
-           message = Constants.errorNetwork;
-           break;
-        case DioExceptionType.unknown:
-        default:
-          message = Constants.errorUnknown; // Or specific unknown error message
+  
+  /// Handle Dio errors and log appropriately
+  void _handleDioError(dynamic error, String context) {
+    if (error is DioException) {
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        print('$context: Connection timeout');
+      } else if (error.type == DioExceptionType.badResponse) {
+        final int? statusCode = error.response?.statusCode;
+        final dynamic data = error.response?.data;
+        print('$context: Bad response (${statusCode ?? "unknown status"}): $data');
+      } else {
+        print('$context: ${error.message}');
       }
+    } else {
+      print('$context: $error');
     }
-
-    _logger.error('API Error: ($statusCode) $message');
-    throw ApiException(message, statusCode: statusCode);
+  }
+  
+  // Clean up resources
+  void dispose() {
+    disconnect();
+    _messagesController.close();
+    _typingController.close();
+    _readReceiptController.close();
+    _onlineStatusController.close();
+    _errorController.close();
+    _groupMessagesController.close();
+    _roomUpdatesController.close();
   }
 }
-
-// Helper function or extension to get current user ID synchronously (if feasible)
-// This is often difficult in Flutter due to async nature of storage.
-// Consider managing user ID state globally via another provider if needed synchronously.
-// String getCurrentUserIdSync(ProviderRef ref) {
-//    // This is problematic, avoid if possible.
-//    // Maybe read from a state provider that holds the user ID after login.
-//    final userIdState = ref.read(userIdProvider); // Assuming a userIdProvider exists
-//    return userIdState ?? 'unknown_user';
-// } 

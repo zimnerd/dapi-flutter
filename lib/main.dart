@@ -12,6 +12,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reset_password_confirmation_screen.dart';
+import 'screens/websocket_test_screen.dart';
 import 'utils/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/auth_provider.dart';
@@ -24,6 +25,7 @@ import 'utils/logger.dart';
 import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
 import 'config/theme_config.dart';
+import 'widgets/websocket_tester.dart'; // Add import for WebSocketTester
 
 final appLogger = Logger('App');
 
@@ -100,6 +102,8 @@ class MyApp extends ConsumerWidget {
         '/matches': (context) => MatchesScreen(),
         '/settings': (context) => SettingsScreen(),
         '/reset-password-confirmation': (context) => ResetPasswordConfirmationScreen(),
+        '/websocket-test': (context) => WebSocketTestScreen(),
+        '/websocket_tester': (context) => const WebSocketTester(), // Add route for WebSocketTester
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/conversation') {

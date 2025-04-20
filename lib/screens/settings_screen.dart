@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../utils/colors.dart';
 import '../screens/profile_screen.dart';
+import '../config/app_config.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -113,6 +114,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
      }
   }
   
+  void _showApiConfigDialog() {
+    final TextEditingController apiUrlController = TextEditingController(text: AppConfig.apiBaseUrl);
+    final TextEditingController socketUrlController = TextEditingController(text: AppConfig.socketUrl);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('API Configuration'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: apiUrlController,
+              decoration: const InputDecoration(
+                labelText: 'API URL',
+                hintText: 'e.g., http://localhost:3001',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: socketUrlController,
+              decoration: const InputDecoration(
+                labelText: 'WebSocket URL',
+                hintText: 'e.g., http://localhost:3001',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // In a real app, this would persist these values
+              // For now, just show a toast message
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('URL configuration saved (demo only)')),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -210,6 +260,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               onChanged: _toggleBiometricAuth,
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Developer Options Section
+                    _buildSectionHeader('Developer Options'),
+                    _buildSettingsCard(
+                      child: Column(
+                        children: [
+                          _buildSettingsItem(
+                            icon: Icons.cable,
+                            title: 'WebSocket Tester',
+                            subtitle: 'Test real-time chat connection',
+                            onTap: () => Navigator.pushNamed(context, '/websocket-test'),
+                          ),
+                          const Divider(),
+                          _buildSettingsItem(
+                            icon: Icons.api,
+                            title: 'API Configuration',
+                            subtitle: 'Configure API endpoints',
+                            onTap: () => _showApiConfigDialog(),
+                          ),
                         ],
                       ),
                     ),

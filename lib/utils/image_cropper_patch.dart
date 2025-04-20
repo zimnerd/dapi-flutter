@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http show readBytes;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -56,14 +57,12 @@ Future<CroppedFile?> safeCropImage(XFile? source) async {
   if (source == null) return null;
   
   try {
-    // Try using the real image_cropper first
-    return await ImageCropper().cropImage(
+    // Try using a simple version of image_cropper to avoid parameter conflicts
+    final croppedFile = await ImageCropper().cropImage(
       sourcePath: source.path,
-      aspectRatioPresets: [
-        CropAspectRatioPreset.square,
-      ],
-      uiSettings: [],
     );
+    
+    return croppedFile != null ? CroppedFile(croppedFile.path) : null;
   } catch (e) {
     // If it fails, just return the original file
     print('Image cropper failed: $e - returning original file');

@@ -1,6 +1,6 @@
 // API base URLs
 final String apiBaseUrl = 'http://dapi.pulsetek.co.za:3001';
-final String socketUrl = 'ws://localhost:3000';
+final String socketUrl = 'ws://dapi.pulsetek.co.za:3001';
 
 // API Endpoints
 class AppEndpoints {

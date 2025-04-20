@@ -244,22 +244,27 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
 
 // Chat Service Provider
 final chatServiceProvider = Provider<ChatService>((ref) {
-  final dio = ref.watch(dioProvider);
   final authService = ref.watch(authServiceProvider);
-  return ChatService(dio, authService, ref);
+  final chatService = ChatService();
+  
+  // Initialize right away with the auth service
+  chatService.initializeAuthService(authService);
+  print('ChatService initialized with AuthService in provider');
+  
+  return chatService;
 });
 
 // Provider for incoming messages stream
-final messageStreamProvider = StreamProvider.autoDispose<Message>((ref) {
+final messageStreamProvider = StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
   final chatService = ref.watch(chatServiceProvider);
-  return chatService.messageStream;
+  return chatService.onNewMessage;
 });
 
 // Provider for typing status changes stream
 // Data structure: Map<String, bool> where key is senderId and value is isTyping
 final typingStatusProvider = StreamProvider.autoDispose.family<Map<String, bool>, String>((ref, String conversationId) {
   final chatService = ref.watch(chatServiceProvider);
-  return chatService.typingStatusStream.map((statusMap) {
+  return chatService.onTypingEvent.map((data) {
     final relevantStatus = <String, bool>{};
     // Attempt to get participantId safely
     final conversation = ref.read(conversationProvider(conversationId));
@@ -283,8 +288,10 @@ final typingStatusProvider = StreamProvider.autoDispose.family<Map<String, bool>
       }
     }
 
-    if (participantId != null && statusMap.containsKey(participantId)) {
-      relevantStatus[participantId] = statusMap[participantId]!;
+    if (participantId != null && data.containsKey('userId') && data.containsKey('isTyping')) {
+      if (data['userId'] == participantId) {
+        relevantStatus[participantId] = data['isTyping'];
+      }
     }
     return relevantStatus;
   });
@@ -303,10 +310,12 @@ final conversationProvider = Provider.autoDispose.family<Conversation?, String>(
   }).value;
 });
 
-// Placeholder provider for all conversations - needs actual implementation
+// Provider for all conversations
 final conversationsProvider = FutureProvider.autoDispose<List<Conversation>>((ref) async {
-  print("Warning: conversationsProvider is a placeholder.");
-  return ref.watch(chatServiceProvider).getConversations();
+  final chatService = ref.watch(chatServiceProvider);
+  final dynamicList = await chatService.getConversations();
+  // Convert dynamic list to List<Conversation>
+  return dynamicList.map((data) => Conversation.fromJson(data)).toList();
 });
 
 // Storage Service Provider
