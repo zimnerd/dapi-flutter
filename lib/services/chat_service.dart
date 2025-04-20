@@ -106,35 +106,51 @@ class ChatService {
     
     try {
       final token = await _authService!.getAccessToken();
+      print('🔐 Auth token for WebSocket: ${token != null ? "Found (${token.substring(0, 10)}...)" : "NOT FOUND!"}');
+      
       if (token == null) {
-        print('Failed to initialize socket: No authentication token available');
+        print('❌ Failed to initialize socket: No authentication token available');
         _errorController.add('No authentication token available. Please log in again.');
         return;
       }
       
       // Create socket connection with Socket.IO client
-      print('Initializing socket connection to ${AppConfig.socketUrl}');
+      print('🔌 Initializing socket connection to ${AppConfig.socketUrl}');
       
       // Directly use HTTP URL format for WebSocket connection
       // Force using the non-localhost URL for actual device usage
       String socketUrl = 'http://dapi.pulsetek.co.za:3001';
-      print('Using socket URL: $socketUrl');
+      print('🔌 Using socket URL: $socketUrl');
       
+      // Close existing socket if it exists
+      if (_socket != null) {
+        print('🔄 Closing existing socket connection before creating new one');
+        _socket!.disconnect();
+        _socket!.dispose();
+        _socket = null;
+      }
+      
+      // Create new socket with multiple authentication methods
       _socket = IO.io(
         socketUrl,
         IO.OptionBuilder()
             .setTransports(['websocket'])
-            .enableAutoConnect()
+            .disableAutoConnect() // Disable auto-connect to control connection timing
             .enableReconnection()
-            .setQuery({'token': token})
+            // Try multiple authentication methods to ensure one works
+            .setQuery({'token': token, 'auth_token': token})
+            .setExtraHeaders({'Authorization': 'Bearer $token'})
             .build(),
       );
       
       // Set up event listeners
       _setupSocketListeners();
-      print('WebSocket initialized with token');
+      print('🔐 WebSocket initialized with token - connecting manually');
+      
+      // Manually connect the socket
+      _socket!.connect();
     } catch (e) {
-      print('Error initializing WebSocket: $e');
+      print('❌ Error initializing WebSocket: $e');
       _errorController.add('Failed to initialize chat connection: $e');
     }
   }
@@ -177,52 +193,53 @@ class ChatService {
   /// Set up all socket event listeners
   void _setupSocketListeners() {
     _socket?.onConnect((_) {
-      print('Connected to WebSocket server');
+      print('✅ Connected to WebSocket server successfully');
     });
     
-    _socket?.onDisconnect((_) {
-      print('Disconnected from WebSocket server');
+    _socket?.onDisconnect((reason) {
+      print('🔌 Disconnected from WebSocket server. Reason: $reason');
     });
     
     _socket?.onConnectError((error) {
-      print('Connection error: $error');
+      print('❌ Connection error: $error');
+      print('📋 Connection details: URL=${AppConfig.socketUrl}, Transport=${_socket?.io.engine?.transport?.name}');
       _errorController.add('Connection error: Unable to connect to chat server');
     });
     
     _socket?.onError((error) {
-      print('Socket error: $error');
+      print('❌ Socket error: $error');
       _errorController.add('Chat service error: Please try again later');
     });
     
     // Message events
     _socket?.on('private_message', (data) {
-      print('Received private message: ${data.toString()}');
+      print('📩 Received private message: ${data.toString()}');
       _messagesController.add(data);
     });
     
     _socket?.on('typing', (data) {
-      print('Typing indicator received: ${data.toString()}');
+      print('⌨️ Typing indicator received: ${data.toString()}');
       _typingController.add(data);
     });
     
     _socket?.on('read_receipt', (data) {
-      print('Read receipt received: ${data.toString()}');
+      print('👁️ Read receipt received: ${data.toString()}');
       _readReceiptController.add(data);
     });
     
     _socket?.on('status_change', (data) {
-      print('Online status update received: ${data.toString()}');
+      print('🟢 Online status update received: ${data.toString()}');
       _onlineStatusController.add(data);
     });
     
     // Group chat events
     _socket?.on('group_message', (data) {
-      print('Received group message: ${data.toString()}');
+      print('👥 Received group message: ${data.toString()}');
       _groupMessagesController.add(data);
     });
     
     _socket?.on('room_update', (data) {
-      print('Room update received: ${data.toString()}');
+      print('🔄 Room update received: ${data.toString()}');
       _roomUpdatesController.add(data);
     });
   }

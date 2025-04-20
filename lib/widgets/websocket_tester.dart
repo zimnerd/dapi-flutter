@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/chat_service.dart';
@@ -116,7 +118,94 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
     chatService.connect();
     
     setState(() {
-      _isConnected = true;
+      _isConnected = chatService.isConnected;
+    });
+    
+    // Check status after delay to allow connection
+    Future.delayed(Duration(seconds: 2), () {
+      setState(() {
+        _isConnected = chatService.isConnected;
+      });
+      _addLog('Connection status after delay: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
+    });
+  }
+  
+  // New method to check token info
+  void _checkAuthToken() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final token = await authService.getAccessToken();
+      
+      if (token != null) {
+        _addLog('🔐 Auth token found: ${token.substring(0, 10)}...');
+        
+        // Check token expiration if possible
+        try {
+          final parts = token.split('.');
+          if (parts.length == 3) {
+            final payload = parts[1];
+            final normalized = base64Url.normalize(payload);
+            final decoded = utf8.decode(base64Url.decode(normalized));
+            final Map<String, dynamic> data = jsonDecode(decoded);
+            
+            if (data.containsKey('exp')) {
+              final exp = data['exp'];
+              final expDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+              final now = DateTime.now();
+              final isExpired = expDate.isBefore(now);
+              
+              _addLog('Token expiration: ${expDate.toString()}');
+              _addLog('Token status: ${isExpired ? "EXPIRED ❌" : "VALID ✅"}');
+            } else {
+              _addLog('Token does not contain expiration information');
+            }
+          }
+        } catch (e) {
+          _addLog('Could not parse token details: $e');
+        }
+      } else {
+        _addLog('❌ No auth token found. Login required.');
+      }
+    } catch (e) {
+      _addLog('❌ Error checking token: $e');
+    }
+  }
+  
+  // Force reconnect with fresh token
+  void _forceReconnect() async {
+    _addLog('🔄 Forcing reconnection with fresh token...');
+    
+    final chatService = ref.read(chatServiceProvider);
+    final authService = ref.read(authServiceProvider);
+    
+    // Disconnect current socket
+    if (chatService.isConnected) {
+      _addLog('Disconnecting current socket...');
+      chatService.disconnect();
+    }
+    
+    // Get a fresh token if possible
+    try {
+      // Refresh token if you have a refresh method
+      _addLog('Attempting to refresh authentication...');
+      await authService.refreshToken();
+      _addLog('Token refreshed successfully');
+    } catch (e) {
+      _addLog('⚠️ Token refresh failed: $e');
+    }
+    
+    // Reinitialize and connect
+    await chatService.initSocket();
+    chatService.connect();
+    
+    _addLog('Reconnection attempt complete');
+    
+    // Check status after delay
+    Future.delayed(Duration(seconds: 2), () {
+      setState(() {
+        _isConnected = chatService.isConnected;
+      });
+      _addLog('Connection status after reconnect: ${_isConnected ? 'Connected ✅' : 'Failed to connect ❌'}');
     });
   }
   
@@ -228,6 +317,33 @@ class _WebSocketTesterState extends ConsumerState<WebSocketTester> {
                     backgroundColor: Colors.red,
                   ),
                   child: const Text('Disconnect'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Additional connection troubleshooting buttons
+            Text(
+              'Troubleshooting',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _checkAuthToken,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: const Text('Check Token'),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: _forceReconnect,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
+                  child: const Text('Force Reconnect'),
                 ),
               ],
             ),
