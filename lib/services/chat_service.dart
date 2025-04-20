@@ -255,6 +255,19 @@ class ChatService {
     _socket?.on('private_message', (data) {
       print('📩 Received private message: ${data.toString()}');
       _debug.logReceivedMessage({'event': 'private_message', 'data': data});
+
+      // Add better debugging and parsing for conversation ID
+      String conversationId = data['conversationId'] ?? '';
+
+      // If the server sends a different format, try to normalize it
+      if (conversationId.isEmpty && data['matchId'] != null) {
+        conversationId = data['matchId'];
+      }
+
+      // Log the received conversation ID
+      print('📋 DEBUG: Received message for conversationId: $conversationId');
+      _debug.logStatus('Received message for conversationId: $conversationId');
+
       _messagesController.add(data);
     });
 
@@ -328,8 +341,15 @@ class ChatService {
       return;
     }
 
-    // Create a match ID for the conversation (this format should match your server expectation)
-    final matchId = 'conv_with_${recipientId}';
+    // Create a match ID for the conversation, but prevent duplication of 'conv_with_' prefix
+    final matchId = recipientId.startsWith('conv_with_')
+        ? recipientId
+        : 'conv_with_${recipientId}';
+
+    print(
+        '📋 DEBUG: Using matchId: $matchId (original recipientId: $recipientId)');
+    _debug.logStatus(
+        'Using matchId: $matchId (original recipientId: $recipientId)');
 
     // Prepare message data in the format expected by the server
     final messageData = {
@@ -626,15 +646,92 @@ class ChatService {
       final response = await dio.get(endpoint);
 
       if (response.statusCode == 200) {
-        print(
-            'Successfully fetched ${response.data['data']?.length ?? 0} messages');
-        return response.data['data'] ?? [];
+        // More robust handling of response data
+        try {
+          // Debug the response structure
+          print('Response data type: ${response.data.runtimeType}');
+
+          List<dynamic> messages = [];
+
+          // Handle different response formats
+          if (response.data is Map) {
+            if (response.data.containsKey('data') &&
+                response.data['data'] is List) {
+              messages = response.data['data'];
+              print(
+                  'Successfully fetched ${messages.length} messages from data field');
+            } else {
+              // Try to extract messages from other fields or use the entire response
+              print(
+                  'No data field found in response, checking other possibilities');
+
+              // If response contains a "messages" field
+              if (response.data.containsKey('messages') &&
+                  response.data['messages'] is List) {
+                messages = response.data['messages'];
+                print('Found ${messages.length} messages in messages field');
+              } else {
+                // As a fallback, create an empty list
+                print('No recognizable message format found, using empty list');
+                messages = [];
+              }
+            }
+          } else if (response.data is List) {
+            messages = response.data;
+            print('Response is directly a list of ${messages.length} messages');
+          } else {
+            print('Unknown response format: ${response.data}');
+            messages = [];
+          }
+
+          // Convert to a safe format with required fields to prevent parsing errors later
+          return messages
+              .map((item) {
+                if (item is! Map) {
+                  print('Skipping non-Map message item: $item');
+                  return null;
+                }
+
+                // Create a standardized message format with defaults for missing fields
+                return {
+                  'id': item['id'] ??
+                      'msg-${DateTime.now().millisecondsSinceEpoch}',
+                  'conversationId': item['conversationId'] ?? conversationId,
+                  'senderId':
+                      item['senderId'] ?? item['sender_id'] ?? 'unknown',
+                  'text':
+                      item['text'] ?? item['content'] ?? item['message'] ?? '',
+                  'timestamp': item['timestamp'] ??
+                      item['created_at'] ??
+                      DateTime.now().toIso8601String(),
+                  'status': item['status'] ?? 'sent'
+                };
+              })
+              .where((item) => item != null)
+              .toList();
+        } catch (parseError) {
+          print('Error parsing message response: $parseError');
+          print('Response was: ${response.data}');
+
+          // Return empty list rather than throwing to prevent app crashes
+          return [];
+        }
       } else {
         print('Error fetching messages: ${response.statusCode}');
         throw Exception('Failed to fetch messages: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching messages: $e');
+
+      // For common network errors, provide a more graceful failure
+      if (e is DioException) {
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          print('Network timeout, returning empty message list');
+          return [];
+        }
+      }
+
       rethrow;
     }
   }

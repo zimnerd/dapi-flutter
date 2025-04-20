@@ -65,17 +65,62 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           .firstWhere((p) => p.id == participantId);
 
       // Fetch initial messages via HTTP
-      final initialMessages = await ref
-          .read(chatServiceProvider)
-          .getMessages(widget.conversation.id);
-      setState(() {
-        // Convert dynamic messages to Message objects
-        _messages = initialMessages
-            .map((data) => Message.fromJson(
-                data['id'] as String, data as Map<String, dynamic>))
-            .toList();
-        _isLoadingInitialMessages = false;
-      });
+      try {
+        final initialMessages = await ref
+            .read(chatServiceProvider)
+            .getMessages(widget.conversation.id);
+
+        print('Received ${initialMessages.length} messages from API');
+
+        // Safely convert messages to Message objects with error handling
+        List<Message> parsedMessages = [];
+
+        for (var data in initialMessages) {
+          try {
+            // Make sure data is a Map
+            if (data is Map<String, dynamic>) {
+              // Ensure data has the required id field
+              String msgId = data['id'] as String? ??
+                  'msg-${DateTime.now().millisecondsSinceEpoch}';
+
+              // Check for required fields and provide defaults if missing
+              if (!data.containsKey('senderId') &&
+                  data.containsKey('sender_id')) {
+                data['senderId'] = data['sender_id'];
+              }
+
+              if (!data.containsKey('text') && data.containsKey('content')) {
+                data['text'] = data['content'];
+              }
+
+              if (!data.containsKey('conversationId')) {
+                data['conversationId'] = widget.conversation.id;
+              }
+
+              final message = Message.fromJson(msgId, data);
+              parsedMessages.add(message);
+            } else {
+              print('Skipping invalid message data: $data (not a Map)');
+            }
+          } catch (parseError) {
+            print('Error parsing individual message: $parseError');
+            // Skip this message but continue with others
+          }
+        }
+
+        setState(() {
+          _messages = parsedMessages;
+          _isLoadingInitialMessages = false;
+        });
+      } catch (messagesError) {
+        print('Error fetching messages: $messagesError');
+        // Proceed with empty messages list rather than failing
+        setState(() {
+          _messages = [];
+          _isLoadingInitialMessages = false;
+        });
+      }
+
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
       // Mark as read after loading
@@ -103,8 +148,24 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         final message =
             Message.fromJson(messageData['id'] as String, messageData);
 
+        // Normalize conversation IDs for comparison
+        String receivedConvId = message.conversationId;
+        String expectedConvId = widget.conversation.id;
+
+        // Debug message for conversation ID comparison
+        print(
+            '📋 COMPARISON: Received ID: $receivedConvId vs Expected ID: $expectedConvId');
+
         // Add message only if it belongs to this conversation
-        if (message.conversationId == widget.conversation.id) {
+        // Check for exact match or if either contains the other (to handle prefix variations)
+        bool isMatchingConversation = receivedConvId == expectedConvId ||
+            (receivedConvId.contains(expectedConvId) &&
+                !expectedConvId.isEmpty) ||
+            (expectedConvId.contains(receivedConvId) &&
+                !receivedConvId.isEmpty);
+
+        if (isMatchingConversation) {
+          print('✅ MATCH: Message belongs to this conversation');
           setState(() {
             // Avoid duplicates if message was already added optimistically
             if (!_messages.any((m) => m.id == message.id)) {
@@ -119,6 +180,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           if (message.senderId != _currentUserId) {
             chatService.markConversationAsRead(widget.conversation.id);
           }
+        } else {
+          print('❌ NO MATCH: Message is for another conversation');
         }
       });
     });
@@ -236,14 +299,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(8.0),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final message = _messages[index];
-        final isCurrentUser = message.senderId == _currentUserId;
+        final showAvatar = !message.isFromCurrentUser &&
+            (index == 0 || _messages[index - 1].isFromCurrentUser);
+
         return MessageBubble(
           message: message,
-          isFromCurrentUser: isCurrentUser,
+          isFromCurrentUser: message.isFromCurrentUser,
+          showAvatar: showAvatar,
+          participantAvatarUrl:
+              _participant?.profilePictures?.isNotEmpty == true
+                  ? _participant!.profilePictures!.first
+                  : null,
         );
       },
     );

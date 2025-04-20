@@ -1,17 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/message.dart';
-import '../utils/colors.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isFromCurrentUser;
+  final bool showAvatar;
+  final String? participantAvatarUrl;
+  final bool isPremium;
 
   const MessageBubble({
-    super.key,
+    Key? key,
     required this.message,
     required this.isFromCurrentUser,
-  });
+    required this.showAvatar,
+    this.participantAvatarUrl,
+    this.isPremium = false,
+  }) : super(key: key);
+
+  Widget _buildReadReceiptIcon(MessageStatus status) {
+    IconData iconData = Icons.help_outline;
+    Color iconColor = Colors.grey[500]!;
+    double iconSize = 14.0;
+
+    switch (status) {
+      case MessageStatus.sending:
+        iconData = Icons.access_time;
+        iconColor = Colors.grey[500]!;
+        break;
+      case MessageStatus.sent:
+        iconData = Icons.done;
+        iconColor = Colors.grey[500]!;
+        break;
+      case MessageStatus.delivered:
+        iconData = Icons.done_all;
+        iconColor = Colors.grey[500]!;
+        break;
+      case MessageStatus.read:
+        iconData = Icons.done_all;
+        iconColor = isPremium ? Colors.blue[400]! : Colors.grey[500]!;
+        break;
+      case MessageStatus.failed:
+        iconData = Icons.error_outline;
+        iconColor = Colors.red[400]!;
+        break;
+    }
+
+    return Icon(iconData, size: iconSize, color: iconColor);
+  }
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,110 +61,60 @@ class MessageBubble extends StatelessWidget {
             isFromCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Time stamp for received messages (left side)
-          if (!isFromCurrentUser) _buildTimestamp(),
-
-          // Message bubble
+          if (!isFromCurrentUser && showAvatar)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0, bottom: 20),
+              child: CircleAvatar(
+                backgroundImage: participantAvatarUrl != null
+                    ? NetworkImage(participantAvatarUrl!)
+                    : const AssetImage('assets/images/placeholder_user.png')
+                        as ImageProvider,
+                radius: 16,
+              ),
+            )
+          else if (!isFromCurrentUser)
+            const SizedBox(width: 40),
           Flexible(
             child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
-              ),
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
                 vertical: 10.0,
               ),
               decoration: BoxDecoration(
-                color: isFromCurrentUser ? AppColors.primary : Colors.grey[200],
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(!isFromCurrentUser ? 4 : 18),
-                  topRight: Radius.circular(isFromCurrentUser ? 4 : 18),
-                  bottomLeft: const Radius.circular(18),
-                  bottomRight: const Radius.circular(18),
+                color: isFromCurrentUser
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey[200],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: isFromCurrentUser ? Colors.white : Colors.black87,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Message text
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isFromCurrentUser ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
-
-          // Status indicators and time stamp for sent messages (right side)
-          if (isFromCurrentUser)
-            Row(
+          Padding(
+            padding: const EdgeInsets.only(left: 6.0, right: 6.0, bottom: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(width: 4),
-                _buildStatusIndicator(),
-                _buildTimestamp(),
+                Text(
+                  _formatTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                if (isFromCurrentUser)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4.0),
+                    child: _buildReadReceiptIcon(message.status),
+                  )
               ],
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusIndicator() {
-    // Only show status for sent messages
-    if (!isFromCurrentUser) return const SizedBox();
-
-    switch (message.status) {
-      case MessageStatus.sending:
-        return const SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
           ),
-        );
-      case MessageStatus.sent:
-        return const Icon(
-          Icons.check,
-          size: 14,
-          color: Colors.grey,
-        );
-      case MessageStatus.delivered:
-        return const Icon(
-          Icons.done_all,
-          size: 14,
-          color: Colors.grey,
-        );
-      case MessageStatus.read:
-        return Icon(
-          Icons.done_all,
-          size: 14,
-          color: AppColors.primary,
-        );
-      case MessageStatus.error:
-        return const Icon(
-          Icons.error_outline,
-          size: 14,
-          color: Colors.red,
-        );
-      default:
-        return const SizedBox(width: 14);
-    }
-  }
-
-  Widget _buildTimestamp() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4.0, right: 4.0, bottom: 4.0),
-      child: Text(
-        DateFormat.jm().format(message.timestamp),
-        style: const TextStyle(
-          color: Colors.grey,
-          fontSize: 10,
-        ),
+        ],
       ),
     );
   }

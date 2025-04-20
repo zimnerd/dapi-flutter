@@ -454,8 +454,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildReadReceiptIcon(MessageStatus status, bool isPremium) {
-    IconData iconData;
-    Color iconColor;
+    // Initialize with default values
+    IconData iconData = Icons.help_outline;
+    Color iconColor = Colors.grey[500]!;
     double iconSize = 14.0;
 
     switch (status) {
@@ -475,7 +476,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         iconData = Icons.done_all;
         iconColor = isPremium ? Colors.blue[400]! : Colors.grey[500]!;
         break;
-      case MessageStatus.error:
+      case MessageStatus.failed:
         iconData = Icons.error_outline;
         iconColor = Colors.red[400]!;
         break;
