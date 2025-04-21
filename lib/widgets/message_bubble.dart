@@ -54,9 +54,14 @@ class MessageBubble extends StatelessWidget {
   }
 
   ImageProvider _getAvatarImage() {
-    if (participantAvatarUrl != null &&
-        participantAvatarUrl!.startsWith('http')) {
-      return NetworkImage(participantAvatarUrl!);
+    try {
+      if (participantAvatarUrl != null &&
+          (participantAvatarUrl!.startsWith('http://') ||
+              participantAvatarUrl!.startsWith('https://'))) {
+        return NetworkImage(participantAvatarUrl!);
+      }
+    } catch (e) {
+      print('Error loading avatar image: $e');
     }
     return const AssetImage('assets/images/placeholder_user.png');
   }

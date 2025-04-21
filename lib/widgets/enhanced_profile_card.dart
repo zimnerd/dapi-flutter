@@ -127,42 +127,54 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: CardSwiper(
-            controller: controller,
-            cardsCount: widget.profiles.length,
-            initialIndex: currentIndex,
-            onSwipe:
-                (int index, int? previousIndex, CardSwiperDirection direction) {
-              _handleSwipe(index, direction);
-              return true; // Allow the swipe
-            },
-            padding: const EdgeInsets.all(24.0),
-            allowedSwipeDirection: const AllowedSwipeDirection.all(),
-            onUndo: (previousIndex, currentIndex, direction) {
-              // Handle undo if needed
-              return true;
-            },
-            cardBuilder:
-                (context, index, percentThresholdX, percentThresholdY) {
-              if (index >= widget.profiles.length) {
-                return Container();
-              }
-              // Add debug log for each card build
-              developer.log(
-                  'Building card for profile ${widget.profiles[index].name}',
-                  name: 'EnhancedProfileCard');
+    return LayoutBuilder(builder: (context, constraints) {
+      return Column(
+        children: [
+          Expanded(
+            child: SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight - (widget.showActions ? 100 : 0),
+              child: CardSwiper(
+                controller: controller,
+                cardsCount: widget.profiles.length,
+                initialIndex: currentIndex,
+                onSwipe: (int index, int? previousIndex,
+                    CardSwiperDirection direction) {
+                  _handleSwipe(index, direction);
+                  return true; // Allow the swipe
+                },
+                padding: const EdgeInsets.all(24.0),
+                allowedSwipeDirection: const AllowedSwipeDirection.all(),
+                onUndo: (previousIndex, currentIndex, direction) {
+                  // Handle undo if needed
+                  return true;
+                },
+                cardBuilder:
+                    (context, index, percentThresholdX, percentThresholdY) {
+                  if (index >= widget.profiles.length) {
+                    return Container();
+                  }
+                  // Add debug log for each card build
+                  developer.log(
+                      'Building card for profile ${widget.profiles[index].name}',
+                      name: 'EnhancedProfileCard');
 
-              return _buildProfileCard(widget.profiles[index],
-                  percentThresholdX.toDouble(), percentThresholdY.toDouble());
-            },
+                  return _buildProfileCard(
+                      widget.profiles[index],
+                      percentThresholdX.toDouble(),
+                      percentThresholdY.toDouble());
+                },
+              ),
+            ),
           ),
-        ),
-        if (widget.showActions) _buildActionButtons(),
-      ],
-    );
+          if (widget.showActions)
+            SizedBox(
+              height: 100,
+              child: _buildActionButtons(),
+            ),
+        ],
+      );
+    });
   }
 
   Widget _buildProfileCard(Profile profile, double percentX, double percentY) {
@@ -239,21 +251,27 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
       );
     }
 
-    return Stack(
-      children: [
-        Card(
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    return LayoutBuilder(builder: (context, constraints) {
+      return Stack(
+        children: [
+          SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _buildCardContent(profile),
+              ),
+            ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: _buildCardContent(profile),
-          ),
-        ),
-        if (overlay != null) overlay,
-      ],
-    );
+          if (overlay != null) overlay,
+        ],
+      );
+    });
   }
 
   // Update card content to use PageView with explicit tap areas
@@ -576,6 +594,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Name, age and verification badge
           Row(
             children: [
               Text(
@@ -596,44 +615,88 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
             ],
           ),
           const SizedBox(height: 4),
+
+          // Location and distance
+          if (profile.location != null)
+            Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white70, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  profile.location is Map
+                      ? '${profile.location['city']}, ${profile.location['country']}'
+                      : profile.location.toString(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+                if (profile.distance != null) ...[
+                  const Text(' • ', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    '${profile.distance!.round()} km',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          const SizedBox(height: 8),
+
+          // Occupation
           if (profile.occupation != null && profile.occupation!.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.work, color: Colors.white70, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  profile.occupation!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+
+          // Bio
+          if (profile.bio != null && profile.bio!.isNotEmpty)
             Text(
-              profile.occupation!,
+              profile.bio!,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
               ),
-            ),
-          if (profile.distance != null)
-            Text(
-              '${profile.distance} km away',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           const SizedBox(height: 8),
+
+          // Interests
           if (profile.interests.isNotEmpty)
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: profile.interests.take(3).map((interest) {
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    interest,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                );
-              }).toList(),
+              spacing: 6.0,
+              runSpacing: 6.0,
+              children: profile.interests
+                  .map((interest) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          interest,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ))
+                  .toList(),
             ),
         ],
       ),

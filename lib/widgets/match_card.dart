@@ -48,7 +48,10 @@ class MatchCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${match.matchedUser.age} • ${match.matchedUser.location}',
+                      match.matchedUser.location is Map
+                          ? '${match.matchedUser.location['city']}, ${match.matchedUser.location['country']}'
+                          : match.matchedUser.location?.toString() ??
+                              'Unknown location',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
