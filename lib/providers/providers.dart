@@ -15,7 +15,6 @@ import '../config/app_config.dart';
 import './auth_provider.dart';
 
 // Import models
-import '../models/message.dart';
 import '../models/conversation.dart';
 
 // Export auth providers

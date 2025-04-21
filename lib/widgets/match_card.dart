@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/match.dart';
 import '../utils/colors.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class MatchCard extends StatelessWidget {
   final Match match;

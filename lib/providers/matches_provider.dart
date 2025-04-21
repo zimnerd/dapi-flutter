@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/match.dart';
-import '../models/conversation.dart';
 import '../services/api_client.dart';
 import '../models/profile.dart';
 

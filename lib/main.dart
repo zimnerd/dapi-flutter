@@ -13,18 +13,14 @@ import 'screens/welcome_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/reset_password_confirmation_screen.dart';
 import 'screens/websocket_test_screen.dart';
-import 'utils/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'providers/auth_provider.dart';
 import 'utils/theme.dart';
 import 'providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'config/app_config.dart';
 import 'utils/logger.dart';
 import 'utils/mock_shared_preferences.dart';
 import 'providers/providers.dart'; // Import the centralized providers file
-import 'config/theme_config.dart';
 import 'widgets/websocket_tester.dart'; // Add import for WebSocketTester
 import 'utils/websocket_debug.dart'; // Import the WebSocketDebugMonitor
 import 'models/conversation.dart'; // Add import for Conversation model

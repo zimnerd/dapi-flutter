@@ -101,6 +101,7 @@ class _MatchAnimationState extends State<MatchAnimation>
           size.width * 0.5,
           size.height * 0.4,
         ),
+        angle: _random.nextDouble() * 2 * math.pi,
         color: _getRandomColor(),
         size: _random.nextDouble() * 12 + 5,
         velocity: Offset(
@@ -307,7 +308,7 @@ class _Particle {
     required this.size,
     required this.angleSpeed,
     required this.shape,
-    this.angle = 0.0,
+    required this.angle,
   });
 }
 

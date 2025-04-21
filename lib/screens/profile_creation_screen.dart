@@ -2,18 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../models/profile.dart';
-import '../providers/auth_provider.dart' show userIdProvider;
 import '../providers/profile_provider.dart'
     show profileServiceProvider, storageServiceProvider, userProfileProvider;
-import '../utils/colors.dart';
-import '../widgets/loading_indicator.dart';
-import '../widgets/error_display.dart';
 import 'home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'dart:math';
 import '../providers/providers.dart'; // Import centralized providers
-import '../services/storage_service.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileCreationScreen extends ConsumerStatefulWidget {

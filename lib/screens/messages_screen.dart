@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/conversation.dart';
 import '../providers/providers.dart';
-import '../providers/auth_provider.dart';
 import '../utils/colors.dart';
 import '../widgets/conversation_tile.dart';
 import '../screens/conversation_screen.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
-import '../services/chat_service.dart';
 
 // State provider for managing conversations
 final conversationsProvider = StateProvider<List<dynamic>>((ref) => []);

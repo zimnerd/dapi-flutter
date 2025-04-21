@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:dio/dio.dart';
-import '../config/app_config.dart';
-import '../utils/logger.dart';
 
 /// A utility class for testing WebSocket connections with the mock server
 class WebSocketTest {

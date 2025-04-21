@@ -1,9 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/chat_service.dart';
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
-import '../providers/chat_message_actions.dart';
 import '../providers/providers.dart'; // To access authServiceProvider
 
 // Provider for AI icebreaker suggestions from server

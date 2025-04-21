@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'dart:async'; // For Timer
 import '../models/conversation.dart';
 import '../models/message.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
-import '../providers/auth_provider.dart';
-import '../providers/chat_provider.dart';
-import '../providers/chat_message_actions.dart';
-import '../services/chat_service.dart';
 import '../utils/colors.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
-import '../config/app_config.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final Conversation conversation;

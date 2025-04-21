@@ -111,17 +111,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final authenticated =
           await _biometricService.authenticateWithBiometrics();
       if (!authenticated) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Biometric authentication failed')));
+        }
         return;
       }
 
       final email = await _biometricService.getBiometricUserEmail();
       if (email == null || email.isEmpty) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Biometric login data not found')));
+        }
         return;
       }
 
@@ -129,9 +131,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           .read(authStateProvider.notifier)
           .login(email, 'dummy_password_for_biometric');
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Biometric login error: $e')));
+      }
     }
   }
 

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/biometric_service.dart';
-import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../utils/colors.dart';
 import '../screens/profile_screen.dart';

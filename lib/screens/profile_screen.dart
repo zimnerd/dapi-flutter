@@ -149,19 +149,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     // Check basic info (name is always required for saving, gender has default)
     // We assume birthDate is always present from the state
-    if (editState.name.trim().isNotEmpty && editState.gender.isNotEmpty)
+    if (editState.name.trim().isNotEmpty && editState.gender.isNotEmpty) {
       completeness += basicInfoWeight;
+    }
 
     // Check details
     if (editState.location.trim().isNotEmpty &&
-        editState.occupation.trim().isNotEmpty) completeness += detailsWeight;
+        editState.occupation.trim().isNotEmpty) {
+      completeness += detailsWeight;
+    }
 
     // Check interests
     if (editState.interests.length >= 3) completeness += interestsWeight;
 
     // Check prompts (at least one answered)
-    if (editState.prompts.any((p) => p.answer.trim().isNotEmpty))
+    if (editState.prompts.any((p) => p.answer.trim().isNotEmpty)) {
       completeness += promptsWeight;
+    }
 
     // Clamp value between 0.0 and 1.0
     return completeness.clamp(0.0, 1.0);
@@ -255,8 +259,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Initialize the notifier state when the profile data is first loaded
             // Use addPostFrameCallback to avoid calling during build
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted)
+              if (!mounted) {
                 return; // Check mounted before accessing state/notifier
+              }
               // Check if the notifier's initialProfile ID is different from the loaded profile ID
               // This prevents re-initialization on every rebuild if the profile hasn't changed.
               if (ref.read(profileEditProvider).initialProfile?.id !=
@@ -271,14 +276,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // This prevents cursor jumping during typing.
               final currentEditState =
                   ref.read(profileEditProvider); // Read latest state
-              if (_nameController.text != currentEditState.name)
+              if (_nameController.text != currentEditState.name) {
                 _nameController.text = currentEditState.name;
-              if (_bioController.text != currentEditState.bio)
+              }
+              if (_bioController.text != currentEditState.bio) {
                 _bioController.text = currentEditState.bio;
-              if (_locationController.text != currentEditState.location)
+              }
+              if (_locationController.text != currentEditState.location) {
                 _locationController.text = currentEditState.location;
-              if (_occupationController.text != currentEditState.occupation)
+              }
+              if (_occupationController.text != currentEditState.occupation) {
                 _occupationController.text = currentEditState.occupation;
+              }
             });
 
             final isSaving = editState.saveState is AsyncLoading;

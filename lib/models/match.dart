@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'profile.dart';
 
 /// Represents a match between two users in the dating app

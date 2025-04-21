@@ -1,17 +1,10 @@
-import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:io'; // Import File for upload
-import 'package:http/http.dart' as http;
+// Import File for upload
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/profile.dart';
 import '../config/app_config.dart';
 import '../utils/exceptions.dart';
-import '../utils/dummy_data.dart';
-import 'auth_service.dart';
-import 'api_client.dart';
 import '../utils/constants.dart';
-import '../services/storage_service.dart';
 import '../utils/logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';

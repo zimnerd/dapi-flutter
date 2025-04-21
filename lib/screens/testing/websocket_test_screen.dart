@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/websocket_test.dart';
 
 class WebSocketTestScreen extends StatefulWidget {
-  const WebSocketTestScreen({Key? key}) : super(key: key);
+  const WebSocketTestScreen({super.key});
 
   @override
   _WebSocketTestScreenState createState() => _WebSocketTestScreenState();

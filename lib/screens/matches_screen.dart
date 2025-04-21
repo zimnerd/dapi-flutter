@@ -21,7 +21,7 @@ import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
 
 class MatchesScreen extends ConsumerWidget {
-  const MatchesScreen({Key? key}) : super(key: key);
+  const MatchesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

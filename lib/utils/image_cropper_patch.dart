@@ -2,11 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http show readBytes;
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 import 'package:image_cropper_platform_interface/src/models/cropped_file/base.dart';
 

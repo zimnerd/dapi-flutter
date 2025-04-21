@@ -6,7 +6,6 @@ import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 
 // Import required models
 import '../models/profile.dart';
-import '../models/profile_action.dart';
 
 // Import providers from central providers file
 import '../providers/providers.dart';
@@ -21,10 +20,8 @@ import '../utils/logger.dart';
 
 // Import screens and widgets
 import '../screens/chat_screen.dart';
-import '../widgets/animated_tap_feedback.dart';
 import '../widgets/match_animation_dialog.dart';
 import '../widgets/enhanced_profile_card.dart';
-import '../widgets/error_view.dart';
 
 // Define SwipeDirection enum
 enum SwipeDirection { like, dislike, superLike }

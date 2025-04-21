@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart'; // For launching URLs
-import '../utils/colors.dart'; // Assuming AppColors
+// Assuming AppColors
 
 class SafetyCenterScreen extends StatelessWidget {
   const SafetyCenterScreen({super.key});

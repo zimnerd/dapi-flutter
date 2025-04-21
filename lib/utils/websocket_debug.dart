@@ -24,10 +24,10 @@ class WebSocketDebug {
   Stream<String> get onStatus => _statusController.stream;
 
   // In-memory log storage for UI display
-  List<Map<String, dynamic>> _sentMessages = [];
-  List<Map<String, dynamic>> _receivedMessages = [];
-  List<String> _errors = [];
-  List<String> _statuses = [];
+  final List<Map<String, dynamic>> _sentMessages = [];
+  final List<Map<String, dynamic>> _receivedMessages = [];
+  final List<String> _errors = [];
+  final List<String> _statuses = [];
 
   // Get stored logs
   List<Map<String, dynamic>> get sentMessages => _sentMessages;
@@ -139,12 +139,12 @@ class WebSocketDebug {
       buffer.writeln('Export time: ${DateTime.now()}');
       buffer.writeln('=== SENT MESSAGES ===');
       for (var message in _sentMessages) {
-        buffer.writeln('${message.toString()}');
+        buffer.writeln(message.toString());
       }
 
       buffer.writeln('\n=== RECEIVED MESSAGES ===');
       for (var message in _receivedMessages) {
-        buffer.writeln('${message.toString()}');
+        buffer.writeln(message.toString());
       }
 
       buffer.writeln('\n=== ERRORS ===');
@@ -175,7 +175,7 @@ class WebSocketDebug {
 
 /// A widget to display the WebSocket debug monitor
 class WebSocketDebugMonitor extends StatefulWidget {
-  const WebSocketDebugMonitor({Key? key}) : super(key: key);
+  const WebSocketDebugMonitor({super.key});
 
   @override
   _WebSocketDebugMonitorState createState() => _WebSocketDebugMonitorState();

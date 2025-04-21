@@ -331,9 +331,7 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
       if (state.pickedImageFile != null) {
         final imageUrl = await _storageService.uploadProfileImage(
             state.pickedImageFile!, _userId);
-        if (imageUrl != null) {
-          updatedPhotoUrls.insert(0, imageUrl);
-        }
+        updatedPhotoUrls.insert(0, imageUrl);
       }
 
       // Convert prompts to the expected format

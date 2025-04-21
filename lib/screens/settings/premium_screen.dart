@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/premium_provider.dart';
 import '../../services/subscription_service.dart';
-import '../../utils/logger.dart';
 
 class PremiumScreen extends ConsumerStatefulWidget {
   const PremiumScreen({super.key});

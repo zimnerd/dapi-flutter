@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/profile_service.dart';
 import '../../providers/providers.dart';
 import '../../utils/colors.dart';
-import '../../models/profile.dart';
 
 // Define the profile provider
 final profileProvider = Provider<ProfileService>((ref) {

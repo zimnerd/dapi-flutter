@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../utils/colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../widgets/custom_text_field.dart';
-import '../widgets/loading_indicator.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});

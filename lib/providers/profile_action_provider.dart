@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/profile.dart';
 import '../services/profile_service.dart';
 import '../utils/logger.dart';
 import 'providers.dart' show profileServiceProvider;

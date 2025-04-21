@@ -344,7 +344,7 @@ class ChatService {
     // Create a match ID for the conversation, but prevent duplication of 'conv_with_' prefix
     final matchId = recipientId.startsWith('conv_with_')
         ? recipientId
-        : 'conv_with_${recipientId}';
+        : 'conv_with_$recipientId';
 
     print(
         '📋 DEBUG: Using matchId: $matchId (original recipientId: $recipientId)');

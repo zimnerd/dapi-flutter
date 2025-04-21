@@ -1,13 +1,9 @@
-import 'dart:convert';
 import 'dart:async';
-import 'dart:math' as Math;
-import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../config/app_config.dart';
-import 'api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/logger.dart';
 import '../providers/providers.dart'; // Import providers.dart for reference to shared providers
