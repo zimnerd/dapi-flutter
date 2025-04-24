@@ -10,7 +10,7 @@ class WebSocketTestScreen extends StatefulWidget {
 
 class _WebSocketTestScreenState extends State<WebSocketTestScreen> {
   final _serverUrlController =
-      TextEditingController(text: 'http://localhost:3001');
+      TextEditingController(text: 'https://dapi.pulsetek.co.za:3000');
   final _emailController =
       TextEditingController(text: 'eddienyagano@gmail.com');
   final _passwordController = TextEditingController(text: 'password123');
@@ -45,7 +45,7 @@ class _WebSocketTestScreenState extends State<WebSocketTestScreen> {
               controller: _serverUrlController,
               decoration: const InputDecoration(
                 labelText: 'Server URL',
-                hintText: 'http://localhost:3001',
+                hintText: 'https://dapi.pulsetek.co.za:3000',
                 border: OutlineInputBorder(),
               ),
             ),

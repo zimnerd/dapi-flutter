@@ -131,7 +131,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: apiUrlController,
               decoration: const InputDecoration(
                 labelText: 'API URL',
-                hintText: 'e.g., http://localhost:3001',
+                hintText: 'e.g., https://dapi.pulsetek.co.za:3000',
               ),
             ),
             const SizedBox(height: 16),
@@ -139,7 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: socketUrlController,
               decoration: const InputDecoration(
                 labelText: 'WebSocket URL',
-                hintText: 'e.g., http://localhost:3001',
+                hintText: 'e.g., https://dapi.pulsetek.co.za:3000',
               ),
             ),
           ],

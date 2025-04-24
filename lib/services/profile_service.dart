@@ -553,7 +553,7 @@ class ProfileService {
       if (page != null) queryParams['page'] = page;
 
       final response = await _dio.get(
-        '${AppConfig.apiBaseUrl}/api/matches/connections',
+        '${AppConfig.apiBaseUrl}/matches/connections',
         queryParameters: queryParams,
       );
 
@@ -613,7 +613,7 @@ class ProfileService {
       if (page != null) queryParams['page'] = page;
 
       final response = await _dio.get(
-        '${AppConfig.apiBaseUrl}/api/matches/likes/me',
+        '${AppConfig.apiBaseUrl}/matches/likes/me',
         queryParameters: queryParams,
       );
 
@@ -674,7 +674,7 @@ class ProfileService {
       if (page != null) queryParams['page'] = page;
 
       final response = await _dio.get(
-        '${AppConfig.apiBaseUrl}/api/matches/likes/sent',
+        '${AppConfig.apiBaseUrl}/matches/likes/sent',
         queryParameters: queryParams,
       );
 

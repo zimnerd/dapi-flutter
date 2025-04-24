@@ -1,32 +1,31 @@
 // API base URLs
-final String apiBaseUrl = 'http://dapi.pulsetek.co.za:3001';
-final String socketUrl = 'ws://dapi.pulsetek.co.za:3001';
+final String socketUrl = 'wss://dapi.pulsetek.co.za:3000';
 
 // API Endpoints
 class AppEndpoints {
-  static const String login = '/api/auth/login';
-  static const String biometricLogin = '/api/auth/biometric-login';
-  static const String register = '/api/auth/register';
-  static const String logout = '/api/auth/logout';
-  static const String refreshToken = '/api/auth/refresh';
-  static const String resetPassword = '/api/auth/reset-password';
-  
+  static const String login = '/auth/login';
+  static const String biometricLogin = '/auth/biometric-login';
+  static const String register = '/auth/register';
+  static const String logout = '/auth/logout';
+  static const String refreshToken = '/auth/refresh';
+  static const String resetPassword = '/auth/reset-password';
+
   // Profile endpoints
-  static const String profile = '/api/profile';
-  static const String profiles = '/api/profiles';
-  static const String updateProfile = '/api/profile/update';
-  static const String uploadPhoto = '/api/profile/upload-photo';
-  
+  static const String profile = '/profile';
+  static const String profiles = '/profiles';
+  static const String updateProfile = '/profile/update';
+  static const String uploadPhoto = '/profile/upload-photo';
+
   // Matching endpoints
-  static const String matches = '/api/matches';
-  static const String like = '/api/matches/like';
-  static const String likeWithBody = '/api/matches/like-body';
-  static const String dislike = '/api/matches/dislike';
-  static const String superlike = '/api/matches/superlike';
-  
+  static const String matches = '/matches';
+  static const String like = '/matches/like';
+  static const String likeWithBody = '/matches/like-body';
+  static const String dislike = '/matches/dislike';
+  static const String superlike = '/matches/superlike';
+
   // Chat endpoints
-  static const String conversations = '/api/conversations';
-  static const String messages = '/api/messages';
+  static const String conversations = '/conversations';
+  static const String messages = '/messages';
 }
 
 // Status codes
@@ -74,12 +73,16 @@ class AppStorageKeys {
 
 // Error messages
 class AppErrorMessages {
-  static const String networkError = 'Network error. Please check your connection.';
+  static const String networkError =
+      'Network error. Please check your connection.';
   static const String serverError = 'Server error. Please try again later.';
-  static const String loginFailed = 'Login failed. Please check your credentials.';
-  static const String registrationFailed = 'Registration failed. Please try again.';
-  static const String biometricLoginFailed = 'Biometric login failed. Please try again.';
+  static const String loginFailed =
+      'Login failed. Please check your credentials.';
+  static const String registrationFailed =
+      'Registration failed. Please try again.';
+  static const String biometricLoginFailed =
+      'Biometric login failed. Please try again.';
   static const String invalidCredentials = 'Invalid credentials.';
   static const String emailAlreadyExists = 'Email already exists.';
   static const String unexpectedError = 'An unexpected error occurred.';
-} 
+}

@@ -1,12 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/match.dart';
-import '../services/api_client.dart';
+import 'package:dating_app/models/match.dart';
+import 'package:dating_app/services/matches_service.dart' as service;
+import 'package:dating_app/services/api_client.dart';
+import 'package:dating_app/services/profile_service.dart';
 import '../models/profile.dart';
+import 'package:dating_app/providers/dio_provider.dart';
+import 'package:dating_app/providers/profile_service_provider.dart';
+import 'package:dating_app/utils/constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'providers.dart' show sharedPreferencesProvider;
+
+final matchesServiceProvider = Provider<service.MatchesService>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return service.MatchesService(apiClient);
+});
 
 final matchesProvider =
     StateNotifierProvider<MatchesNotifier, AsyncValue<List<Match>>>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return MatchesNotifier(apiClient);
+  final service = ref.watch(matchesServiceProvider);
+  final profileService = ref.watch(profileServiceProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return MatchesNotifier(service, profileService, prefs);
 });
 
 final likesProvider =
@@ -22,19 +36,116 @@ final newMatchesProvider =
 });
 
 class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
-  final ApiClient _apiClient;
+  final service.MatchesService _service;
+  final ProfileService _profileService;
+  final SharedPreferences _prefs;
 
-  MatchesNotifier(this._apiClient) : super(const AsyncValue.loading()) {
+  MatchesNotifier(this._service, this._profileService, this._prefs)
+      : super(const AsyncValue.loading()) {
     loadMatches();
+  }
+
+  String? _getCurrentUserId() {
+    return _prefs.getString(Constants.prefKeyUserId);
+  }
+
+  Future<Match?> _convertServiceMatch(
+      service.Match serviceMatch, String currentUserId) async {
+    try {
+      // Get the other user's profile
+      final otherUserId = serviceMatch.getOtherUserId(currentUserId);
+      final profile = await _profileService.getProfile(otherUserId);
+
+      if (profile == null) return null;
+
+      return Match(
+        id: serviceMatch.id,
+        matchedUser: profile,
+        matchedAt: serviceMatch.createdAt,
+        isNew: serviceMatch.status == service.MatchStatus.PENDING,
+        // These will be populated when we implement chat functionality
+        lastMessage: null,
+        lastMessageAt: null,
+      );
+    } catch (e) {
+      print('⟹ [MatchesNotifier] Error converting match: $e');
+      return null;
+    }
   }
 
   Future<void> loadMatches() async {
     try {
       state = const AsyncValue.loading();
-      final matches = await _apiClient.getMatches();
-      state = AsyncValue.data(matches);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+      final serviceMatches = await _service.getAllMatches();
+      final currentUserId = _getCurrentUserId();
+      if (currentUserId == null) {
+        state = const AsyncValue.data([]);
+        return;
+      }
+      final convertedMatches = await Future.wait(
+          serviceMatches.map((m) => _convertServiceMatch(m, currentUserId)));
+      state = AsyncValue.data(convertedMatches.whereType<Match>().toList());
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+    }
+  }
+
+  Future<void> loadPendingMatches() async {
+    try {
+      final currentUserId = _getCurrentUserId();
+      if (currentUserId == null) {
+        print('⟹ [MatchesNotifier] No current user ID found');
+        state = AsyncValue.data([]);
+        return;
+      }
+
+      final serviceMatches = await _service.getPendingMatches();
+      final convertedMatches = await Future.wait(
+          serviceMatches.map((m) => _convertServiceMatch(m, currentUserId)));
+
+      state = AsyncValue.data(convertedMatches.whereType<Match>().toList());
+    } catch (e) {
+      print('⟹ [MatchesNotifier] Error loading pending matches: $e');
+    }
+  }
+
+  Future<void> updateMatchStatus(
+      String matchId, service.MatchStatus status) async {
+    try {
+      await _service.updateMatchStatus(matchId, status);
+      await loadMatches(); // Reload matches after update
+    } catch (e) {
+      print('⟹ [MatchesNotifier] Failed to update match status: $e');
+    }
+  }
+
+  Future<void> deleteMatch(String matchId) async {
+    try {
+      await _service.deleteMatch(matchId);
+      state = AsyncValue.data(
+          state.value!.where((match) => match.id != matchId).toList());
+    } catch (e) {
+      print('⟹ [MatchesNotifier] Failed to delete match: $e');
+    }
+  }
+
+  Future<bool> hasMatchWithUser(String userId) async {
+    return await _service.hasMatchWithUser(userId);
+  }
+
+  Future<List<Match>> getMatchesWithUser(String userId) async {
+    try {
+      final currentUserId = _getCurrentUserId();
+      if (currentUserId == null) return [];
+
+      final serviceMatches = await _service.getMatchesWithUser(userId);
+      final convertedMatches = await Future.wait(
+          serviceMatches.map((m) => _convertServiceMatch(m, currentUserId)));
+
+      return convertedMatches.whereType<Match>().toList();
+    } catch (e) {
+      print('⟹ [MatchesNotifier] Failed to get matches with user: $e');
+      return [];
     }
   }
 }
@@ -67,10 +178,13 @@ class NewMatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
   Future<void> loadNewMatches() async {
     try {
       state = const AsyncValue.loading();
-      final newMatches = await _apiClient.getNewMatches();
-      state = AsyncValue.data(newMatches);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+      final response = await _apiClient.get('/matches/new');
+      final matches =
+          (response as List).map((data) => Match.fromJson(data)).toList();
+      state = AsyncValue.data(matches);
+    } catch (e) {
+      print('⟹ [NewMatchesNotifier] Failed to load new matches: $e');
+      state = AsyncValue.error(e, StackTrace.current);
     }
   }
 }

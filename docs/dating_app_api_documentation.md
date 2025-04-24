@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-http://localhost:3001
+http://localhost:3000
 ```
 
 ## Authentication
@@ -164,16 +164,16 @@ Response (200):
 
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
-| `/api/profiles/me` | GET | Yes | Get current user's profile |
-| `/api/profiles/me` | PUT | Yes | Update profile |
-| `/api/profiles/me` | PATCH | Yes | Partially update profile |
-| `/api/profiles/discover` | GET | Yes | Discover potential matches |
-| `/api/profiles/verify` | GET | Yes | Get verification status |
-| `/api/profiles/verify` | POST | Yes | Submit verification photo |
-| `/api/profiles/preferences` | PUT | Yes | Update preferences |
-| `/api/profiles/me/preferences` | PATCH | Yes | Update specific preferences |
-| `/api/profiles/me/photos` | POST | Yes | Add profile photos |
-| `/api/profiles/me/photos/:photoId` | DELETE | Yes | Delete specific photo |
+| `/profiles/me` | GET | Yes | Get current user's profile |
+| `/profiles/me` | PUT | Yes | Update profile |
+| `/profiles/me` | PATCH | Yes | Partially update profile |
+| `/profiles/discover` | GET | Yes | Discover potential matches |
+| `/profiles/verify` | GET | Yes | Get verification status |
+| `/profiles/verify` | POST | Yes | Submit verification photo |
+| `/profiles/preferences` | PUT | Yes | Update preferences |
+| `/profiles/me/preferences` | PATCH | Yes | Update specific preferences |
+| `/profiles/me/photos` | POST | Yes | Add profile photos |
+| `/profiles/me/photos/:photoId` | DELETE | Yes | Delete specific photo |
 
 #### Get Profile Example
 
@@ -506,7 +506,7 @@ python test_endpoints.py
 
 Interactive API documentation is available at:
 ```
-http://localhost:3001/api-docs
+http://localhost:3000/api/docs
 ```
 
 ## Further Information

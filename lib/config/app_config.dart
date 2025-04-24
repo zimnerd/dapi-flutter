@@ -14,76 +14,53 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 /// The actual URL used in requests will be: `AppConfig.apiBaseUrl + AppEndpoints.endpointName`
 class AppEndpoints {
   // Auth endpoints - User authentication and account management
-  static const String auth = '/auth';
-  static const String login = '$auth/login'; // POST: Login with email/password
-  static const String biometricLogin =
-      '$auth/biometric-login'; // POST: Login with biometric authentication
-  static const String register = '$auth/register'; // POST: Register new user
-  static const String refresh = '$auth/refresh'; // POST: Refresh auth token
-  static const String logout = '$auth/logout'; // POST: Logout user
-  static const String verifyEmail =
-      '$auth/verify-email'; // POST: Verify email address
-  static const String resetPassword =
-      '$auth/reset-password'; // POST: Reset user password with token
-  static const String forgotPassword =
-      '$auth/forgot-password'; // POST: Request password reset email
+  static const String login = '/auth/login';
+  static const String biometricLogin = '/auth/biometric-login';
+  static const String register = '/auth/register';
+  static const String refresh = '/auth/refresh';
+  static const String logout = '/auth/logout';
+  static const String verifyEmail = '/auth/verify-email';
+  static const String resetPassword = '/auth/reset-password';
+  static const String forgotPassword = '/auth/forgot-password';
 
   // Profile endpoints - User profile management
-  static const String profiles = '/api/profiles';
-  static const String currentProfile =
-      '$profiles/me'; // GET: Get current user's profile
-  static const String discoverProfiles =
-      '$profiles/discover'; // GET: Get profiles for discovery
-  static const String uploadPhoto =
-      '$profiles/photo'; // POST: Upload profile photo
-  static const String deletePhoto =
-      '$profiles/photo/delete'; // DELETE: Delete profile photo
-  static const String profilePhotos =
-      '$profiles/photos'; // GET: Get user's profile photos
-  static const String profileVerification =
-      '$profiles/verify'; // Profile verification endpoints
-  static const String updatePreferences =
-      '$profiles/preferences'; // PATCH: Update profile preferences
-  static const String profileAction =
-      '$profiles/action'; // POST: Like/dislike/superlike actions
+  static const String profiles = '/profiles';
+  static const String currentProfile = '/profiles/me';
+  static const String discoverProfiles = '/profiles/discover';
+  static const String uploadPhoto = '/profiles/photo';
+  static const String deletePhoto = '/profiles/photo/delete';
+  static const String profilePhotos = '/profiles/photos';
+  static const String profileVerification = '/profiles/verify';
+  static const String updatePreferences = '/profiles/preferences';
+  static const String profileAction = '/profiles/action';
 
   // Match endpoints - Match management and interactions
-  static const String matches = '/api/matches';
-  static const String like = '$matches/like'; // POST: Like a profile
-  static const String dislike = '$matches/dislike'; // POST: Dislike a profile
-  static const String pass = '$matches/pass'; // POST: Pass on a profile
-  static const String superlike =
-      '$matches/superlike'; // POST: Superlike a profile
-  static const String unmatch = '$matches/unmatch'; // POST: Unmatch from a user
-  static const String undoAction =
-      '$matches/undo'; // POST: Undo last action (Added)
+  static const String matches = '/matches';
+  static const String like = '/matches/like';
+  static const String dislike = '/matches/dislike';
+  static const String pass = '/matches/pass';
+  static const String superlike = '/matches/superlike';
+  static const String unmatch = '/matches/unmatch';
+  static const String undoAction = '/matches/undo';
 
   // Chat endpoints - Conversation and message management
-  static const String conversations =
-      '/api/conversations'; // GET: Get user conversations
-  static const String messages =
-      '/api/messages'; // GET: Get messages, POST: Create message
-  static const String readMessages =
-      '$messages/read'; // POST: Mark messages as read
-  static const String deleteMessage =
-      '$messages/delete'; // DELETE: Delete a message
-  static const String reactToMessage =
-      '$messages/react'; // POST: Add reaction to message
+  static const String conversations = '/conversations';
+  static const String messages = '/messages';
+  static const String readMessages = '/messages/read';
+  static const String deleteMessage = '/messages/delete';
+  static const String reactToMessage = '/messages/react';
 
   // Method to get messages for a specific conversation
   static String conversationMessages(String conversationId) {
-    return '$conversations/$conversationId/messages';
+    return '/conversations/$conversationId/messages';
   }
 
   // Settings endpoints - User settings and preferences
-  static const String settings = '/api/settings';
-  static const String notifications =
-      '$settings/notifications'; // GET/PATCH: Notification settings
-  static const String privacy =
-      '$settings/privacy'; // GET/PATCH: Privacy settings
-  static const String blockedUsers =
-      '$settings/blocked'; // GET: Blocked users, POST: Block user
-  static const String reportUser = '$settings/report'; // POST: Report a user
+  static const String settings = '/settings';
+  static const String notifications = '/settings/notifications';
+  static const String privacy = '/settings/privacy';
+  static const String blockedUsers = '/settings/blocked';
+  static const String reportUser = '/settings/report';
 
   /// Legacy Profile API endpoints (to be deprecated)
   static const String userProfile = '/profiles/me';
@@ -230,14 +207,17 @@ class AppConfig {
   ///
   /// The actual URL used is determined by the apiBaseUrl getter below,
   /// which selects the appropriate URL based on the build mode.
-  static const String _devApiBaseUrl = 'http://dapi.pulsetek.co.za:3001';
-  static const String _mockApiBaseUrl = 'http://dapi.pulsetek.co.za:3001';
-  static const String _prodApiBaseUrl = 'https://api.example.com';
+  static const String _devApiBaseUrl =
+      'https://dapi.pulsetek.co.za:3000/api/v1';
+  static const String _mockApiBaseUrl =
+      'https://dapi.pulsetek.co.za:3000/api/v1';
+  static const String _prodApiBaseUrl =
+      'https://dapi.pulsetek.co.za:3000/api/v1';
 
   // WebSocket URLs for real-time features
-  static const String _devSocketUrl = 'ws://dapi.pulsetek.co.za:3001';
-  static const String _mockSocketUrl = 'ws://dapi.pulsetek.co.za:3001';
-  static const String _prodSocketUrl = 'wss://api.example.com';
+  static const String _devSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
+  static const String _mockSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
+  static const String _prodSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
 
   // Dynamic getters for environment-specific values
   static String get apiBaseUrl {

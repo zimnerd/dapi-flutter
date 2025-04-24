@@ -87,7 +87,7 @@ final profileOptimizationTipsProvider =
 
     // Call the API - replace with your actual endpoint
     final response = await dio.get(
-      '/api/profiles/me/tips', // Use direct path instead of missing endpoint
+      '/profiles/me/tips', // Use direct path instead of missing endpoint
     );
 
     if (response.statusCode == 200) {

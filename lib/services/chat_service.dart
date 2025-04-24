@@ -147,7 +147,7 @@ class ChatService {
 
       // Directly use HTTP URL format for WebSocket connection
       // Force using the non-localhost URL for actual device usage
-      String socketUrl = 'http://dapi.pulsetek.co.za:3001';
+      String socketUrl = 'https://dapi.pulsetek.co.za:3000';
       print('🔌 Using socket URL: $socketUrl');
       _debug.logStatus('Using socket URL: $socketUrl');
 

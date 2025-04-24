@@ -463,7 +463,7 @@ class AuthService {
       }
 
       _logger.debug(
-          'Making request to ${AppConfig.apiBaseUrl}/api/users/me with token: ${token.length > 15 ? '${token.substring(0, 15)}...' : token}');
+          'Making request to ${AppConfig.apiBaseUrl}/users/me with token: ${token.length > 15 ? '${token.substring(0, 15)}...' : token}');
 
       // Add explicit headers for this specific request to ensure token is included
       final options = Options(
@@ -472,8 +472,8 @@ class AuthService {
         },
       );
 
-      final response = await _dio.get('${AppConfig.apiBaseUrl}/api/users/me',
-          options: options);
+      final response =
+          await _dio.get('${AppConfig.apiBaseUrl}/users/me', options: options);
       _logger.debug('Get user response status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data['user'] != null) {
@@ -502,7 +502,7 @@ class AuthService {
     _logger.info('Updating profile...');
     try {
       final response = await _dio.put(
-        '/api/users/profile',
+        '/users/profile',
         data: data,
       );
 
@@ -531,7 +531,7 @@ class AuthService {
     _logger.info('Deleting user account');
     try {
       final response = await _dio.delete(
-        '${AppConfig.apiBaseUrl}/api/users/me',
+        '${AppConfig.apiBaseUrl}/users/me',
       );
 
       if (response.statusCode == 200) {
@@ -560,7 +560,7 @@ class AuthService {
     _logger.info('Requesting account verification');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}/api/users/verify/request',
+        '${AppConfig.apiBaseUrl}/users/verify/request',
       );
 
       if (response.statusCode == 200) {
@@ -588,7 +588,7 @@ class AuthService {
     _logger.info('Confirming account verification');
     try {
       final response = await _dio.post(
-        '${AppConfig.apiBaseUrl}/api/users/verify/confirm',
+        '${AppConfig.apiBaseUrl}/users/verify/confirm',
         data: {'token': token},
       );
 

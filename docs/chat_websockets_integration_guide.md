@@ -7,7 +7,7 @@ This document provides a comprehensive guide for integrating your Flutter app wi
 
 The WebSocket communication is handled via Socket.IO, providing a real-time, bidirectional channel between your Flutter app and the server.
 
-**Base URL**: `http://localhost:3001` (replace with your production URL)
+**Base URL**: `https://dapi.pulsetek.co.za:3000` (replace with your production URL)
 
 ## 1. Required Dependencies
 
@@ -272,7 +272,7 @@ class ChatService {
 final chatService = ChatService();
 
 void initializeChat() {
-  chatService.init('http://localhost:3001');
+  chatService.init('https://dapi.pulsetek.co.za:3000');
   
   // Connect with JWT token after login
   final token = 'your-jwt-token';  // Get this from your auth service
@@ -651,7 +651,7 @@ class _WebSocketTesterState extends State<WebSocketTester> {
     super.initState();
     
     // Initialize chat service
-    chatService.init('http://localhost:3001');
+    chatService.init('https://dapi.pulsetek.co.za:3000');
     
     // Add listeners
     chatService._socket?.on('connect', (_) {
@@ -719,7 +719,7 @@ To debug WebSocket communication:
 
 1. Enable debug logging:
 ```dart
-IO.Socket socket = IO.io('http://localhost:3001', <String, dynamic>{
+IO.Socket socket = IO.io('https://dapi.pulsetek.co.za:3000', <String, dynamic>{
   'transports': ['websocket'],
   'autoConnect': false,
   'logger': true,    // Enable logging

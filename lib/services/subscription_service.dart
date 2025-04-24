@@ -30,7 +30,7 @@ class SubscriptionService {
       }
 
       // If not in storage, check with the API
-      final response = await _dio.get('/api/users/me');
+      final response = await _dio.get('/users/me');
 
       if (response.statusCode == 200 && response.data != null) {
         final userData = response.data;
@@ -74,7 +74,7 @@ class SubscriptionService {
       // For this demo, we'll simulate a successful subscription
 
       final response = await _dio.post(
-        '/api/subscriptions',
+        '/subscriptions',
         data: {
           'planId': planId,
           'paymentMethod': 'card',
@@ -112,7 +112,7 @@ class SubscriptionService {
     try {
       print('⟹ [SubscriptionService] Cancelling subscription');
 
-      final response = await _dio.delete('/api/subscriptions/current');
+      final response = await _dio.delete('/subscriptions/current');
 
       if (response.statusCode == 200) {
         // Update the local cache
@@ -143,7 +143,7 @@ class SubscriptionService {
     try {
       print('⟹ [SubscriptionService] Getting subscription plans');
 
-      final response = await _dio.get('/api/subscription-plans');
+      final response = await _dio.get('/subscription-plans');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> plans = response.data;

@@ -548,7 +548,7 @@ class ApiClient {
   // Get user's matches
   Future<List<Match>> getMatches() async {
     try {
-      final response = await _dio.get('/api/matches');
+      final response = await _dio.get('/matches');
       final List<dynamic> data = response.data;
       return data.map((json) => Match.fromJson(json)).toList();
     } catch (e) {
@@ -560,7 +560,7 @@ class ApiClient {
   // Get user's likes
   Future<List<Profile>> getLikes() async {
     try {
-      final response = await _dio.get('/api/likes');
+      final response = await _dio.get('/likes');
       final List<dynamic> data = response.data;
       return data.map((json) => Profile.fromJson(json['likedByUser'])).toList();
     } catch (e) {
@@ -572,7 +572,7 @@ class ApiClient {
   // Get matches without conversations (for carousel)
   Future<List<Match>> getNewMatches() async {
     try {
-      final response = await _dio.get('/api/matches/new');
+      final response = await _dio.get('/matches/new');
       final List<dynamic> data = response.data;
       return data.map((json) => Match.fromJson(json)).toList();
     } catch (e) {
@@ -584,7 +584,7 @@ class ApiClient {
   // Get user's conversations
   Future<List<Conversation>> getConversations() async {
     try {
-      final response = await _dio.get('/api/conversations');
+      final response = await _dio.get('/conversations');
       final List<dynamic> data = response.data;
       return data.map((json) => Conversation.fromJson(json)).toList();
     } catch (e) {
