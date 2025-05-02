@@ -79,4 +79,34 @@ class MatchesService {
     final matches = await getMatchesWithUser(userId);
     return matches.isNotEmpty;
   }
+
+  // Fetch match connections (matches with conversations)
+  Future<List<Match>> getConnections() async {
+    final response = await _apiClient.get('/matches/connections');
+    return (response.data as List).map((json) => Match.fromJson(json)).toList();
+  }
+
+  // Like a profile
+  Future<Match?> likeProfile(String profileId) async {
+    try {
+      final response = await _apiClient
+          .post('/matches/like', data: {'profileId': profileId});
+      return Match.fromJson(response.data);
+    } catch (e) {
+      // Handle 409 or already liked gracefully
+      return null;
+    }
+  }
+
+  // Pass on a profile
+  Future<Match?> passProfile(String profileId) async {
+    try {
+      final response = await _apiClient
+          .post('/matches/pass', data: {'profileId': profileId});
+      return Match.fromJson(response.data);
+    } catch (e) {
+      // Handle 409 or already passed gracefully
+      return null;
+    }
+  }
 }

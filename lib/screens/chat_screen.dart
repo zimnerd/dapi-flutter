@@ -10,6 +10,7 @@ import '../config/app_config.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../providers/chat_message_actions.dart';
+import '../providers/providers.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final Conversation? conversation;
@@ -129,6 +130,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final messagesAsyncValue = ref.watch(chatMessagesProvider(_conversationId));
+    final currentUserId = ref.read(userIdProvider) ?? 'unknown_user';
 
     final participantName = widget.conversation?.participants.first.name ??
         widget.matchProfile?.name ??
@@ -240,8 +242,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final showAvatar = !message.isFromCurrentUser &&
-                        (index == 0 || messages[index - 1].isFromCurrentUser);
+                    final showAvatar =
+                        !message.isFromCurrentUserId(currentUserId) &&
+                            (index == 0 ||
+                                messages[index - 1]
+                                    .isFromCurrentUserId(currentUserId));
 
                     return _buildMessageBubble(
                       message,
@@ -304,7 +309,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }) {
     // Temporarily hardcode this value until we fix the premium providers
     final isPremium = false; // TODO: Fix premium provider reference
-    final isFromCurrentUser = message.isFromCurrentUser;
+    final currentUserId = ref.read(userIdProvider) ?? 'unknown_user';
+    final isFromCurrentUser = message.isFromCurrentUserId(currentUserId);
     final bool showReactionsPicker = _reactingToMessageId == message.id;
     final List<String> availableReactions = [
       '❤️',

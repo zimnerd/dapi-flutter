@@ -81,8 +81,8 @@ class ChatService {
   IO.Socket? _socket;
 
   // Services
-  AuthService? _authService;
-  final Dio _dio = Dio();
+  late final AuthService _authService;
+  late final Dio _dio;
 
   // Initialize the auth service
   void initializeAuthService(AuthService authService) {
@@ -126,7 +126,7 @@ class ChatService {
     }
 
     try {
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
       print(
           '🔐 Auth token for WebSocket: ${token != null ? "Found (${token.substring(0, 10)}...)" : "NOT FOUND!"}');
       _debug.logStatus('Auth token: ${token != null ? "Found" : "NOT FOUND"}');
@@ -155,8 +155,8 @@ class ChatService {
       if (_socket != null) {
         print('🔄 Closing existing socket connection before creating new one');
         _debug.logStatus('Closing existing socket connection');
-        _socket!.disconnect();
-        _socket!.dispose();
+        _socket?.disconnect();
+        _socket?.dispose();
         _socket = null;
       }
 
@@ -180,7 +180,7 @@ class ChatService {
           .logStatus('WebSocket initialized with token - connecting manually');
 
       // Manually connect the socket
-      _socket!.connect();
+      _socket?.connect();
     } catch (e) {
       print('❌ Error initializing WebSocket: $e');
       _errorController.add('Failed to initialize chat connection: $e');
@@ -525,7 +525,7 @@ class ChatService {
         throw Exception('Authentication service not available');
       }
 
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
 
       if (token == null) {
         print(
@@ -619,7 +619,7 @@ class ChatService {
         throw Exception('Authentication service not available');
       }
 
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
 
       if (token == null) {
         print('Failed to fetch messages: No authentication token available');
@@ -744,7 +744,7 @@ class ChatService {
         throw Exception('Authentication service not available');
       }
 
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
 
       if (token == null) {
         print(
@@ -785,7 +785,7 @@ class ChatService {
         throw Exception('Authentication service not available');
       }
 
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
 
       if (token == null) {
         print(
@@ -835,7 +835,7 @@ class ChatService {
         throw Exception('Authentication service not available');
       }
 
-      final token = await _authService!.getAccessToken();
+      final token = await _authService.getAccessToken();
 
       if (token == null) {
         print(

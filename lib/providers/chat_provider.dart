@@ -158,6 +158,9 @@ class ChatMessagesNotifier extends StateNotifier<MessageListState> {
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
       reactions: [],
+      isRead: false,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     print("💬 OPTIMISTIC: Adding optimistic message to UI");
@@ -188,21 +191,23 @@ class ChatMessagesNotifier extends StateNotifier<MessageListState> {
   }
 
   // Mark messages as read
-  void markMessagesAsRead() {
+  void markMessagesAsRead(String currentUserId) {
     print(
         "👁️ READ UI: Marking messages as read in conversation $conversationId");
 
     // Mark as read on server
     final chatService = ref.read(chatActionsServiceProvider);
     print(
-        "📡 READ CHECK: WebSocket ${chatService.isConnected ? 'connected' : 'disconnected'}");
+        "📡 READ CHECK: WebSocket [32m${chatService.isConnected ? 'connected' : 'disconnected'}[0m");
 
     // Since we need message IDs for the real implementation and don't have them yet
     // Just update UI optimistically for now
     print("👁️ READ OPTIMISTIC: Updating message status in UI");
     state = state.map((message) {
-      if (!message.isFromCurrentUser && message.status != MessageStatus.read) {
-        print("👁️ READ UPDATE: Marking message ${message.id} as read");
+      if (!message.isFromCurrentUserId(currentUserId) &&
+          message.status != MessageStatus.read) {
+        print(
+            "👁️ READ UPDATE: Marking message [33m${message.id}[0m as read");
         return message.copyWith(status: MessageStatus.read);
       }
       return message;

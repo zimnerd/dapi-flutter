@@ -128,6 +128,7 @@ class MyApp extends ConsumerWidget {
                   participants: [], // Will be populated when screen loads
                   lastMessage: null,
                   createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
                   unreadCount: 0,
                 ),
               ),

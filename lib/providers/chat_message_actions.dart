@@ -207,6 +207,13 @@ class ChatMessageActions {
           DateTime.parse(data['timestamp'] ?? DateTime.now().toIso8601String()),
       status: MessageStatus.sent,
       reactions: [],
+      isRead: data['isRead'] ?? false,
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'])
+          : DateTime.now(),
+      updatedAt: data['updatedAt'] != null
+          ? DateTime.parse(data['updatedAt'])
+          : DateTime.now(),
     );
 
     print("📝 CREATED MESSAGE: $message");

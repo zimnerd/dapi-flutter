@@ -63,6 +63,9 @@ dependencies:
   socket_io_client: ^2.0.3 # Added for WebSocket communication
   image_cropper: ^9.1.0
   image_cropper_platform_interface: ^7.1.0
+  json_annotation: ^4.9.0
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.5
 
 dependency_overrides:
   http: 0.13.6  # Force this specific version for compatibility
@@ -73,7 +76,6 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
   flutter_native_splash: ^2.4.6
-  build_runner: ^2.4.15
   riverpod_generator: ^2.2.0
 
 # For information on the generic Dart part of this file, see the

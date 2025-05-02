@@ -74,24 +74,27 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             // Make sure data is a Map
             if (data is Map<String, dynamic>) {
               // Ensure data has the required id field
-              String msgId = data['id'] as String? ??
-                  'msg-${DateTime.now().millisecondsSinceEpoch}';
-
+              if (!data.containsKey('id')) {
+                data['id'] = 'msg-${DateTime.now().millisecondsSinceEpoch}';
+              }
               // Check for required fields and provide defaults if missing
               if (!data.containsKey('senderId') &&
                   data.containsKey('sender_id')) {
                 data['senderId'] = data['sender_id'];
               }
-
               if (!data.containsKey('text') && data.containsKey('content')) {
                 data['text'] = data['content'];
               }
-
               if (!data.containsKey('conversationId')) {
                 data['conversationId'] = widget.conversation.id;
               }
+              // Provide required fields if missing
+              data['isRead'] ??= false;
+              data['createdAt'] ??= DateTime.now().toIso8601String();
+              data['updatedAt'] ??= DateTime.now().toIso8601String();
+              data['timestamp'] ??= DateTime.now().toIso8601String();
 
-              final message = Message.fromJson(msgId, data);
+              final message = Message.fromJson(data);
               parsedMessages.add(message);
             } else {
               print('Skipping invalid message data: $data (not a Map)');
@@ -139,8 +142,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         (prev, AsyncValue<Map<String, dynamic>> next) {
       next.whenData((messageData) {
         // Convert dynamic message to Message object
-        final message =
-            Message.fromJson(messageData['id'] as String, messageData);
+        final message = Message.fromJson(messageData);
 
         // Normalize conversation IDs for comparison
         String receivedConvId = message.conversationId;
@@ -251,6 +253,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       text: text,
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
+      isRead: false,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     setState(() {
@@ -298,12 +303,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final message = _messages[index];
-        final showAvatar = !message.isFromCurrentUser &&
-            (index == 0 || _messages[index - 1].isFromCurrentUser);
+        final showAvatar = !message.isFromCurrentUserId(_currentUserId!) &&
+            (index == 0 ||
+                !_messages[index - 1].isFromCurrentUserId(_currentUserId!));
 
         return MessageBubble(
           message: message,
-          isFromCurrentUser: message.isFromCurrentUser,
+          isFromCurrentUser: message.isFromCurrentUserId(_currentUserId!),
           showAvatar: showAvatar,
           participantAvatarUrl:
               _participant?.profilePictures?.isNotEmpty == true

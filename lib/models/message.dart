@@ -1,196 +1,82 @@
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
-enum MessageStatus {
-  sending,
-  sent,
-  delivered,
-  read,
-  failed,
-}
+part 'message.g.dart';
+
+enum MessageStatus { sent, delivered, read, failed, sending }
 
 @immutable
+@JsonSerializable()
 class Message {
   final String id;
-  final String conversationId;
-  final String senderId;
   final String text;
+  final String senderId;
+  final String conversationId;
   final DateTime timestamp;
   final MessageStatus status;
   final String? mediaUrl;
+  final String? mediaType;
   final Map<String, dynamic>? metadata;
   final List<String>? reactions;
-  bool get isFromCurrentUser =>
-      senderId ==
-      'currentUserId'; // In real app, replace with actual currentUser check
+  final bool isRead;
+  final DateTime? readAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   const Message({
     required this.id,
-    required this.conversationId,
-    required this.senderId,
     required this.text,
+    required this.senderId,
+    required this.conversationId,
     required this.timestamp,
-    required this.status,
+    this.status = MessageStatus.sent,
     this.mediaUrl,
+    this.mediaType,
     this.metadata,
     this.reactions,
+    required this.isRead,
+    this.readAt,
+    required this.createdAt,
+    required this.updatedAt,
   });
+
+  factory Message.fromJson(Map<String, dynamic> json) =>
+      _$MessageFromJson(json);
+
+  Map<String, dynamic> toJson() => _$MessageToJson(this);
 
   Message copyWith({
     String? id,
-    String? conversationId,
-    String? senderId,
     String? text,
+    String? senderId,
+    String? conversationId,
     DateTime? timestamp,
     MessageStatus? status,
     String? mediaUrl,
+    String? mediaType,
     Map<String, dynamic>? metadata,
     List<String>? reactions,
+    bool? isRead,
+    DateTime? readAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return Message(
       id: id ?? this.id,
-      conversationId: conversationId ?? this.conversationId,
-      senderId: senderId ?? this.senderId,
       text: text ?? this.text,
+      senderId: senderId ?? this.senderId,
+      conversationId: conversationId ?? this.conversationId,
       timestamp: timestamp ?? this.timestamp,
       status: status ?? this.status,
       mediaUrl: mediaUrl ?? this.mediaUrl,
+      mediaType: mediaType ?? this.mediaType,
       metadata: metadata ?? this.metadata,
       reactions: reactions ?? this.reactions,
+      isRead: isRead ?? this.isRead,
+      readAt: readAt ?? this.readAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
-  }
-
-  factory Message.fromJson(String msgId, Map<String, dynamic> json) {
-    try {
-      // Parse timestamp from string, with fallback
-      DateTime parsedTimestamp;
-      try {
-        final timestamp = json['timestamp'] ??
-            json['created_at'] ??
-            DateTime.now().toIso8601String();
-        parsedTimestamp =
-            timestamp is String ? DateTime.parse(timestamp) : DateTime.now();
-      } catch (e) {
-        // If timestamp parsing fails, use current time
-        print('Error parsing timestamp: $e, using current time instead');
-        parsedTimestamp = DateTime.now();
-      }
-
-      // Parse status with fallback
-      MessageStatus parsedStatus;
-      try {
-        final statusStr = json['status'] as String? ?? 'sent';
-        parsedStatus = MessageStatus.values.firstWhere(
-          (s) => s.toString() == 'MessageStatus.$statusStr',
-          orElse: () => MessageStatus.sent,
-        );
-      } catch (e) {
-        print('Error parsing message status: $e, using "sent" instead');
-        parsedStatus = MessageStatus.sent;
-      }
-
-      // Extract the conversation ID with fallbacks
-      String conversationId = '';
-      if (json.containsKey('conversationId')) {
-        conversationId = json['conversationId'] as String? ?? '';
-      } else if (json.containsKey('conversation_id')) {
-        conversationId = json['conversation_id'] as String? ?? '';
-      } else if (json.containsKey('matchId')) {
-        conversationId = json['matchId'] as String? ?? '';
-      } else if (json.containsKey('match_id')) {
-        conversationId = json['match_id'] as String? ?? '';
-      }
-
-      // Extract text content with fallbacks
-      String text = '';
-      if (json.containsKey('text')) {
-        text = json['text'] as String? ?? '';
-      } else if (json.containsKey('content')) {
-        text = json['content'] as String? ?? '';
-      } else if (json.containsKey('message')) {
-        text = json['message'] as String? ?? '';
-      }
-
-      // Extract sender ID with fallbacks
-      String senderId = '';
-      if (json.containsKey('senderId')) {
-        senderId = json['senderId'] as String? ?? '';
-      } else if (json.containsKey('sender_id')) {
-        senderId = json['sender_id'] as String? ?? '';
-      } else if (json.containsKey('userId')) {
-        senderId = json['userId'] as String? ?? '';
-      } else if (json.containsKey('user_id')) {
-        senderId = json['user_id'] as String? ?? '';
-      }
-
-      // Create and return the Message object
-      return Message(
-        id: msgId,
-        conversationId: conversationId,
-        senderId: senderId,
-        text: text,
-        timestamp: parsedTimestamp,
-        status: parsedStatus,
-        mediaUrl: json['mediaUrl'] as String?,
-        metadata: json['metadata'] as Map<String, dynamic>?,
-        reactions: (json['reactions'] as List<dynamic>? ?? []).cast<String>(),
-      );
-    } catch (e) {
-      // Log the error and return a placeholder message
-      print('Error creating Message from JSON: $e');
-      print('Problematic JSON: $json');
-
-      return Message(
-        id: msgId,
-        conversationId: 'error',
-        senderId: 'error',
-        text: 'Error loading message',
-        timestamp: DateTime.now(),
-        status: MessageStatus.failed,
-        mediaUrl: null,
-        metadata: null,
-        reactions: null,
-      );
-    }
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'conversationId': conversationId,
-      'senderId': senderId,
-      'text': text,
-      'timestamp': timestamp.toIso8601String(),
-      'status': status.toString().split('.').last,
-      'mediaUrl': mediaUrl,
-      'metadata': metadata,
-      'reactions': reactions,
-    };
-  }
-
-  // Helper factory for creating pending messages
-  factory Message.pending({
-    required String text,
-  }) {
-    return Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      conversationId: '',
-      senderId: 'currentUserId', // In real app, get from auth service
-      text: text,
-      timestamp: DateTime.now(),
-      status: MessageStatus.sending,
-      mediaUrl: null,
-      metadata: null,
-      reactions: null,
-    );
-  }
-
-  Message markAsRead() {
-    return copyWith(status: MessageStatus.read);
-  }
-
-  @override
-  String toString() {
-    return 'Message(id: $id, conversationId: $conversationId, senderId: $senderId, text: $text, timestamp: $timestamp, status: $status, mediaUrl: $mediaUrl, metadata: $metadata, reactions: $reactions)';
   }
 
   @override
@@ -199,27 +85,45 @@ class Message {
       other is Message &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          conversationId == other.conversationId &&
-          senderId == other.senderId &&
           text == other.text &&
+          senderId == other.senderId &&
+          conversationId == other.conversationId &&
           timestamp == other.timestamp &&
           status == other.status &&
           mediaUrl == other.mediaUrl &&
+          mediaType == other.mediaType &&
           metadata == other.metadata &&
-          listEquals(reactions, other.reactions);
+          listEquals(reactions, other.reactions) &&
+          isRead == other.isRead &&
+          readAt == other.readAt &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
 
   @override
   int get hashCode => Object.hash(
         id,
-        conversationId,
-        senderId,
         text,
+        senderId,
+        conversationId,
         timestamp,
         status,
         mediaUrl,
+        mediaType,
         metadata != null ? Object.hashAll(metadata!.values) : 0,
         reactions != null ? Object.hashAll(reactions!) : 0,
+        isRead,
+        readAt?.hashCode ?? 0,
+        createdAt.hashCode,
+        updatedAt.hashCode,
       );
+
+  /// Returns true if this message was sent by the given user ID
+  bool isFromCurrentUserId(String currentUserId) => senderId == currentUserId;
+
+  /// Deprecated: Use isFromCurrentUserId(currentUserId) instead
+  @Deprecated('Use isFromCurrentUserId(currentUserId) instead')
+  bool get isFromCurrentUser => throw UnimplementedError(
+      'Use isFromCurrentUserId(currentUserId) instead');
 }
 
 extension MessageStatusExtension on MessageStatus {

@@ -18,6 +18,9 @@ class ConversationListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final otherUser = conversation.getOtherParticipant(currentUserId);
+    if (otherUser == null) {
+      return SizedBox(); // or a placeholder widget
+    }
     final hasUnread = conversation.unreadCount > 0;
 
     return InkWell(
