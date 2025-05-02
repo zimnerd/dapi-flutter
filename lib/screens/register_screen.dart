@@ -123,8 +123,8 @@ class RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 
   Future<void> _register() async {
+    final ctx = context;
     if (_formKey.currentState!.validate()) {
-      final ctx = context;
       if (_passwordController.text != _confirmPasswordController.text) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(content: Text('Passwords do not match')),
