@@ -485,8 +485,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 ),
                 onTap: () {
                   // Add delay to allow menu to close before navigation
+                  final ctx = context;
                   Future.delayed(Duration.zero, () {
-                    Navigator.of(context).pushNamed('/websocket-debug');
+                    if (!mounted) return;
+                    Navigator.of(ctx).pushNamed('/websocket-debug');
                   });
                 },
               ),

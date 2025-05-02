@@ -58,10 +58,10 @@ class MatchAnimationDialog extends StatefulWidget {
   }
 
   @override
-  _MatchAnimationDialogState createState() => _MatchAnimationDialogState();
+  MatchAnimationDialogState createState() => MatchAnimationDialogState();
 }
 
-class _MatchAnimationDialogState extends State<MatchAnimationDialog>
+class MatchAnimationDialogState extends State<MatchAnimationDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _matchTextAnimation;
