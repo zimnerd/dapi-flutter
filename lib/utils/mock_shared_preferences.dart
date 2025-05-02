@@ -123,4 +123,8 @@ class MockSharedPreferences implements SharedPreferences {
     _logger.debug('commit() - no-op in mock implementation');
     return true;
   }
-} 
+
+  bool get isMock => true;
+
+  bool get isFake => true;
+}

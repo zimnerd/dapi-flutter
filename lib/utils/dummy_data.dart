@@ -3,8 +3,11 @@ import '../models/profile.dart';
 import '../models/message.dart';
 import '../models/user.dart';
 import '../models/match.dart';
+import '../utils/logger.dart';
 
 class DummyData {
+  static final Logger _logger = Logger('DummyData');
+
   static List<Profile> getProfiles() {
     final List<Profile> dummyProfiles = [
       Profile(
@@ -58,7 +61,7 @@ class DummyData {
 
     // Ensure we have enough profiles to create conversations
     if (profiles.length < 4) {
-      print('⟹ [DummyData] Not enough profiles, adding dummy profiles');
+      _logger.info('Not enough profiles, adding dummy profiles');
       // Add more dummy profiles if needed
       profiles.addAll([
         Profile(
@@ -141,7 +144,7 @@ class DummyData {
 
     // Safety check - ensure we have at least 4 profiles after adding dummies
     if (profiles.isEmpty) {
-      print('⟹ [DummyData] ERROR: No profiles available for conversations');
+      _logger.error('ERROR: No profiles available for conversations');
       return [];
     }
 
@@ -163,7 +166,7 @@ class DummyData {
 
     // Get safe profiles - use modulo to ensure we never go out of bounds
     final int profileCount = profiles.length;
-    print('⟹ [DummyData] Creating conversations with $profileCount profiles');
+    _logger.info('Creating conversations with $profileCount profiles');
 
     final Profile profile0 = profiles[0 % profileCount];
     final Profile profile1 = profiles[1 % profileCount];

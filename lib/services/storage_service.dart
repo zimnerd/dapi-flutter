@@ -3,29 +3,31 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/logger.dart';
 
 class StorageService {
   // Use Firebase Storage or your preferred cloud storage
   // final FirebaseStorage _storage = FirebaseStorage.instance;
   final _uuid = Uuid();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final Logger _logger = Logger('StorageService');
 
   StorageService(); // Keep default constructor for now
 
   // Secure read method for sensitive data
   Future<String?> read(String key) async {
     try {
-      print('⟹ [StorageService] Reading key: $key');
+      _logger.info('Reading key: $key');
       return await _secureStorage.read(key: key);
     } catch (e) {
-      print('⟹ [StorageService] Error reading from secure storage: $e');
+      _logger.error('Error reading from secure storage: $e');
 
       // Fallback to SharedPreferences
       try {
         final prefs = await SharedPreferences.getInstance();
         return prefs.getString(key);
       } catch (e) {
-        print('⟹ [StorageService] Error reading from shared preferences: $e');
+        _logger.error('Error reading from shared preferences: $e');
         return null;
       }
     }
@@ -34,31 +36,31 @@ class StorageService {
   // Secure write method for sensitive data
   Future<void> write(String key, String value) async {
     try {
-      print('⟹ [StorageService] Writing key: $key');
+      _logger.info('Writing key: $key');
       await _secureStorage.write(key: key, value: value);
     } catch (e) {
-      print('⟹ [StorageService] Error writing to secure storage: $e');
+      _logger.error('Error writing to secure storage: $e');
 
       // Fallback to SharedPreferences
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(key, value);
       } catch (e) {
-        print('⟹ [StorageService] Error writing to shared preferences: $e');
+        _logger.error('Error writing to shared preferences: $e');
       }
     }
   }
 
   // Placeholder method: In a real app, this would upload the file and return the URL
   Future<String> uploadProfileImage(XFile imageFile, String userId) async {
-    print("[StorageService] Uploading image for user $userId...");
+    _logger.info("Uploading image for user $userId...");
     await Future.delayed(const Duration(milliseconds: 1500)); // Simulate upload
 
     // Return a dummy URL
     final fileName = _uuid.v4();
     final dummyUrl =
         'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/profile_images%2F$userId%2F$fileName.jpg?alt=media';
-    print("[StorageService] Dummy upload complete. URL: $dummyUrl");
+    _logger.info("Dummy upload complete. URL: $dummyUrl");
     return dummyUrl;
 
     /* 
@@ -69,10 +71,10 @@ class StorageService {
       final UploadTask uploadTask = ref.putFile(File(imageFile.path));
       final TaskSnapshot snapshot = await uploadTask;
       final String downloadUrl = await snapshot.ref.getDownloadURL();
-      print("[StorageService] Upload successful. URL: $downloadUrl");
+      logger.info("Upload successful. URL: $downloadUrl");
       return downloadUrl;
     } catch (e) {
-      print("[StorageService] Error uploading image: $e");
+      logger.error("Error uploading image: $e");
       throw Exception('Image upload failed: $e');
     }
     */
@@ -87,12 +89,12 @@ class StorageService {
   // Enable mock data mode for testing
   Future<void> enableMockDataMode() async {
     await write('use_mock_data', 'true');
-    print('⟹ [StorageService] Mock data mode enabled');
+    _logger.info('Mock data mode enabled');
   }
 
   // Disable mock data mode
   Future<void> disableMockDataMode() async {
     await write('use_mock_data', 'false');
-    print('⟹ [StorageService] Mock data mode disabled');
+    _logger.info('Mock data mode disabled');
   }
 }

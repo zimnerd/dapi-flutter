@@ -1,16 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../config/app_config.dart';
-import '../models/conversation.dart';
-import '../models/message.dart';
 import '../services/auth_service.dart';
 import '../utils/logger.dart';
 import '../utils/websocket_debug.dart'; // Import the debug utility
+
+final Logger _logger = Logger('ChatService');
 
 // Event models for WebSockets
 class TypingEvent {
@@ -70,7 +66,7 @@ class ChatService {
       _debug = WebSocketDebug();
       _debug.logStatus('ChatService initialized');
     } catch (e) {
-      print('Error initializing ChatService: $e');
+      _logger.error('Error initializing ChatService: $e');
     }
   }
 
@@ -78,16 +74,15 @@ class ChatService {
   late WebSocketDebug _debug;
 
   // Socket instance
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   // Services
   late final AuthService _authService;
-  late final Dio _dio;
 
   // Initialize the auth service
   void initializeAuthService(AuthService authService) {
     _authService = authService;
-    print('AuthService initialized in ChatService');
+    _logger.info('AuthService initialized in ChatService');
   }
 
   // Stream controllers
@@ -118,7 +113,8 @@ class ChatService {
   /// Initialize the WebSocket connection
   Future<void> initSocket() async {
     if (_authService == null) {
-      print('AuthService not initialized. Call initializeAuthService() first.');
+      _logger.error(
+          'AuthService not initialized. Call initializeAuthService() first.');
       _errorController
           .add('Authentication service not available. Please restart the app.');
       _debug.logError('AuthService not initialized');
@@ -127,12 +123,12 @@ class ChatService {
 
     try {
       final token = await _authService.getAccessToken();
-      print(
+      _logger.info(
           '🔐 Auth token for WebSocket: ${token != null ? "Found (${token.substring(0, 10)}...)" : "NOT FOUND!"}');
       _debug.logStatus('Auth token: ${token != null ? "Found" : "NOT FOUND"}');
 
       if (token == null) {
-        print(
+        _logger.error(
             '❌ Failed to initialize socket: No authentication token available');
         _errorController
             .add('No authentication token available. Please log in again.');
@@ -141,19 +137,21 @@ class ChatService {
       }
 
       // Create socket connection with Socket.IO client
-      print('🔌 Initializing socket connection to ${AppConfig.socketUrl}');
+      _logger
+          .info('🔌 Initializing socket connection to ${AppConfig.socketUrl}');
       _debug.logStatus(
           'Initializing socket connection to ${AppConfig.socketUrl}');
 
       // Directly use HTTP URL format for WebSocket connection
       // Force using the non-localhost URL for actual device usage
       String socketUrl = 'https://dapi.pulsetek.co.za:3000';
-      print('🔌 Using socket URL: $socketUrl');
+      _logger.info('🔌 Using socket URL: $socketUrl');
       _debug.logStatus('Using socket URL: $socketUrl');
 
       // Close existing socket if it exists
       if (_socket != null) {
-        print('🔄 Closing existing socket connection before creating new one');
+        _logger.info(
+            '🔄 Closing existing socket connection before creating new one');
         _debug.logStatus('Closing existing socket connection');
         _socket?.disconnect();
         _socket?.dispose();
@@ -161,9 +159,9 @@ class ChatService {
       }
 
       // Create new socket with multiple authentication methods
-      _socket = IO.io(
+      _socket = io.io(
         socketUrl,
-        IO.OptionBuilder()
+        io.OptionBuilder()
             .setTransports(['websocket'])
             .disableAutoConnect() // Disable auto-connect to control connection timing
             .enableReconnection()
@@ -175,70 +173,55 @@ class ChatService {
 
       // Set up event listeners
       _setupSocketListeners();
-      print('🔐 WebSocket initialized with token - connecting manually');
+      _logger.info('🔐 WebSocket initialized with token - connecting manually');
       _debug
           .logStatus('WebSocket initialized with token - connecting manually');
 
       // Manually connect the socket
       _socket?.connect();
     } catch (e) {
-      print('❌ Error initializing WebSocket: $e');
+      _logger.error('❌ Error initializing WebSocket: $e');
       _errorController.add('Failed to initialize chat connection: $e');
       _debug.logError('Error initializing WebSocket: $e');
-    }
-  }
-
-  // Helper method to get auth token
-  Future<String?> _getAuthToken() async {
-    try {
-      // Use FlutterSecureStorage instead of SharedPreferences
-      final storage = FlutterSecureStorage();
-      final token = await storage.read(key: AppStorageKeys.accessToken);
-      print(
-          'Retrieved auth token from secure storage: ${token != null ? 'token found' : 'token not found'}');
-      return token;
-    } catch (e) {
-      print('Error getting auth token: $e');
-      return null;
     }
   }
 
   /// Connect to the WebSocket server
   void connect() {
     if (_socket == null) {
-      print('Socket not initialized. Call initSocket() first.');
+      _logger.error('Socket not initialized. Call initSocket() first.');
       return;
     }
 
     if (!_socket!.connected) {
       _socket!.connect();
-      print('Connecting to WebSocket server...');
+      _logger.info('Connecting to WebSocket server...');
     } else {
-      print('Already connected to WebSocket server');
+      _logger.info('Already connected to WebSocket server');
     }
   }
 
   /// Disconnect from the WebSocket server
   void disconnect() {
     _socket?.disconnect();
-    print('Disconnected from WebSocket server');
+    _logger.info('Disconnected from WebSocket server');
   }
 
   /// Set up all socket event listeners
   void _setupSocketListeners() {
     _socket?.onConnect((_) {
-      print('✅ Connected to WebSocket server successfully');
+      _logger.info('✅ Connected to WebSocket server successfully');
       _debug.logStatus('Connected to WebSocket server successfully');
     });
 
     _socket?.onDisconnect((reason) {
-      print('🔌 Disconnected from WebSocket server. Reason: $reason');
+      _logger.info('🔌 Disconnected from WebSocket server. Reason: $reason');
       _debug.logStatus('Disconnected from WebSocket server. Reason: $reason');
     });
 
     _socket?.onConnectError((error) {
-      print('❌ Connection error: $error');
-      print(
+      _logger.error('❌ Connection error: $error');
+      _logger.info(
           '📋 Connection details: URL=${AppConfig.socketUrl}, Transport=${_socket?.io.engine?.transport?.name}');
       _errorController
           .add('Connection error: Unable to connect to chat server');
@@ -246,14 +229,14 @@ class ChatService {
     });
 
     _socket?.onError((error) {
-      print('❌ Socket error: $error');
+      _logger.error('❌ Socket error: $error');
       _errorController.add('Chat service error: Please try again later');
       _debug.logError('Socket error: $error');
     });
 
     // Message events
     _socket?.on('private_message', (data) {
-      print('📩 Received private message: ${data.toString()}');
+      _logger.info('📩 Received private message: ${data.toString()}');
       _debug.logReceivedMessage({'event': 'private_message', 'data': data});
 
       // Add better debugging and parsing for conversation ID
@@ -265,7 +248,8 @@ class ChatService {
       }
 
       // Log the received conversation ID
-      print('📋 DEBUG: Received message for conversationId: $conversationId');
+      _logger.info(
+          '📋 DEBUG: Received message for conversationId: $conversationId');
       _debug.logStatus('Received message for conversationId: $conversationId');
 
       _messagesController.add(data);
@@ -273,7 +257,7 @@ class ChatService {
 
     // Add listeners for the server's response events
     _socket?.on('new_message', (data) {
-      print('📩 Received new message: ${data.toString()}');
+      _logger.info('📩 Received new message: ${data.toString()}');
       _debug.logReceivedMessage({'event': 'new_message', 'data': data});
 
       final messageData = {
@@ -289,7 +273,7 @@ class ChatService {
     });
 
     _socket?.on('message_sent', (data) {
-      print('📩 Message sent confirmation: ${data.toString()}');
+      _logger.info('📩 Message sent confirmation: ${data.toString()}');
       _debug.logReceivedMessage({'event': 'message_sent', 'data': data});
 
       final messageData = {
@@ -305,28 +289,28 @@ class ChatService {
     });
 
     _socket?.on('typing', (data) {
-      print('⌨️ Typing indicator received: ${data.toString()}');
+      _logger.info('⌨️ Typing indicator received: ${data.toString()}');
       _typingController.add(data);
     });
 
     _socket?.on('read_receipt', (data) {
-      print('👁️ Read receipt received: ${data.toString()}');
+      _logger.info('👁️ Read receipt received: ${data.toString()}');
       _readReceiptController.add(data);
     });
 
     _socket?.on('status_change', (data) {
-      print('🟢 Online status update received: ${data.toString()}');
+      _logger.info('🟢 Online status update received: ${data.toString()}');
       _onlineStatusController.add(data);
     });
 
     // Group chat events
     _socket?.on('group_message', (data) {
-      print('👥 Received group message: ${data.toString()}');
+      _logger.info('👥 Received group message: ${data.toString()}');
       _groupMessagesController.add(data);
     });
 
     _socket?.on('room_update', (data) {
-      print('🔄 Room update received: ${data.toString()}');
+      _logger.info('🔄 Room update received: ${data.toString()}');
       _roomUpdatesController.add(data);
     });
   }
@@ -335,7 +319,7 @@ class ChatService {
   void sendPrivateMessage(String recipientId, String message,
       {String? mediaUrl}) {
     if (!isConnected) {
-      print('Not connected to WebSocket server');
+      _logger.error('Not connected to WebSocket server');
       _errorController.add('Not connected to chat server. Please try again.');
       _debug.logError('Not connected to WebSocket server');
       return;
@@ -346,7 +330,7 @@ class ChatService {
         ? recipientId
         : 'conv_with_$recipientId';
 
-    print(
+    _logger.info(
         '📋 DEBUG: Using matchId: $matchId (original recipientId: $recipientId)');
     _debug.logStatus(
         'Using matchId: $matchId (original recipientId: $recipientId)');
@@ -377,7 +361,7 @@ class ChatService {
     _debug.logSentMessage(
         {'event': 'private_message', 'data': backupMessageData});
 
-    print('Sent private message to $matchId');
+    _logger.info('Sent private message to $matchId');
 
     // Get the current user ID if available
     String currentUserId = 'currentUserId';
@@ -389,7 +373,7 @@ class ChatService {
         currentUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
       }
     } catch (e) {
-      print('Error getting current user ID: $e');
+      _logger.error('Error getting current user ID: $e');
     }
 
     // Emit a local message to our own stream for immediate UI update
@@ -410,7 +394,7 @@ class ChatService {
   /// Send a message to a group chat
   void sendGroupMessage(String roomId, String message, {String? mediaUrl}) {
     if (!isConnected) {
-      print('Not connected to WebSocket server');
+      _logger.error('Not connected to WebSocket server');
       _errorController.add('Not connected to chat server. Please try again.');
       return;
     }
@@ -423,7 +407,7 @@ class ChatService {
     };
 
     _socket?.emit('group_message', messageData);
-    print('Sent group message to room $roomId');
+    _logger.info('Sent group message to room $roomId');
   }
 
   /// Notify when user starts typing
@@ -434,7 +418,7 @@ class ChatService {
       'receiverId': receiverId,
       'isTyping': true,
     });
-    print('Sent typing indicator to $receiverId');
+    _logger.info('Sent typing indicator to $receiverId');
   }
 
   /// Notify when user stops typing
@@ -445,7 +429,7 @@ class ChatService {
       'receiverId': receiverId,
       'isTyping': false,
     });
-    print('Sent stop typing indicator to $receiverId');
+    _logger.info('Sent stop typing indicator to $receiverId');
   }
 
   /// Send read receipt for messages
@@ -457,7 +441,7 @@ class ChatService {
       'messageId': messageId,
       'timestamp': DateTime.now().toIso8601String(),
     });
-    print('Sent read receipt for message $messageId');
+    _logger.info('Sent read receipt for message $messageId');
   }
 
   /// Update online status
@@ -468,7 +452,7 @@ class ChatService {
       'isOnline': isOnline,
       'lastSeen': DateTime.now().toIso8601String(),
     });
-    print('Updated online status: $isOnline');
+    _logger.info('Updated online status: $isOnline');
   }
 
   /// Create a new chat room for group conversations
@@ -479,7 +463,7 @@ class ChatService {
       'roomName': roomName,
       'members': memberIds,
     });
-    print('Created new chat room: $roomName');
+    _logger.info('Created new chat room: $roomName');
   }
 
   /// Join an existing chat room
@@ -489,7 +473,7 @@ class ChatService {
     _socket?.emit('join_room', {
       'roomId': roomId,
     });
-    print('Joined chat room: $roomId');
+    _logger.info('Joined chat room: $roomId');
   }
 
   /// Leave a chat room
@@ -499,7 +483,7 @@ class ChatService {
     _socket?.emit('leave_room', {
       'roomId': roomId,
     });
-    print('Left chat room: $roomId');
+    _logger.info('Left chat room: $roomId');
   }
 
   /// Get list of all conversations via HTTP (fallback method)
@@ -521,14 +505,14 @@ class ChatService {
   Future<List<dynamic>> _getConversationsHttp() async {
     try {
       if (_authService == null) {
-        print('AuthService not initialized yet');
+        _logger.error('AuthService not initialized yet');
         throw Exception('Authentication service not available');
       }
 
       final token = await _authService.getAccessToken();
 
       if (token == null) {
-        print(
+        _logger.error(
             'Failed to fetch conversations: No authentication token available');
         throw Exception('Authentication token not available');
       }
@@ -547,14 +531,14 @@ class ChatService {
         },
       ));
 
-      print(
+      _logger.info(
           'Fetching conversations from: ${AppConfig.apiBaseUrl}${AppEndpoints.conversations}');
       final response = await dio.get(AppEndpoints.conversations);
 
       if (response.statusCode == 200) {
         // Debug the response format to help identify structure
-        print('Response data structure: ${response.data.runtimeType}');
-        print(
+        _logger.info('Response data structure: ${response.data.runtimeType}');
+        _logger.info(
             'Response keys: ${response.data is Map ? (response.data as Map).keys.toList() : "Not a map"}');
 
         // Extract and validate conversations data
@@ -563,16 +547,16 @@ class ChatService {
         if (response.data is Map && response.data.containsKey('data')) {
           // Standard API format with data field
           conversationsData = response.data['data'];
-          print(
+          _logger.info(
               'Found data field in response with type: ${conversationsData.runtimeType}');
         } else if (response.data is List) {
           // Direct list format
           conversationsData = response.data;
-          print(
-              'Response is direct list with length: ${conversationsData.length}');
+          _logger.info(
+              'Response is direct list with length: [33m[1m${conversationsData.length}[0m');
         } else {
-          // Unknown format
-          print('Unknown response format: ${response.data}');
+          _logger
+              .error('Unknown response format: [33m[1m${response.data}[0m');
           conversationsData = [];
         }
 
@@ -582,10 +566,12 @@ class ChatService {
         if (conversationsData is List) {
           conversations = conversationsData;
         } else {
-          print('Conversations data is not a list: $conversationsData');
+          _logger.error(
+              'Conversations data is not a list: [33m[1m$conversationsData[0m');
         }
 
-        print('Successfully processed ${conversations.length} conversations');
+        _logger.info(
+            'Successfully processed [33m[1m${conversations.length}[0m conversations');
 
         // Transform to expected format if needed
         return conversations
@@ -594,19 +580,19 @@ class ChatService {
                 // Just return the original data for now, will be processed by Conversation.fromJson
                 return conv;
               } catch (e) {
-                print('Error processing conversation: $e');
+                _logger.error('Error processing conversation: $e');
                 return null;
               }
             })
             .where((conv) => conv != null)
             .toList();
       } else {
-        print('Error fetching conversations: ${response.statusCode}');
+        _logger.error('Error fetching conversations: ${response.statusCode}');
         throw Exception(
             'Failed to fetch conversations: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching conversations: $e');
+      _logger.error('Error fetching conversations: $e');
       rethrow;
     }
   }
@@ -615,14 +601,15 @@ class ChatService {
   Future<List<dynamic>> _getMessagesHttp(String conversationId) async {
     try {
       if (_authService == null) {
-        print('AuthService not initialized yet');
+        _logger.error('AuthService not initialized yet');
         throw Exception('Authentication service not available');
       }
 
       final token = await _authService.getAccessToken();
 
       if (token == null) {
-        print('Failed to fetch messages: No authentication token available');
+        _logger.error(
+            'Failed to fetch messages: No authentication token available');
         throw Exception('Authentication token not available');
       }
 
@@ -641,7 +628,7 @@ class ChatService {
       ));
 
       final endpoint = AppEndpoints.conversationMessages(conversationId);
-      print('Fetching messages from: ${AppConfig.apiBaseUrl}$endpoint');
+      _logger.info('Fetching messages from: ${AppConfig.apiBaseUrl}$endpoint');
 
       final response = await dio.get(endpoint);
 
@@ -649,7 +636,7 @@ class ChatService {
         // More robust handling of response data
         try {
           // Debug the response structure
-          print('Response data type: ${response.data.runtimeType}');
+          _logger.info('Response data type: ${response.data.runtimeType}');
 
           List<dynamic> messages = [];
 
@@ -658,29 +645,32 @@ class ChatService {
             if (response.data.containsKey('data') &&
                 response.data['data'] is List) {
               messages = response.data['data'];
-              print(
+              _logger.info(
                   'Successfully fetched ${messages.length} messages from data field');
             } else {
               // Try to extract messages from other fields or use the entire response
-              print(
+              _logger.info(
                   'No data field found in response, checking other possibilities');
 
               // If response contains a "messages" field
               if (response.data.containsKey('messages') &&
                   response.data['messages'] is List) {
                 messages = response.data['messages'];
-                print('Found ${messages.length} messages in messages field');
+                _logger.info(
+                    'Found ${messages.length} messages in messages field');
               } else {
                 // As a fallback, create an empty list
-                print('No recognizable message format found, using empty list');
+                _logger.info(
+                    'No recognizable message format found, using empty list');
                 messages = [];
               }
             }
           } else if (response.data is List) {
             messages = response.data;
-            print('Response is directly a list of ${messages.length} messages');
+            _logger.info(
+                'Response is directly a list of ${messages.length} messages');
           } else {
-            print('Unknown response format: ${response.data}');
+            _logger.error('Unknown response format: ${response.data}');
             messages = [];
           }
 
@@ -688,7 +678,7 @@ class ChatService {
           return messages
               .map((item) {
                 if (item is! Map) {
-                  print('Skipping non-Map message item: $item');
+                  _logger.warn('Skipping non-Map message item: $item');
                   return null;
                 }
 
@@ -710,24 +700,24 @@ class ChatService {
               .where((item) => item != null)
               .toList();
         } catch (parseError) {
-          print('Error parsing message response: $parseError');
-          print('Response was: ${response.data}');
+          _logger.error('Error parsing message response: $parseError');
+          _logger.error('Response was: ${response.data}');
 
           // Return empty list rather than throwing to prevent app crashes
           return [];
         }
       } else {
-        print('Error fetching messages: ${response.statusCode}');
+        _logger.error('Error fetching messages: ${response.statusCode}');
         throw Exception('Failed to fetch messages: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching messages: $e');
+      _logger.error('Error fetching messages: $e');
 
       // For common network errors, provide a more graceful failure
       if (e is DioException) {
         if (e.type == DioExceptionType.connectionTimeout ||
             e.type == DioExceptionType.receiveTimeout) {
-          print('Network timeout, returning empty message list');
+          _logger.warn('Network timeout, returning empty message list');
           return [];
         }
       }
@@ -740,14 +730,14 @@ class ChatService {
   Future<bool> _markConversationAsReadHttp(String conversationId) async {
     try {
       if (_authService == null) {
-        print('AuthService not initialized yet');
+        _logger.error('AuthService not initialized yet');
         throw Exception('Authentication service not available');
       }
 
       final token = await _authService.getAccessToken();
 
       if (token == null) {
-        print(
+        _logger.error(
             'Failed to mark conversation as read: No authentication token available');
         throw Exception('Authentication token not available');
       }
@@ -766,13 +756,13 @@ class ChatService {
         },
       ));
 
-      print('Marking conversation as read: $conversationId/read');
+      _logger.info('Marking conversation as read: $conversationId/read');
       final response =
           await dio.post('${AppEndpoints.conversations}/$conversationId/read');
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Error marking conversation as read: $e');
+      _logger.error('Error marking conversation as read: $e');
       return false;
     }
   }
@@ -781,14 +771,14 @@ class ChatService {
   Future<dynamic> createConversation(String recipientId) async {
     try {
       if (_authService == null) {
-        print('AuthService not initialized yet');
+        _logger.error('AuthService not initialized yet');
         throw Exception('Authentication service not available');
       }
 
       final token = await _authService.getAccessToken();
 
       if (token == null) {
-        print(
+        _logger.error(
             'Failed to create conversation: No authentication token available');
         throw Exception('Authentication token not available');
       }
@@ -807,22 +797,22 @@ class ChatService {
         },
       ));
 
-      print('Creating conversation with recipient: $recipientId');
+      _logger.info('Creating conversation with recipient: $recipientId');
       final response = await dio.post(
         AppEndpoints.conversations,
         data: {'recipient_id': recipientId},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Conversation created successfully');
+        _logger.info('Conversation created successfully');
         return response.data['data'];
       } else {
-        print('Error creating conversation: ${response.statusCode}');
+        _logger.error('Error creating conversation: ${response.statusCode}');
         throw Exception(
             'Failed to create conversation: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error creating conversation: $e');
+      _logger.error('Error creating conversation: $e');
       rethrow;
     }
   }
@@ -831,14 +821,14 @@ class ChatService {
   Future<bool> deleteConversation(String conversationId) async {
     try {
       if (_authService == null) {
-        print('AuthService not initialized yet');
+        _logger.error('AuthService not initialized yet');
         throw Exception('Authentication service not available');
       }
 
       final token = await _authService.getAccessToken();
 
       if (token == null) {
-        print(
+        _logger.error(
             'Failed to delete conversation: No authentication token available');
         throw Exception('Authentication token not available');
       }
@@ -857,34 +847,14 @@ class ChatService {
         },
       ));
 
-      print('Deleting conversation: $conversationId');
+      _logger.info('Deleting conversation: $conversationId');
       final response =
           await dio.delete('${AppEndpoints.conversations}/$conversationId');
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Error deleting conversation: $e');
+      _logger.error('Error deleting conversation: $e');
       return false;
-    }
-  }
-
-  /// Handle Dio errors and log appropriately
-  void _handleDioError(dynamic error, String context) {
-    if (error is DioException) {
-      if (error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.sendTimeout ||
-          error.type == DioExceptionType.receiveTimeout) {
-        print('$context: Connection timeout');
-      } else if (error.type == DioExceptionType.badResponse) {
-        final int? statusCode = error.response?.statusCode;
-        final dynamic data = error.response?.data;
-        print(
-            '$context: Bad response (${statusCode ?? "unknown status"}): $data');
-      } else {
-        print('$context: ${error.message}');
-      }
-    } else {
-      print('$context: $error');
     }
   }
 

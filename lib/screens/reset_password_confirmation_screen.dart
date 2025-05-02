@@ -156,7 +156,7 @@ class _ResetPasswordConfirmationScreenState
                 width: size.width * 0.6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -168,7 +168,7 @@ class _ResetPasswordConfirmationScreenState
                 width: size.width * 0.4,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.secondary.withOpacity(0.1),
+                  color: AppColors.secondary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -199,7 +199,7 @@ class _ResetPasswordConfirmationScreenState
                                   borderRadius: BorderRadius.circular(24),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color: Colors.black.withAlpha(5),
                                       blurRadius: 20,
                                       offset: Offset(0, 5),
                                     ),
@@ -418,7 +418,7 @@ class _ResetPasswordConfirmationScreenState
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
+                color: AppColors.error.withAlpha(128),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -504,7 +504,7 @@ class _ResetPasswordConfirmationScreenState
           height: 100,
           width: 100,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
             shape: BoxShape.circle,
           ),
           child: Icon(

@@ -7,6 +7,7 @@ import '../widgets/conversation_tile.dart';
 import '../screens/conversation_screen.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
+import '../utils/logger.dart';
 
 // State provider for managing conversations
 final conversationsProvider = StateProvider<List<dynamic>>((ref) => []);
@@ -17,10 +18,10 @@ class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
   @override
-  _MessagesScreenState createState() => _MessagesScreenState();
+  MessagesScreenState createState() => MessagesScreenState();
 }
 
-class _MessagesScreenState extends ConsumerState<MessagesScreen> {
+class MessagesScreenState extends ConsumerState<MessagesScreen> {
   @override
   void initState() {
     super.initState();
@@ -40,7 +41,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     // Explicitly initialize the auth service in the chat service
     chatService.initializeAuthService(authService);
-    print('Auth service explicitly initialized in messages screen');
+    logger.debug('Auth service explicitly initialized in messages screen');
 
     // Small delay to ensure initialization completes
     await Future.delayed(const Duration(milliseconds: 100));
@@ -68,7 +69,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       ref.read(conversationsProvider.notifier).state = conversations;
       ref.read(conversationsLoadingProvider.notifier).state = false;
     } catch (e) {
-      print('Error loading conversations: $e');
+      logger.error('Error loading conversations: $e');
       ref.read(conversationsLoadingProvider.notifier).state = false;
       ref.read(conversationsErrorProvider.notifier).state =
           'Could not load conversations';
@@ -91,7 +92,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         _loadConversations();
       });
     } catch (e) {
-      print('Error navigating to conversation: $e');
+      logger.error('Error navigating to conversation: $e');
       // Show error dialog
       showDialog(
         context: context,
@@ -137,7 +138,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: AppColors.textSecondary.withAlpha((0.5 * 255).toInt()),
             ),
             const SizedBox(height: 16),
             Text(
@@ -152,7 +153,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               'Match with someone to start chatting',
               style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textSecondary.withOpacity(0.7),
+                color: AppColors.textSecondary.withAlpha((0.7 * 255).toInt()),
               ),
               textAlign: TextAlign.center,
             ),
@@ -180,8 +181,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               onTap: () => _navigateToConversation(conversation),
             );
           } catch (e) {
-            print('Error rendering conversation at index $index: $e');
-            print('Conversation data: $conversation');
+            logger.error('Error rendering conversation at index $index: $e');
+            logger.debug('Conversation data: $conversation');
             // Return a placeholder for invalid conversations
             return ListTile(
               title: Text('Invalid conversation data'),

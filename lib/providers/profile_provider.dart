@@ -5,8 +5,11 @@ import '../models/profile.dart';
 import '../services/profile_service.dart';
 import '../services/storage_service.dart'; // For image uploads
 // For getting user ID
-import 'profile_service_provider.dart'; // Import the canonical profileServiceProvider
-import 'providers.dart' show storageServiceProvider, userIdProvider;
+import 'providers.dart'
+    show storageServiceProvider, userIdProvider, profileServiceProvider;
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('ProfileProvider');
 
 // User profile provider
 final userProfileProvider =
@@ -230,7 +233,7 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
         _updateFromProfile(profile);
       }
     } catch (e) {
-      print('Error initializing profile: $e');
+      _logger.error('Error initializing profile: $e');
     }
   }
 
@@ -362,7 +365,7 @@ class ProfileEditNotifier extends StateNotifier<ProfileEditState> {
         _ref.invalidate(userProfileProvider);
       }
     } catch (e) {
-      print('Error saving profile: $e');
+      _logger.error('Error saving profile: $e');
       state =
           state.copyWith(saveState: AsyncValue.error(e, StackTrace.current));
       rethrow;

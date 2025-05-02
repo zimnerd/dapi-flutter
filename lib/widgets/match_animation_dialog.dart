@@ -32,7 +32,7 @@ class MatchAnimationDialog extends StatefulWidget {
     await showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withAlpha((0.8 * 255).toInt()),
       transitionDuration: const Duration(milliseconds: 600),
       pageBuilder: (context, animation1, animation2) {
         return MatchAnimationDialog(
@@ -227,7 +227,8 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black
+                                          .withAlpha((0.3 * 255).toInt()),
                                       blurRadius: 10,
                                       offset: const Offset(0, 5),
                                     ),
@@ -259,7 +260,8 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black
+                                          .withAlpha((0.3 * 255).toInt()),
                                       blurRadius: 10,
                                       offset: const Offset(0, 5),
                                     ),
@@ -299,7 +301,8 @@ class _MatchAnimationDialogState extends State<MatchAnimationDialog>
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                                 elevation: 8,
-                                shadowColor: AppColors.primary.withOpacity(0.5),
+                                shadowColor: AppColors.primary
+                                    .withAlpha((0.5 * 255).toInt()),
                               ),
                               child: const Text(
                                 'Send a Message',

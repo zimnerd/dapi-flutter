@@ -4,11 +4,11 @@ import 'package:dating_app/services/matches_service.dart' as service;
 import 'package:dating_app/services/api_client.dart';
 import 'package:dating_app/services/profile_service.dart';
 import '../models/profile.dart';
-import 'package:dating_app/providers/dio_provider.dart';
-import 'package:dating_app/providers/profile_service_provider.dart';
-import 'package:dating_app/utils/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'providers.dart' show sharedPreferencesProvider;
+import 'package:dating_app/providers/providers.dart'
+    show profileServiceProvider, userIdProvider;
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('MatchesProvider');
 
 final matchesServiceProvider = Provider<service.MatchesService>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -19,8 +19,8 @@ final matchesProvider =
     StateNotifierProvider<MatchesNotifier, AsyncValue<List<Match>>>((ref) {
   final service = ref.watch(matchesServiceProvider);
   final profileService = ref.watch(profileServiceProvider);
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return MatchesNotifier(service, profileService, prefs);
+  final userId = ref.watch(userIdProvider);
+  return MatchesNotifier(service, profileService, userId);
 });
 
 final likesProvider =
@@ -38,15 +38,15 @@ final newMatchesProvider =
 class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
   final service.MatchesService _service;
   final ProfileService _profileService;
-  final SharedPreferences _prefs;
+  final String? _userId;
 
-  MatchesNotifier(this._service, this._profileService, this._prefs)
+  MatchesNotifier(this._service, this._profileService, this._userId)
       : super(const AsyncValue.loading()) {
     loadMatches();
   }
 
   String? _getCurrentUserId() {
-    return _prefs.getString(Constants.prefKeyUserId);
+    return _userId;
   }
 
   Future<Match?> _convertServiceMatch(
@@ -68,7 +68,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
         lastMessageAt: null,
       );
     } catch (e) {
-      print('⟹ [MatchesNotifier] Error converting match: $e');
+      _logger.error('[MatchesNotifier] Error converting match: $e');
       return null;
     }
   }
@@ -94,7 +94,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
     try {
       final currentUserId = _getCurrentUserId();
       if (currentUserId == null) {
-        print('⟹ [MatchesNotifier] No current user ID found');
+        _logger.warn('[MatchesNotifier] No current user ID found');
         state = AsyncValue.data([]);
         return;
       }
@@ -105,7 +105,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
 
       state = AsyncValue.data(convertedMatches.whereType<Match>().toList());
     } catch (e) {
-      print('⟹ [MatchesNotifier] Error loading pending matches: $e');
+      _logger.error('[MatchesNotifier] Error loading pending matches: $e');
     }
   }
 
@@ -115,7 +115,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
       await _service.updateMatchStatus(matchId, status);
       await loadMatches(); // Reload matches after update
     } catch (e) {
-      print('⟹ [MatchesNotifier] Failed to update match status: $e');
+      _logger.error('[MatchesNotifier] Failed to update match status: $e');
     }
   }
 
@@ -125,7 +125,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
       state = AsyncValue.data(
           state.value!.where((match) => match.id != matchId).toList());
     } catch (e) {
-      print('⟹ [MatchesNotifier] Failed to delete match: $e');
+      _logger.error('[MatchesNotifier] Failed to delete match: $e');
     }
   }
 
@@ -144,7 +144,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
 
       return convertedMatches.whereType<Match>().toList();
     } catch (e) {
-      print('⟹ [MatchesNotifier] Failed to get matches with user: $e');
+      _logger.error('[MatchesNotifier] Failed to get matches with user: $e');
       return [];
     }
   }
@@ -183,7 +183,7 @@ class NewMatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
           (response as List).map((data) => Match.fromJson(data)).toList();
       state = AsyncValue.data(matches);
     } catch (e) {
-      print('⟹ [NewMatchesNotifier] Failed to load new matches: $e');
+      _logger.error('[NewMatchesNotifier] Failed to load new matches: $e');
       state = AsyncValue.error(e, StackTrace.current);
     }
   }

@@ -4,6 +4,9 @@ import '../services/profile_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show immutable;
 import 'providers.dart';
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('DiscoverProfilesProvider');
 
 // Remove redundant providers since they're already defined in providers.dart
 // final profileServiceProvider = Provider<ProfileService>((ref) {
@@ -38,12 +41,11 @@ enum SwipeDirection { like, dislike, superLike }
 // StateNotifier for managing discover profiles
 class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
   final ProfileService _profileService;
-  final Ref _ref;
   Profile? _lastRemovedProfile;
   SwipeDirection? _lastSwipeDirection;
 
-  DiscoverProfilesNotifier(this._ref)
-      : _profileService = _ref.read(profileServiceProvider),
+  DiscoverProfilesNotifier(Ref ref)
+      : _profileService = ref.read(profileServiceProvider),
         super(const DiscoverProfilesState(profiles: AsyncValue.loading()));
 
   // Provider definition
@@ -55,20 +57,19 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
 
   Future<void> loadProfiles() async {
     try {
-      print('⟹ [DiscoverProfilesNotifier] Loading profiles...');
+      _logger.info('Loading profiles...');
       state = const DiscoverProfilesState(profiles: AsyncValue.loading());
 
       final profiles = await _profileService.getDiscoverProfiles();
 
-      print('⟹ [DiscoverProfilesNotifier] Loaded ${profiles.length} profiles');
+      _logger.info('Loaded ${profiles.length} profiles');
       state = DiscoverProfilesState(profiles: AsyncValue.data(profiles));
     } on DioException catch (e) {
-      print(
-          '⟹ [DiscoverProfilesNotifier] Failed to load profiles: ${e.message}');
+      _logger.error('Failed to load profiles: ${e.message}');
       state = DiscoverProfilesState(
           profiles: AsyncValue.error(e, StackTrace.current));
     } catch (e, stack) {
-      print('⟹ [DiscoverProfilesNotifier] Error loading profiles: $e');
+      _logger.error('Error loading profiles: $e');
       state = DiscoverProfilesState(profiles: AsyncValue.error(e, stack));
     }
   }
@@ -87,7 +88,7 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
           (state.profiles as AsyncData<List<Profile>>).value;
       final likedProfile = currentProfiles.firstWhere((p) => p.id == profileId);
 
-      print('⟹ [DiscoverProfilesNotifier] Liking profile: $profileId');
+      _logger.info('Liking profile: $profileId');
       await _profileService.likeProfile(profileId);
 
       // Store last action before updating state
@@ -99,7 +100,7 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
             currentProfiles.where((p) => p.id != profileId).toList()),
       );
     } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error liking profile: $e');
+      _logger.error('Error liking profile: $e');
     }
   }
 
@@ -111,7 +112,7 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
       final dislikedProfile =
           currentProfiles.firstWhere((p) => p.id == profileId);
 
-      print('⟹ [DiscoverProfilesNotifier] Disliking profile: $profileId');
+      _logger.info('Disliking profile: $profileId');
       await _profileService.dislikeProfile(profileId);
 
       // Store last action before updating state
@@ -123,7 +124,7 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
             currentProfiles.where((p) => p.id != profileId).toList()),
       );
     } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error disliking profile: $e');
+      _logger.error('Error disliking profile: $e');
     }
   }
 
@@ -135,7 +136,7 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
       final superlikedProfile =
           currentProfiles.firstWhere((p) => p.id == profileId);
 
-      print('⟹ [DiscoverProfilesNotifier] Superliking profile: $profileId');
+      _logger.info('Superliking profile: $profileId');
       await _profileService.superlikeProfile(profileId);
 
       // Store last action before updating state
@@ -147,14 +148,13 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
             currentProfiles.where((p) => p.id != profileId).toList()),
       );
     } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error superliking profile: $e');
+      _logger.error('Error superliking profile: $e');
     }
   }
 
   // Add undoLastAction method
   Future<bool> undoLastAction() async {
     if (_lastRemovedProfile == null || _lastSwipeDirection == null) {
-      print('⟹ [DiscoverProfilesNotifier] No action to undo');
       return false;
     }
 
@@ -163,18 +163,8 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
       final currentProfiles =
           (state.profiles as AsyncData<List<Profile>>).value;
 
-      // Undo the action on the backend
-      switch (_lastSwipeDirection!) {
-        case SwipeDirection.like:
-          await _undoLike(_lastRemovedProfile!.id);
-          break;
-        case SwipeDirection.dislike:
-          await _undoDislike(_lastRemovedProfile!.id);
-          break;
-        case SwipeDirection.superLike:
-          await _undoSuperLike(_lastRemovedProfile!.id);
-          break;
-      }
+      // Backend undo for like/dislike/superlike is not implemented.
+      // If needed, implement undo logic here.
 
       // Add the profile back to the list
       final updatedProfiles = List<Profile>.from(currentProfiles)
@@ -190,42 +180,10 @@ class DiscoverProfilesNotifier extends StateNotifier<DiscoverProfilesState> {
 
       return true;
     } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error undoing last action: $e');
       return false;
     }
   }
 
   // Helper methods for undoing actions
-  Future<void> _undoLike(String profileId) async {
-    try {
-      print(
-          '⟹ [DiscoverProfilesNotifier] Undoing like for profile: $profileId');
-      // Ideally this would call an API endpoint, but for now, we'll just log it
-      // In production, implement ProfileService.undoLike
-    } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error undoing like: $e');
-    }
-  }
-
-  Future<void> _undoDislike(String profileId) async {
-    try {
-      print(
-          '⟹ [DiscoverProfilesNotifier] Undoing dislike for profile: $profileId');
-      // Ideally this would call an API endpoint, but for now, we'll just log it
-      // In production, implement ProfileService.undoDislike
-    } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error undoing dislike: $e');
-    }
-  }
-
-  Future<void> _undoSuperLike(String profileId) async {
-    try {
-      print(
-          '⟹ [DiscoverProfilesNotifier] Undoing superlike for profile: $profileId');
-      // Ideally this would call an API endpoint, but for now, we'll just log it
-      // In production, implement ProfileService.undoSuperLike
-    } catch (e) {
-      print('⟹ [DiscoverProfilesNotifier] Error undoing superlike: $e');
-    }
-  }
+  // (Removed empty _undoLike, _undoDislike, _undoSuperLike methods for clean code)
 }

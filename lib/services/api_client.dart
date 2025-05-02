@@ -360,7 +360,7 @@ class ApiClient {
           responseHeader: false,
           responseBody: true,
           error: true,
-          logPrint: (object) => print('⟹ [Dio] $object'),
+          logPrint: (object) => _logger.info('⟹ [Dio] $object'),
         ),
       );
     }
@@ -495,18 +495,12 @@ class ApiClient {
   }
 
   void _handleError(DioException e) {
-    Map<String, dynamic> errorDetails = {
-      'url': e.requestOptions.uri.toString(),
-      'method': e.requestOptions.method,
-      'statusCode': e.response?.statusCode,
-    };
-
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
       _logger.error('Network timeout: ${e.message}');
-      throw Exception(Constants.ERROR_NETWORK);
-    } else if (e.response?.statusCode == Constants.statusCodeUnauthorized) {
+      throw Exception(errorNetwork);
+    } else if (e.response?.statusCode == statusCodeUnauthorized) {
       _logger.error('Unauthorized access: ${e.message}');
 
       // Check if this is due to a missing token
@@ -517,21 +511,21 @@ class ApiClient {
             'Authentication required. Please log in and try again.');
       } else {
         _logger.error('Token might be expired or invalid');
-        throw Exception(Constants.ERROR_UNAUTHORIZED);
+        throw Exception(errorUnauthorized);
       }
-    } else if (e.response?.statusCode == Constants.statusCodeNotFound) {
+    } else if (e.response?.statusCode == statusCodeNotFound) {
       _logger.error('Resource not found: ${e.message}');
       throw Exception('Resource not found');
-    } else if (e.response?.statusCode == Constants.statusCodeServerError) {
+    } else if (e.response?.statusCode == statusCodeServerError) {
       _logger.error('Server error: ${e.message}');
-      throw Exception(Constants.ERROR_SERVER);
+      throw Exception(errorServer);
     } else if (e.type == DioExceptionType.connectionError) {
       _logger.error('Connection error: ${e.message}');
-      throw Exception(Constants.ERROR_NETWORK);
+      throw Exception(errorNetwork);
     }
 
     // Extract server error message if possible
-    String errorMessage = Constants.ERROR_GENERIC;
+    String errorMessage = errorGeneric;
     if (e.response?.data is Map) {
       final errorData = e.response!.data as Map;
       if (errorData.containsKey('message')) {
@@ -552,7 +546,7 @@ class ApiClient {
       final List<dynamic> data = response.data;
       return data.map((json) => Match.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching matches: $e');
+      _logger.error('Error fetching matches: $e');
       rethrow;
     }
   }
@@ -564,7 +558,7 @@ class ApiClient {
       final List<dynamic> data = response.data;
       return data.map((json) => Profile.fromJson(json['likedByUser'])).toList();
     } catch (e) {
-      print('Error fetching likes: $e');
+      _logger.error('Error fetching likes: $e');
       rethrow;
     }
   }
@@ -576,7 +570,7 @@ class ApiClient {
       final List<dynamic> data = response.data;
       return data.map((json) => Match.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching new matches: $e');
+      _logger.error('Error fetching new matches: $e');
       rethrow;
     }
   }
@@ -588,7 +582,7 @@ class ApiClient {
       final List<dynamic> data = response.data;
       return data.map((json) => Conversation.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching conversations: $e');
+      _logger.error('Error fetching conversations: $e');
       rethrow;
     }
   }

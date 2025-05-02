@@ -11,12 +11,11 @@ class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
-  String _userName = '';
   bool _isLoading = true;
 
   @override
@@ -27,8 +26,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _loadUserData() async {
     setState(() {
-      final userName = ref.read(userNameProvider);
-      _userName = userName ?? 'User';
       _isLoading = false;
     });
   }
@@ -48,13 +45,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = ref.watch(userNameProvider);
-    final currentUserName = userName ?? 'User';
-
     return Scaffold(
       appBar: _selectedIndex != 0 && _selectedIndex != 4
           ? AppBar(
-              title: Text(_isLoading ? 'Loading...' : 'Hi, $currentUserName'),
+              title: Text(_isLoading ? 'Loading...' : 'Hi, User'),
               actions: [
                 IconButton(
                   icon: Icon(Icons.settings),

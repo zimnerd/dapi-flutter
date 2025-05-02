@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/profile.dart';
 import '../providers/profile_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/colors.dart';
@@ -13,17 +12,18 @@ import '../widgets/animated_tap_feedback.dart';
 import '../widgets/interest_badge.dart';
 import 'safety_center_screen.dart';
 import '../providers/ai_suggestions_provider.dart';
+import '../utils/logger.dart';
 
 // Convert to ConsumerStatefulWidget
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  ProfileScreenState createState() => ProfileScreenState();
 }
 
 // Create State class
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+class ProfileScreenState extends ConsumerState<ProfileScreen> {
   // Move controllers inside the State class
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
@@ -83,7 +83,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final XFile croppedXFile = XFile(croppedFile.path);
       ref.read(profileEditProvider.notifier).setPickedImage(croppedXFile);
     } catch (e) {
-      print('Failed to pick/crop image: ${e.toString()}');
+      logger.error('Failed to pick/crop image: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Failed to process image: $e'),
@@ -118,7 +118,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     } catch (e) {
-      print('Failed to logout: ${e.toString()}');
+      logger.error('Failed to logout: ${e.toString()}');
       if (mounted) {
         // Check mounted status
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -247,7 +247,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.primary.withOpacity(0.05),
+              AppColors.primary.withAlpha((0.05 * 255).toInt()),
               Theme.of(context).colorScheme.surface,
             ],
             stops: [0.0, 0.6],
@@ -317,16 +317,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 .textTheme
                                 .titleSmall
                                 ?.copyWith(
-                                    color:
-                                        AppColors.textPrimary.withOpacity(0.8)),
+                                    color: AppColors.textPrimary
+                                        .withAlpha((0.8 * 255).toInt())),
                           ),
                           const SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: LinearProgressIndicator(
                               value: completeness,
-                              backgroundColor:
-                                  AppColors.primaryLight.withOpacity(0.3),
+                              backgroundColor: AppColors.primaryLight
+                                  .withAlpha((0.3 * 255).toInt()),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                   AppColors.accent),
                               minHeight: 8,
@@ -389,8 +389,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             },
                             child: CircleAvatar(
                               radius: 60,
-                              backgroundColor:
-                                  AppColors.primaryLight.withOpacity(0.5),
+                              backgroundColor: AppColors.primaryLight
+                                  .withAlpha((0.5 * 255).toInt()),
                               backgroundImage: editState.pickedImageFile != null
                                   ? FileImage(
                                           File(editState.pickedImageFile!.path))
@@ -435,7 +435,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                   onPressed: () {
                                     // TODO: Implement navigation to verification flow
-                                    print(
+                                    logger.debug(
                                         "Verify Profile button pressed - Placeholder");
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -446,8 +446,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   },
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(
-                                        color:
-                                            AppColors.accent.withOpacity(0.5)),
+                                        color: AppColors.accent
+                                            .withAlpha((0.5 * 255).toInt())),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20.0),
                                     ),
@@ -589,8 +589,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             textStyle: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold),
-                            disabledBackgroundColor:
-                                AppColors.primary.withOpacity(0.6),
+                            disabledBackgroundColor: AppColors.primary
+                                .withAlpha((0.6 * 255).toInt()),
                           ),
                         ),
                       ),
@@ -627,7 +627,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16.0), // Rounded corners for card
       ),
-      color: Colors.white.withOpacity(0.9), // Slightly transparent white card
+      color: Colors.white
+          .withAlpha((0.9 * 255).toInt()), // Slightly transparent white card
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -648,14 +649,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       padding: const EdgeInsets.only(bottom: 8.0), // Adjusted padding
       child: Text(
         title,
-        style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: AppColors.textPrimary.withOpacity(0.9)) ??
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.textPrimary.withAlpha((0.9 * 255).toInt())) ??
             TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary.withOpacity(0.9),
+              color: AppColors.textPrimary.withAlpha((0.9 * 255).toInt()),
             ),
       ),
     );
@@ -680,8 +679,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           labelStyle: TextStyle(color: AppColors.textSecondary),
           prefixIcon: Icon(icon, color: AppColors.primary),
           filled: true,
-          fillColor: Colors.white
-              .withOpacity(0.7), // Slightly more opaque inside card?
+          fillColor: Colors.white.withAlpha(
+              (0.7 * 255).toInt()), // Slightly more opaque inside card?
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -739,7 +738,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             prefixIcon:
                 Icon(Icons.calendar_today_outlined, color: AppColors.primary),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.7),
+            fillColor: Colors.white.withAlpha((0.7 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -767,7 +766,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           labelStyle: TextStyle(color: AppColors.textSecondary),
           prefixIcon: Icon(Icons.wc_outlined, color: AppColors.primary),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.7),
+          fillColor: Colors.white.withAlpha((0.7 * 255).toInt()),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -842,7 +841,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Icon(Icons.interests_outlined, color: AppColors.primary),
             filled: true,
             // Ensure consistent field background
-            fillColor: Colors.white.withOpacity(0.7),
+            fillColor: Colors.white.withAlpha((0.7 * 255).toInt()),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -970,10 +969,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Container(
                 padding: EdgeInsets.all(12.0),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withAlpha((0.8 * 255).toInt()),
                   borderRadius: BorderRadius.circular(12.0),
                   border: Border.all(
-                      color: AppColors.primaryLight.withOpacity(0.5)),
+                      color: AppColors.primaryLight
+                          .withAlpha((0.5 * 255).toInt())),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,7 +986,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             prompt.question,
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary.withOpacity(0.8),
+                                color: AppColors.textPrimary
+                                    .withAlpha((0.8 * 255).toInt()),
                                 fontSize: 15),
                           ),
                         ),
@@ -1008,7 +1009,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       style: TextStyle(
                           color: prompt.answer.isEmpty
                               ? AppColors.textHint
-                              : AppColors.textPrimary,
+                                  .withAlpha((0.8 * 255).toInt())
+                              : AppColors.textPrimary
+                                  .withAlpha((0.8 * 255).toInt()),
                           fontSize: 16,
                           height: 1.4),
                       maxLines: 5,
@@ -1031,7 +1034,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onPressed: showPromptSelectionDialog,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+                side: BorderSide(
+                    color: AppColors.primary.withAlpha((0.5 * 255).toInt())),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20.0),
                 ),
@@ -1071,13 +1075,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.lightbulb_outline,
-                            size: 18, color: AppColors.accent.withOpacity(0.8)),
+                            size: 18,
+                            color: AppColors.accent
+                                .withAlpha((0.8 * 255).toInt())),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             tip,
                             style: TextStyle(
-                              color: AppColors.textPrimary.withOpacity(0.9),
+                              color: AppColors.textPrimary
+                                  .withAlpha((0.9 * 255).toInt()),
                               fontSize: 14,
                               height: 1.4,
                             ),

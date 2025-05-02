@@ -97,7 +97,7 @@ class _ProfileCardState extends State<ProfileCard> {
             Container(
               padding:
                   const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withAlpha((0.1 * 255).toInt()),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(

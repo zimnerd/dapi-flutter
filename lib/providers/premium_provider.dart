@@ -3,16 +3,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/logger.dart';
 import '../services/subscription_service.dart';
 
+final Logger _logger = Logger('PremiumProvider');
+
 /// Provider that exposes the user's premium status
 final premiumProvider = FutureProvider.autoDispose<bool>((ref) async {
   try {
-    print('⟹ [premiumProvider] Checking premium status');
+    _logger.info('[premiumProvider] Checking premium status');
     final subscriptionService = SubscriptionService();
     final isPremium = await subscriptionService.checkPremiumStatus();
-    print('⟹ [premiumProvider] Premium status: $isPremium');
+    _logger.info('[premiumProvider] Premium status: $isPremium');
     return isPremium;
   } catch (e) {
-    print('⟹ [premiumProvider] Error checking premium status: $e');
+    _logger.error('[premiumProvider] Error checking premium status: $e');
     return false; // Default to non-premium on error
   }
 });
@@ -42,17 +44,16 @@ final premiumFeaturesProvider = Provider.family<bool, String>((ref, featureId) {
       return isPremium;
     // For any feature not in the list, default to false
     default:
-      print('⟹ [premiumProvider] Unknown feature: $featureId');
+      _logger.warn('[premiumProvider] Unknown feature: $featureId');
       return false;
   }
 });
 
 // Notifier that will handle premium status changes
 class PremiumSubscriptionNotifier extends StateNotifier<bool> {
-  final Ref _ref;
   final FlutterSecureStorage _storage;
 
-  PremiumSubscriptionNotifier(this._ref, this._storage) : super(false) {
+  PremiumSubscriptionNotifier(this._storage) : super(false) {
     // Load premium status when initialized
     _loadPremiumStatus();
   }
@@ -62,9 +63,9 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
     try {
       final isPremium = await _storage.read(key: 'premium_status');
       state = isPremium == 'true';
-      logger.info('Loaded premium status: $state');
+      _logger.info('Loaded premium status: $state');
     } catch (e) {
-      logger.error('Error loading premium status: $e');
+      _logger.error('Error loading premium status: $e');
       state = false;
     }
   }
@@ -76,10 +77,10 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
       // This is just a placeholder
       await _storage.write(key: 'premium_status', value: 'true');
       state = true;
-      logger.info('Upgraded to premium');
+      _logger.info('Upgraded to premium');
       return true;
     } catch (e) {
-      logger.error('Error upgrading to premium: $e');
+      _logger.error('Error upgrading to premium: $e');
       return false;
     }
   }
@@ -89,10 +90,10 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
     try {
       await _storage.write(key: 'premium_status', value: 'false');
       state = false;
-      logger.info('Cancelled premium');
+      _logger.info('Cancelled premium');
       return true;
     } catch (e) {
-      logger.error('Error cancelling premium: $e');
+      _logger.error('Error cancelling premium: $e');
       return false;
     }
   }
@@ -110,7 +111,7 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
 
     // If the feature is premium-only and user is not premium, return false
     if (premiumFeatures.contains(feature) && !state) {
-      logger
+      _logger
           .debug('Premium feature $feature requested but user is not premium');
       return false;
     }
@@ -123,5 +124,5 @@ class PremiumSubscriptionNotifier extends StateNotifier<bool> {
 final premiumSubscriptionProvider =
     StateNotifierProvider<PremiumSubscriptionNotifier, bool>((ref) {
   final storage = FlutterSecureStorage();
-  return PremiumSubscriptionNotifier(ref, storage);
+  return PremiumSubscriptionNotifier(storage);
 });

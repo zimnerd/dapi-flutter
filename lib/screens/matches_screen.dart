@@ -1,24 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/profile.dart';
-import '../models/conversation.dart';
-import '../models/message.dart';
-import '../models/user.dart';
-import '../widgets/empty_state.dart';
-import '../utils/colors.dart';
-import '../services/chat_service.dart';
-import '../services/profile_service.dart';
-import 'chat_screen.dart';
 import '../widgets/match_card.dart';
-import '../widgets/conversation_card.dart';
-import 'conversation_screen.dart';
-import '../providers/subscription_provider.dart';
-import 'premium_screen.dart';
-import '../providers/providers.dart';
-import '../utils/logger.dart';
-import '../providers/matches_provider.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
+import '../providers/matches_provider.dart';
 
 class MatchesScreen extends ConsumerWidget {
   const MatchesScreen({super.key});

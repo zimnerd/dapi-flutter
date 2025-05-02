@@ -29,7 +29,7 @@ class EmptyState extends StatelessWidget {
               Icon(
                 icon,
                 size: 80,
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withAlpha((0.3 * 255).toInt()),
               ),
               const SizedBox(height: 24),
             ],

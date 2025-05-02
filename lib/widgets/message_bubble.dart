@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/message.dart';
+import '../utils/logger.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -60,7 +61,7 @@ class MessageBubble extends StatelessWidget {
         return NetworkImage(participantAvatarUrl!);
       }
     } catch (e) {
-      print('Error loading avatar image: $e');
+      logger.error('Error loading avatar image: $e');
     }
     return const AssetImage('assets/images/placeholder_user.png');
   }

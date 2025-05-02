@@ -7,10 +7,10 @@ class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
 
   @override
-  _EventsScreenState createState() => _EventsScreenState();
+  EventsScreenState createState() => EventsScreenState();
 }
 
-class _EventsScreenState extends State<EventsScreen> {
+class EventsScreenState extends State<EventsScreen> {
   bool _isLoading = true;
   List<Event> _events = [];
   String _selectedFilter = 'All';
@@ -184,7 +184,8 @@ class _EventsScreenState extends State<EventsScreen> {
                                 });
                               },
                               backgroundColor: Colors.grey[200],
-                              selectedColor: AppColors.primary.withOpacity(0.2),
+                              selectedColor: AppColors.primary
+                                  .withAlpha((0.2 * 255).toInt()),
                               checkmarkColor: AppColors.primary,
                               labelStyle: TextStyle(
                                 color: _selectedFilter == category
@@ -270,7 +271,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

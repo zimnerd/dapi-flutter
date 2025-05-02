@@ -20,7 +20,7 @@ class LoadingOverlay extends StatelessWidget {
         child,
         if (isLoading)
           Container(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha((0.5 * 255).toInt()),
             child: Center(
               child: Card(
                 shape: RoundedRectangleBorder(
@@ -65,7 +65,7 @@ class LoadingOverlay extends StatelessWidget {
     // Show loading indicator
     final overlayEntry = OverlayEntry(
       builder: (context) => Container(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withAlpha((0.5 * 255).toInt()),
         child: Center(
           child: Card(
             shape: RoundedRectangleBorder(

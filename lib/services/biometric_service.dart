@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/logger.dart';
 
 class BiometricService {
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -11,12 +12,14 @@ class BiometricService {
   Future<bool> isBiometricAvailable() async {
     try {
       // Check if device can use biometrics
-      final bool canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
-      
+      final bool canAuthenticateWithBiometrics =
+          await _localAuth.canCheckBiometrics;
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
+
       return canAuthenticate;
     } on PlatformException catch (e) {
-      print('Error checking biometric availability: $e');
+      logger.error('Error checking biometric availability: $e');
       return false;
     }
   }
@@ -26,7 +29,7 @@ class BiometricService {
     try {
       return await _localAuth.getAvailableBiometrics();
     } on PlatformException catch (e) {
-      print('Error getting available biometrics: $e');
+      logger.error('Error getting available biometrics: $e');
       return [];
     }
   }
@@ -42,7 +45,7 @@ class BiometricService {
         ),
       );
     } on PlatformException catch (e) {
-      print('Error authenticating with biometrics: $e');
+      logger.error('Error authenticating with biometrics: $e');
       return false;
     }
   }
@@ -55,7 +58,7 @@ class BiometricService {
       await prefs.setString(BIOMETRIC_USER_EMAIL_KEY, userEmail);
       return true;
     } catch (e) {
-      print('Error enabling biometrics: $e');
+      logger.error('Error enabling biometrics: $e');
       return false;
     }
   }
@@ -68,7 +71,7 @@ class BiometricService {
       await prefs.remove(BIOMETRIC_USER_EMAIL_KEY);
       return true;
     } catch (e) {
-      print('Error disabling biometrics: $e');
+      logger.error('Error disabling biometrics: $e');
       return false;
     }
   }
@@ -79,7 +82,7 @@ class BiometricService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(BIOMETRIC_ENABLED_KEY) ?? false;
     } catch (e) {
-      print('Error checking if biometric is enabled: $e');
+      logger.error('Error checking if biometric is enabled: $e');
       return false;
     }
   }
@@ -90,8 +93,8 @@ class BiometricService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(BIOMETRIC_USER_EMAIL_KEY);
     } catch (e) {
-      print('Error getting biometric user email: $e');
+      logger.error('Error getting biometric user email: $e');
       return null;
     }
   }
-} 
+}

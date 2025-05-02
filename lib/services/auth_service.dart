@@ -52,17 +52,17 @@ class AuthService {
         _logger.warn(
             'Login failed with status: ${response.statusCode}, data: ${response.data}');
         throw ApiException(
-          response.data?['message'] ?? Constants.errorInvalidCredentials,
+          response.data?['message'] ?? errorGeneric,
           statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
       _logger.error('Login failed: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorAuth); // Use helper
+      _handleDioError(e, defaultMessage: errorGeneric); // Use helper
       rethrow; // Rethrow the ApiException from _handleDioError
     } catch (e, s) {
       _logger.error('Unexpected error during login: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -86,18 +86,17 @@ class AuthService {
         _logger.warn(
             'Biometric login failed with status: ${response.statusCode}, data: ${response.data}');
         throw ApiException(
-          response.data?[AppResponseKeys.message] ??
-              Constants.errorBiometricLoginFailed,
+          response.data?[AppResponseKeys.message] ?? errorGeneric,
           statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
       _logger.error('Biometric Login Dio exception: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorBiometricLoginFailed);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e, s) {
       _logger.error('Biometric Login general exception: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -124,21 +123,21 @@ class AuthService {
       } else {
         _logger.warn(
             'Registration failed with status: ${response.statusCode}, data: ${response.data}');
-        String errorMessage = response.data?[AppResponseKeys.message] ??
-            Constants.errorRegistrationFailed;
+        String errorMessage =
+            response.data?[AppResponseKeys.message] ?? errorGeneric;
         if (response.statusCode == 409) {
           // Conflict
-          errorMessage = Constants.errorEmailInUse;
+          errorMessage = errorGeneric;
         }
         throw ApiException(errorMessage, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Registration Dio exception: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorRegistrationFailed);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e, s) {
       _logger.error('Registration general exception: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -292,12 +291,11 @@ class AuthService {
           // Success, return void
         } else {
           _logger.error('Missing token in refresh response: $data');
-          throw ApiException(Constants.errorAuth,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         }
       } else {
         _logger.error('Invalid token refresh response: ${response.statusCode}');
-        throw ApiException(response.data?['message'] ?? Constants.errorAuth,
+        throw ApiException(response.data?['message'] ?? errorGeneric,
             statusCode: response.statusCode);
       }
     } on DioException catch (e) {
@@ -317,12 +315,11 @@ class AuthService {
             'Token refresh Dio error: ${e.message}, status: ${e.response?.statusCode}');
         _logger.error('Response data: ${e.response?.data}');
       }
-      _handleDioError(e,
-          defaultMessage: Constants.errorAuth); // Centralized handling
+      _handleDioError(e, defaultMessage: errorGeneric); // Centralized handling
       rethrow;
     } catch (e, s) {
       _logger.error('Unexpected error during token refresh: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -407,7 +404,7 @@ class AuthService {
       rethrow;
     } catch (e, s) {
       _logger.error('Request password reset general exception: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -447,7 +444,7 @@ class AuthService {
       rethrow;
     } catch (e, s) {
       _logger.error('Confirm password reset general exception: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -483,17 +480,16 @@ class AuthService {
       } else {
         _logger.warn(
             'Get user failed with status: ${response.statusCode}, data: ${response.data}');
-        throw ApiException(
-            response.data?['message'] ?? Constants.errorFailedToLoadProfile,
+        throw ApiException(response.data?['message'] ?? errorGeneric,
             statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Get user Dio error: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e, s) {
       _logger.error('Get user general error: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -512,17 +508,16 @@ class AuthService {
       } else {
         _logger.warn(
             'Update profile failed with status: ${response.statusCode}, data: ${response.data}');
-        throw ApiException(
-            response.data?['message'] ?? Constants.errorProfileUpdateFailed,
+        throw ApiException(response.data?['message'] ?? errorGeneric,
             statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Update profile Dio error: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e, s) {
       _logger.error('Update profile general error: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -542,7 +537,7 @@ class AuthService {
       } else {
         _logger.warn(
             'Account deletion failed with status: ${response.statusCode}');
-        throw ApiException(response.data?['message'] ?? Constants.errorGeneric,
+        throw ApiException(response.data?['message'] ?? errorGeneric,
             statusCode: response.statusCode);
       }
     } on DioException catch (e) {
@@ -551,7 +546,7 @@ class AuthService {
       rethrow;
     } catch (e, s) {
       _logger.error('Error during account deletion: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -579,7 +574,7 @@ class AuthService {
       rethrow;
     } catch (e, s) {
       _logger.error('Error during verification request: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -608,13 +603,13 @@ class AuthService {
       rethrow;
     } catch (e, s) {
       _logger.error('Error during verification confirmation: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
   // Helper method to handle Dio errors and throw ApiException
   void _handleDioError(DioException e, {String? defaultMessage}) {
-    String errorMessage = defaultMessage ?? Constants.errorGeneric;
+    String errorMessage = defaultMessage ?? errorGeneric;
     int? statusCode = e.response?.statusCode;
 
     // Prefer server message if available
@@ -630,50 +625,49 @@ class AuthService {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          errorMessage = Constants.errorTimeout;
+          errorMessage = errorTimeout;
           break;
         case DioExceptionType.badResponse:
           switch (statusCode) {
             case 400:
               // Keep potential server message if more specific, else use constant
-              errorMessage = serverMessage ?? Constants.errorBadRequest;
+              errorMessage = serverMessage ?? errorGeneric;
               break;
             case 401:
-              errorMessage = Constants.errorAuth; // Specific auth error
+              errorMessage = errorAuth; // Specific auth error
               break;
             case 403:
-              errorMessage = Constants.errorInsufficientPermissions;
+              errorMessage = errorGeneric;
               break;
             case 404:
-              errorMessage = Constants.errorNotFound;
+              errorMessage = errorGeneric;
               break;
             case 409: // Conflict
-              errorMessage = serverMessage ??
-                  Constants.errorConflict; // Need a conflict constant
+              errorMessage =
+                  serverMessage ?? errorGeneric; // Need a conflict constant
               break;
             case 429:
-              errorMessage =
-                  Constants.errorRateLimit; // Need a rate limit constant
+              errorMessage = errorGeneric; // Need a rate limit constant
               break;
             case 500:
             case 502:
             case 503:
             case 504:
-              errorMessage = Constants.errorServer;
+              errorMessage = errorServer;
               break;
             default:
-              errorMessage = Constants.errorResponseFormat;
+              errorMessage = errorResponseFormat;
           }
           break;
         case DioExceptionType.cancel:
-          errorMessage = Constants.errorRequestCancelled;
+          errorMessage = errorGeneric;
           break;
         case DioExceptionType.connectionError:
-          errorMessage = Constants.errorNetwork;
+          errorMessage = errorNetwork;
           break;
         case DioExceptionType.unknown:
         default:
-          errorMessage = Constants.errorUnknown;
+          errorMessage = errorGeneric;
       }
     }
 

@@ -7,10 +7,9 @@ import '../utils/image_helper.dart';
 import '../utils/logger.dart';
 import '../screens/profile_details_screen.dart';
 import 'dart:math';
-import 'dart:developer' as developer;
 
 // Create logger instance
-final logger = Logger('EnhancedProfileCard');
+final Logger logger = Logger('EnhancedProfileCard');
 
 class EnhancedProfileCard extends StatefulWidget {
   final List<Profile> profiles;
@@ -56,11 +55,11 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
     for (final profile in widget.profiles) {
       _photoControllers[profile.id] = PageController();
       _currentPhotoIndices[profile.id] = 0; // Initialize page index to 0
-      print('Created page controller for profile ${profile.id}');
+      logger.debug(
+          'Created page controller for profile [33m[1m${profile.id}[0m');
     }
 
-    developer.log('EnhancedProfileCard initialized',
-        name: 'EnhancedProfileCard');
+    logger.info('EnhancedProfileCard initialized');
   }
 
   @override
@@ -108,7 +107,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   // Method to handle page changing (for logging)
   void _handlePageChanged(Profile profile, int page) {
-    print('CONSOLE: Page changed for ${profile.id} to $page');
+    logger
+        .debug('Page changed for profile [33m[1m${profile.id}[0m to $page');
     // Update the current page index in our tracking map
     setState(() {
       _currentPhotoIndices[profile.id] = page;
@@ -117,9 +117,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   @override
   Widget build(BuildContext context) {
-    developer.log(
-        'Building EnhancedProfileCard with ${widget.profiles.length} profiles',
-        name: 'EnhancedProfileCard');
+    logger.debug(
+        'Building EnhancedProfileCard with [33m[1m${widget.profiles.length}[0m profiles');
 
     if (widget.profiles.isEmpty) {
       return const Center(
@@ -155,9 +154,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                     return Container();
                   }
                   // Add debug log for each card build
-                  developer.log(
-                      'Building card for profile ${widget.profiles[index].name}',
-                      name: 'EnhancedProfileCard');
+                  logger.debug(
+                      'Building card for profile [33m[1m${widget.profiles[index].name}[0m');
 
                   return _buildProfileCard(
                       widget.profiles[index],
@@ -276,8 +274,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
   // Update card content to use PageView with explicit tap areas
   Widget _buildCardContent(Profile profile) {
-    developer.log('Building card content for ${profile.name}',
-        name: 'EnhancedProfileCard');
+    logger.debug('Building card content for [33m[1m${profile.name}[0m');
 
     // Get or create a PageController for this profile
     final pageController = _photoControllers[profile.id] ??
@@ -285,7 +282,6 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
 
     // Get current page index with fallback
     final currentPhotoIndex = _currentPhotoIndices[profile.id] ?? 0;
-    final totalPhotos = profile.photoUrls.length;
 
     return GestureDetector(
       // Double tap to view full profile
@@ -301,8 +297,8 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
             physics: ClampingScrollPhysics(), // Prevent horizontal scrolling
             itemBuilder: (context, index) {
               final imageUrl = profile.photoUrls[index];
-              print(
-                  'CONSOLE: Building photo $index for ${profile.id}: ${imageUrl.substring(0, min(20, imageUrl.length))}...');
+              logger.debug(
+                  'Building photo $index for ${profile.id}: ${imageUrl.substring(0, min(20, imageUrl.length))}...');
 
               return ImageHelper.getNetworkImageWithFallback(
                 imageUrl: imageUrl,
@@ -326,7 +322,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          print('CONSOLE: LEFT ARROW TAPPED');
+                          logger.debug('LEFT ARROW TAPPED');
                           // Direct navigation
                           if (currentPhotoIndex > 0) {
                             // Both change the page controller and update state directly
@@ -365,7 +361,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          print('CONSOLE: RIGHT ARROW TAPPED');
+                          logger.debug('RIGHT ARROW TAPPED');
                           // Direct navigation
                           if (currentPhotoIndex <
                               profile.photoUrls.length - 1) {
@@ -423,7 +419,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                     Shadow(
                       offset: Offset(0, 1),
                       blurRadius: 3.0,
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withAlpha((0.5 * 255).toInt()),
                     ),
                   ],
                 ),
@@ -453,7 +449,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                         min(profile.photoUrls.length, 5),
                         (i) => GestureDetector(
                           onTap: () {
-                            print('CONSOLE: DOT $i TAPPED');
+                            logger.debug('DOT $i TAPPED');
                             // Direct jump to this photo
                             _currentPhotoIndices[profile.id] = i;
                             pageController.jumpToPage(i);
@@ -468,7 +464,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                               shape: BoxShape.circle,
                               color: i == currentPhotoIndex
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.5),
+                                  : Colors.white.withAlpha((0.5 * 255).toInt()),
                             ),
                           ),
                         ),
@@ -586,7 +582,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            Colors.black.withOpacity(0.7),
+            Colors.black.withAlpha((0.7 * 255).toInt()),
           ],
         ),
       ),
@@ -685,7 +681,7 @@ class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha((0.2 * 255).toInt()),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(

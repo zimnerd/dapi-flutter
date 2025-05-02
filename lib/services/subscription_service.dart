@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../services/storage_service.dart';
 import '../config/app_config.dart';
+import '../utils/logger.dart';
 
 class SubscriptionService {
   // Create Dio instance directly
@@ -14,18 +15,18 @@ class SubscriptionService {
     },
   ));
   final StorageService _storageService = StorageService();
+  final Logger _logger = Logger('SubscriptionService');
 
   /// Check if the user has premium status
   /// Returns true if user has premium subscription, false otherwise
   Future<bool> checkPremiumStatus() async {
     try {
-      print('⟹ [SubscriptionService] Checking premium status');
+      _logger.info('Checking premium status');
 
       // Try to get from local storage first for quicker response
       final cachedStatus = await _storageService.read('premium_status');
       if (cachedStatus != null) {
-        print(
-            '⟹ [SubscriptionService] Found cached premium status: $cachedStatus');
+        _logger.info('Found cached premium status: $cachedStatus');
         return cachedStatus == 'true';
       }
 
@@ -43,20 +44,19 @@ class SubscriptionService {
         // Cache the result
         await _storageService.write('premium_status', isPremium.toString());
 
-        print('⟹ [SubscriptionService] Premium status from API: $isPremium');
+        _logger.info('Premium status from API: $isPremium');
         return isPremium;
       }
 
-      print(
-          '⟹ [SubscriptionService] No premium data found, defaulting to false');
+      _logger.info('No premium data found, defaulting to false');
       return false;
     } catch (e) {
-      print('⟹ [SubscriptionService] Error checking premium status: $e');
+      _logger.error('Error checking premium status: $e');
 
       // For demo purposes, check if we have mock data enabled
       final useMock = await _storageService.read('use_mock_data');
       if (useMock == 'true') {
-        print('⟹ [SubscriptionService] Using mock premium status');
+        _logger.info('Using mock premium status');
         return false; // Default mock value
       }
 
@@ -68,7 +68,7 @@ class SubscriptionService {
   /// Returns true if subscription was successful
   Future<bool> subscribeToPremium(String planId) async {
     try {
-      print('⟹ [SubscriptionService] Subscribing to premium plan: $planId');
+      _logger.info('Subscribing to premium plan: $planId');
 
       // In a real app, this would connect to a payment processor
       // For this demo, we'll simulate a successful subscription
@@ -84,21 +84,20 @@ class SubscriptionService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Update the local cache
         await _storageService.write('premium_status', 'true');
-        print('⟹ [SubscriptionService] Successfully subscribed to premium');
+        _logger.info('Successfully subscribed to premium');
         return true;
       }
 
-      print(
-          '⟹ [SubscriptionService] Failed to subscribe: ${response.statusCode}');
+      _logger.error('Failed to subscribe: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('⟹ [SubscriptionService] Error subscribing to premium: $e');
+      _logger.error('Error subscribing to premium: $e');
 
       // For demo purposes, simulate successful subscription
       final useMock = await _storageService.read('use_mock_data');
       if (useMock == 'true') {
         await _storageService.write('premium_status', 'true');
-        print('⟹ [SubscriptionService] Mock subscription successful');
+        _logger.info('Mock subscription successful');
         return true;
       }
 
@@ -110,27 +109,27 @@ class SubscriptionService {
   /// Returns true if cancellation was successful
   Future<bool> cancelSubscription() async {
     try {
-      print('⟹ [SubscriptionService] Cancelling subscription');
+      _logger.info('Cancelling subscription');
 
       final response = await _dio.delete('/subscriptions/current');
 
       if (response.statusCode == 200) {
         // Update the local cache
         await _storageService.write('premium_status', 'false');
-        print('⟹ [SubscriptionService] Successfully cancelled subscription');
+        _logger.info('Successfully cancelled subscription');
         return true;
       }
 
-      print('⟹ [SubscriptionService] Failed to cancel: ${response.statusCode}');
+      _logger.error('Failed to cancel: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('⟹ [SubscriptionService] Error cancelling subscription: $e');
+      _logger.error('Error cancelling subscription: $e');
 
       // For demo purposes
       final useMock = await _storageService.read('use_mock_data');
       if (useMock == 'true') {
         await _storageService.write('premium_status', 'false');
-        print('⟹ [SubscriptionService] Mock cancellation successful');
+        _logger.info('Mock cancellation successful');
         return true;
       }
 
@@ -141,19 +140,19 @@ class SubscriptionService {
   /// Get available subscription plans
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     try {
-      print('⟹ [SubscriptionService] Getting subscription plans');
+      _logger.info('Getting subscription plans');
 
       final response = await _dio.get('/subscription-plans');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> plans = response.data;
-        print('⟹ [SubscriptionService] Found ${plans.length} plans');
+        _logger.info('Found ${plans.length} plans');
         return plans.cast<Map<String, dynamic>>();
       }
 
       throw Exception('Failed to load subscription plans');
     } catch (e) {
-      print('⟹ [SubscriptionService] Error getting subscription plans: $e');
+      _logger.error('Error getting subscription plans: $e');
 
       // Return mock plans for demo
       return [

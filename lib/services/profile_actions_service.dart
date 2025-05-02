@@ -92,7 +92,7 @@ class ProfileActionsService {
       rethrow;
     } catch (e, s) {
       _logger.error('Error during profile action: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -124,7 +124,7 @@ class ProfileActionsService {
       rethrow;
     } catch (e, s) {
       _logger.error('Error undoing profile action: $e', e, s);
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -190,7 +190,7 @@ class ProfileActionsService {
         _logger.debug('Returning mock action history in debug mode');
         return List.generate(3, (index) => _generateMockAction(index));
       } else {
-        throw ApiException(Constants.errorGeneric);
+        throw ApiException(errorGeneric);
       }
     }
   }
@@ -209,9 +209,9 @@ class ProfileActionsService {
     } else if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout) {
-      throw ApiException(Constants.errorNetworkTimeout);
+      throw ApiException(errorNetworkTimeout);
     } else if (e.type == DioExceptionType.connectionError) {
-      throw ApiException(Constants.errorNetwork);
+      throw ApiException(errorNetwork);
     } else {
       throw ApiException(defaultMessage);
     }

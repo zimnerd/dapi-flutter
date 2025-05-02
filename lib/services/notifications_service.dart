@@ -87,3 +87,8 @@ class NotificationsService {
     await _apiClient.delete('/notifications');
   }
 }
+
+const String match = 'match';
+const String message = 'message';
+const String like = 'like';
+const String system = 'system';

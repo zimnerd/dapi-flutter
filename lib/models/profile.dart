@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart' show immutable;
+import '../utils/logger.dart';
 import 'package:collection/collection.dart';
+
+final Logger _logger = Logger('ProfileModel');
 
 @immutable
 class Profile {
@@ -73,13 +76,13 @@ class Profile {
       try {
         parsedBirthDate = DateTime.parse(json['birth_date'].toString());
       } catch (e) {
-        print('Error parsing birth_date: $e');
+        _logger.error('Error parsing birth_date: $e');
       }
     } else if (json['birthDate'] != null) {
       try {
         parsedBirthDate = DateTime.parse(json['birthDate'].toString());
       } catch (e) {
-        print('Error parsing birthDate: $e');
+        _logger.error('Error parsing birthDate: $e');
       }
     }
 
@@ -93,7 +96,7 @@ class Profile {
               .toList();
         }
       } catch (e) {
-        print('Error parsing photos: $e');
+        _logger.error('Error parsing photos: $e');
       }
     } else if (json['photoUrls'] != null) {
       try {
@@ -103,7 +106,7 @@ class Profile {
               .toList();
         }
       } catch (e) {
-        print('Error parsing photoUrls: $e');
+        _logger.error('Error parsing photoUrls: $e');
       }
     } else if (json['photo_urls'] != null) {
       try {
@@ -113,7 +116,7 @@ class Profile {
               .toList();
         }
       } catch (e) {
-        print('Error parsing photo_urls: $e');
+        _logger.error('Error parsing photo_urls: $e');
       }
     }
 
@@ -135,7 +138,7 @@ class Profile {
                 .toList() ??
             [];
       } catch (e) {
-        print('Error parsing prompts: $e');
+        _logger.error('Error parsing prompts: $e');
       }
     }
 
@@ -261,7 +264,6 @@ class Profile {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     final listEquals = const DeepCollectionEquality().equals;
-    final mapEquals = const DeepCollectionEquality().equals;
 
     return other is Profile &&
         other.id == id &&

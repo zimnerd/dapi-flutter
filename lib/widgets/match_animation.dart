@@ -133,7 +133,7 @@ class _MatchAnimationState extends State<MatchAnimation>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.8),
+      backgroundColor: Colors.black.withAlpha((0.8 * 255).toInt()),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
@@ -331,7 +331,7 @@ class _ParticlePainter extends CustomPainter {
       final opacity = progress < 0.7 ? 1.0 : (0.9 - progress) / 0.2;
 
       for (final particle in particles) {
-        paint.color = particle.color.withOpacity(opacity);
+        paint.color = particle.color.withAlpha((opacity * 255).toInt());
 
         // Apply rotation
         canvas.save();

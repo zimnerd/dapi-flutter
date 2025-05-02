@@ -39,7 +39,7 @@ class ConversationListItem extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withAlpha((0.2 * 255).toInt()),
               width: 0.5,
             ),
           ),
@@ -120,7 +120,7 @@ class ConversationListItem extends StatelessWidget {
               ? NetworkImage(user.profilePictures!.first)
               : null,
           backgroundColor: user.profilePictures?.isNotEmpty != true
-              ? AppColors.primary.withOpacity(0.2)
+              ? AppColors.primary.withAlpha((0.2 * 255).toInt())
               : null,
           child: user.profilePictures?.isNotEmpty != true
               ? const Icon(Icons.person, color: Colors.white, size: 30)

@@ -79,8 +79,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   final CardSwiperController _swipeController = CardSwiperController();
 
   // NEW: State variable to store the last swiped profile info
-  LastSwipeInfo? _lastSwipe;
-  bool _isLoading = false;
+  // LastSwipeInfo? _lastSwipe;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -165,17 +165,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   }
 
   // Method to sync local state with provider state
-  void _syncFiltersWithProvider() {
-    logger.info("Syncing filters with provider state");
-    final filters = ref.read(profileFiltersProvider);
-    setState(() {
-      _maxDistance = filters.maxDistance;
-      _ageRange = filters.ageRange;
-      _genderPreference = filters.genderPreference;
-    });
-    logger.info(
-        "Filters synced: maxDistance=$_maxDistance, ageRange=${_ageRange.start}-${_ageRange.end}, gender=$_genderPreference");
-  }
+  // void _syncFiltersWithProvider() { ... }
 
   // Remove _loadProfiles - Handled by discoverProfilesProvider
   // Future<void> _loadProfiles() async { ... }
@@ -188,7 +178,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     logger.info("Refreshing discover profiles");
     setState(() {
       _currentIndex = 0;
-      _lastSwipe = null;
     });
     ref.read(discoverProfilesProvider.notifier).refresh();
     logger.info("Discover provider refresh called");
@@ -232,7 +221,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   }
 
   Future<void> _handleDislike(Profile profile) async {
-    print("Handling Dislike for ${profile.name}");
+    logger.debug("Handling Dislike for ${profile.name}");
     final success = await ref
         .read(profileActionProvider.notifier)
         .dislikeProfile(profile.id);
@@ -247,7 +236,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   }
 
   Future<void> _handleSuperLike(Profile profile) async {
-    print("Handling Super Like for ${profile.name}");
+    logger.debug("Handling Super Like for ${profile.name}");
     final success = await ref
         .read(profileActionProvider.notifier)
         .superlikeProfile(profile.id);
@@ -348,12 +337,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     final discoverState = ref.watch(discoverProfilesProvider);
     final isPremiumAsync = ref.watch(premiumProvider);
 
-    // Extract premium status using whenData
-    bool isPremium = false;
-    isPremiumAsync.whenOrNull(
-      data: (value) => isPremium = value,
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -420,7 +403,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
                     },
                     showActions: true, // Keep the card's action buttons
                     onStackFinished: () {
-                      print("Stack finished");
+                      logger.debug("Stack finished");
                       // Optionally trigger a refresh when stack is empty
                       setState(() {
                         _currentIndex = profiles.length; // Mark as finished
@@ -450,7 +433,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
                 ),
               ),
               error: (error, stackTrace) {
-                print("Error loading profiles: $error\n$stackTrace");
+                logger.error("Error loading profiles: $error\n$stackTrace");
                 return _buildErrorView(error.toString()); // Pass error message
               },
             ),
@@ -514,7 +497,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           Icon(
             Icons.person_search,
             size: 80,
-            color: AppColors.textSecondary.withOpacity(0.5),
+            color: AppColors.textSecondary.withAlpha(128),
           ),
           const SizedBox(height: 16),
           Text(
@@ -561,7 +544,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           Icon(
             Icons.done_all,
             size: 80,
-            color: AppColors.primary.withOpacity(0.5),
+            color: AppColors.primary.withAlpha(128),
           ),
           const SizedBox(height: 16),
           Text(
@@ -776,136 +759,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   }
 
   // Swipe handler - central place to record last swipe
-  void _swipeProfile(int index, CardSwiperDirection direction) {
-    // Read the profiles list currently held by the provider
-    final profiles =
-        ref.read(discoverProfilesProvider).profiles.valueOrNull ?? [];
-
-    // Add bounds check to avoid RangeError
-    if (profiles.isEmpty || index < 0 || index >= profiles.length) {
-      logger.warn(
-          'Cannot process swipe: index $index out of bounds (length: ${profiles.length})');
-      return;
-    }
-
-    final swipedProfile = profiles[index];
-    SwipeDirection swipeDirection;
-
-    switch (direction) {
-      case CardSwiperDirection.right:
-        logger.info("Swiped Right on ${swipedProfile.name}");
-        swipeDirection = SwipeDirection.like;
-        _handleLike(swipedProfile);
-        break;
-      case CardSwiperDirection.left:
-        logger.info("Swiped Left on ${swipedProfile.name}");
-        swipeDirection = SwipeDirection.dislike;
-        _handleDislike(swipedProfile);
-        break;
-      case CardSwiperDirection.top:
-        logger.info("Swiped Top (Super Like) on ${swipedProfile.name}");
-        swipeDirection = SwipeDirection.superLike;
-        _handleSuperLike(swipedProfile);
-        break;
-      case CardSwiperDirection.bottom:
-        logger.info("Swiped Bottom (not implemented)");
-        return; // Don't store if it's not a primary action
-      case CardSwiperDirection.none:
-        logger.info("No swipe direction (not implemented)");
-        return; // Don't store if no direction
-    }
-
-    // Store the swipe info BEFORE the state potentially changes/profile removed
-    setState(() {
-      _lastSwipe =
-          LastSwipeInfo(profile: swipedProfile, direction: swipeDirection);
-      logger.info(
-          "Stored last swipe: ${_lastSwipe?.profile.name} - ${_lastSwipe?.direction}");
-    });
-  }
+  // void _swipeProfile(int index, CardSwiperDirection direction) { ... }
 
   // Method to handle the undo action
-  Future<void> _handleUndo() async {
-    logger.info("Handling Undo Action");
-    if (_isLoading) return; // Prevent multiple clicks
-
-    setState(() => _isLoading = true);
-
-    try {
-      final profileService =
-          ref.read(profileServiceProvider); // Get the service
-      final result = await profileService.undoLastAction();
-
-      if (result['success'] == true && mounted) {
-        logger.info("Undo successful: ${result['message']}");
-        // Use the swiper controller to undo the visual swipe
-        _swipeController.undo();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Last action undone')),
-        );
-        // Decrement current index if needed, handled by swiper controller?
-        // if (_currentIndex > 0) {
-        //   setState(() => _currentIndex--);
-        // }
-      } else if (mounted) {
-        logger.warn("Undo failed: ${result['message']}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Failed to undo action')),
-        );
-      }
-    } catch (e) {
-      logger.error("Exception during undo operation: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
+  // Future<void> _handleUndo() async { ... }
 
   // Helper function to show profile details (example)
-  void _showProfileDetails(BuildContext context, Profile profile) {
-    // Implement how you want to show details, e.g., using a BottomSheet
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Allows taller sheet
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false, // Don't expand fully initially
-          initialChildSize: 0.7, // Start at 70% height
-          maxChildSize: 0.95, // Allow dragging up to 95%
-          minChildSize: 0.4, // Minimum size
-          builder: (_, controller) {
-            // Replace with your actual ProfileDetailsScreen or widget
-            return Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).canvasColor,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: ListView(
-                controller: controller,
-                children: [
-                  Text(profile.name,
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  SizedBox(height: 8),
-                  Text("Age: ${profile.age}"),
-                  SizedBox(height: 8),
-                  Text("Bio: ${profile.bio ?? 'N/A'}"),
-                  SizedBox(height: 16),
-                  // Add more profile details here...
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  // void _showProfileDetails(BuildContext context, Profile profile) { ... }
 
   Future<void> _autoLogin() async {
     try {

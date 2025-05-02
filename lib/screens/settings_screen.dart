@@ -5,6 +5,7 @@ import '../providers/providers.dart';
 import '../utils/colors.dart';
 import '../screens/profile_screen.dart';
 import '../config/app_config.dart';
+import '../utils/logger.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -45,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _biometricEnabled = biometricEnabled;
       });
     } catch (e) {
-      print('Error loading biometric settings: $e');
+      logger.error('Error loading biometric settings: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -92,7 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         }
       }
     } catch (e) {
-      print('Error toggling biometric auth: $e');
+      logger.error('Error toggling biometric auth: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error changing biometric settings: $e')),
@@ -205,13 +206,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _buildSettingsItem(
                             icon: Icons.lock_outline,
                             title: 'Change Password',
-                            onTap: () => print("Navigate to change password"),
+                            onTap: () =>
+                                logger.debug("Navigate to change password"),
                           ),
                           const Divider(),
                           _buildSettingsItem(
                             icon: Icons.email_outlined,
                             title: 'Email Preferences',
-                            onTap: () => print("Navigate to email preferences"),
+                            onTap: () =>
+                                logger.debug("Navigate to email preferences"),
                           ),
                         ],
                       ),
@@ -307,19 +310,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           _buildSettingsItem(
                             icon: Icons.help_outline,
                             title: 'Help Center',
-                            onTap: () => print("Navigate to Help Center"),
+                            onTap: () =>
+                                logger.debug("Navigate to Help Center"),
                           ),
                           const Divider(),
                           _buildSettingsItem(
                             icon: Icons.privacy_tip_outlined,
                             title: 'Privacy Policy',
-                            onTap: () => print("Navigate to Privacy Policy"),
+                            onTap: () =>
+                                logger.debug("Navigate to Privacy Policy"),
                           ),
                           const Divider(),
                           _buildSettingsItem(
                             icon: Icons.description_outlined,
                             title: 'Terms of Service',
-                            onTap: () => print("Navigate to Terms"),
+                            onTap: () => logger.debug("Navigate to Terms"),
                           ),
                         ],
                       ),
@@ -375,7 +380,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),

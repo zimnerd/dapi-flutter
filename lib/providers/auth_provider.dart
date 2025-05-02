@@ -112,7 +112,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(status: AuthStatus.authenticating);
 
     try {
-      final dio = _ref.read(dioProvider);
       final authService = _ref.read(authServiceProvider);
       _logger.debug('Making login API request');
 

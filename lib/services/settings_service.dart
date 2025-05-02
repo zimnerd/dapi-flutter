@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../providers/providers.dart';
+import '../utils/logger.dart';
 
 // Define a Settings model class
 class UserSettings {
@@ -135,11 +136,11 @@ class SettingsService {
   // Get user settings
   Future<UserSettings> getUserSettings() async {
     try {
-      print('⟹ [SettingsService] Fetching user settings');
+      logger.info('⟹ [SettingsService] Fetching user settings');
       final response = await _dio.get(AppEndpoints.settings);
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully fetched user settings');
+        logger.info('⟹ [SettingsService] Successfully fetched user settings');
         return UserSettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -149,9 +150,9 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error fetching user settings: $e');
+      logger.error('⟹ [SettingsService] Error fetching user settings: $e');
       // Return default settings as fallback
-      print('⟹ [SettingsService] Using mock settings as fallback');
+      logger.info('⟹ [SettingsService] Using mock settings as fallback');
       return UserSettings();
     }
   }
@@ -159,14 +160,14 @@ class SettingsService {
   // Update user settings
   Future<UserSettings> updateUserSettings(UserSettings settings) async {
     try {
-      print('⟹ [SettingsService] Updating user settings');
+      logger.info('⟹ [SettingsService] Updating user settings');
       final response = await _dio.patch(
         AppEndpoints.settings,
         data: settings.toJson(),
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully updated user settings');
+        logger.info('⟹ [SettingsService] Successfully updated user settings');
         return UserSettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -176,11 +177,11 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error updating user settings: $e');
+      logger.error('⟹ [SettingsService] Error updating user settings: $e');
 
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print(
+        logger.info(
             '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }
@@ -193,11 +194,12 @@ class SettingsService {
   // Get notification settings
   Future<NotificationSettings> getNotificationSettings() async {
     try {
-      print('⟹ [SettingsService] Fetching notification settings');
+      logger.info('⟹ [SettingsService] Fetching notification settings');
       final response = await _dio.get(AppEndpoints.notifications);
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully fetched notification settings');
+        logger.info(
+            '⟹ [SettingsService] Successfully fetched notification settings');
         return NotificationSettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -207,9 +209,11 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error fetching notification settings: $e');
+      logger.error(
+          '⟹ [SettingsService] Error fetching notification settings: $e');
       // Return default settings as fallback
-      print('⟹ [SettingsService] Using mock notification settings as fallback');
+      logger.info(
+          '⟹ [SettingsService] Using mock notification settings as fallback');
       return NotificationSettings();
     }
   }
@@ -218,14 +222,15 @@ class SettingsService {
   Future<NotificationSettings> updateNotificationSettings(
       NotificationSettings settings) async {
     try {
-      print('⟹ [SettingsService] Updating notification settings');
+      logger.info('⟹ [SettingsService] Updating notification settings');
       final response = await _dio.patch(
         AppEndpoints.notifications,
         data: settings.toJson(),
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully updated notification settings');
+        logger.info(
+            '⟹ [SettingsService] Successfully updated notification settings');
         return NotificationSettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -235,11 +240,12 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error updating notification settings: $e');
+      logger.error(
+          '⟹ [SettingsService] Error updating notification settings: $e');
 
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print(
+        logger.info(
             '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }
@@ -252,11 +258,12 @@ class SettingsService {
   // Get privacy settings
   Future<PrivacySettings> getPrivacySettings() async {
     try {
-      print('⟹ [SettingsService] Fetching privacy settings');
+      logger.info('⟹ [SettingsService] Fetching privacy settings');
       final response = await _dio.get(AppEndpoints.privacy);
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully fetched privacy settings');
+        logger
+            .info('⟹ [SettingsService] Successfully fetched privacy settings');
         return PrivacySettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -266,9 +273,10 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error fetching privacy settings: $e');
+      logger.error('⟹ [SettingsService] Error fetching privacy settings: $e');
       // Return default settings as fallback
-      print('⟹ [SettingsService] Using mock privacy settings as fallback');
+      logger
+          .info('⟹ [SettingsService] Using mock privacy settings as fallback');
       return PrivacySettings();
     }
   }
@@ -277,14 +285,15 @@ class SettingsService {
   Future<PrivacySettings> updatePrivacySettings(
       PrivacySettings settings) async {
     try {
-      print('⟹ [SettingsService] Updating privacy settings');
+      logger.info('⟹ [SettingsService] Updating privacy settings');
       final response = await _dio.patch(
         AppEndpoints.privacy,
         data: settings.toJson(),
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('⟹ [SettingsService] Successfully updated privacy settings');
+        logger
+            .info('⟹ [SettingsService] Successfully updated privacy settings');
         return PrivacySettings.fromJson(response.data);
       } else {
         throw DioException(
@@ -294,11 +303,11 @@ class SettingsService {
         );
       }
     } catch (e) {
-      print('⟹ [SettingsService] Error updating privacy settings: $e');
+      logger.error('⟹ [SettingsService] Error updating privacy settings: $e');
 
       // Handle 404 by returning the same settings (pretend update succeeded)
       if (e is DioException && e.response?.statusCode == 404) {
-        print(
+        logger.info(
             '⟹ [SettingsService] Endpoint not found, simulating successful update');
         return settings;
       }

@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../models/profile.dart';
-import '../providers/profile_provider.dart'
-    show profileServiceProvider, storageServiceProvider, userProfileProvider;
+import '../providers/profile_provider.dart';
 import 'home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart'; // Import centralized providers
-import '../providers/profile_provider.dart';
 
 class ProfileCreationScreen extends ConsumerStatefulWidget {
   const ProfileCreationScreen({super.key});
@@ -129,8 +127,6 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
       if (userId == null) {
         throw Exception('User not logged in.');
       }
-
-      int age = Profile.calculateAge(_selectedBirthDate!);
 
       final profile = Profile(
         id: userId,
@@ -272,7 +268,10 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
             color: isCurrent
                 ? Theme.of(context).colorScheme.primary
                 : isActive
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
+                    ? Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withAlpha((0.7 * 255).toInt())
                     : Colors.grey.shade300,
             shape: BoxShape.circle,
           ),
@@ -471,7 +470,7 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
                       child: Container(
                         padding: EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withAlpha((0.5 * 255).toInt()),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -529,8 +528,10 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
               label: Text(interest),
               selected: isSelected,
               onSelected: (_) => _toggleInterest(interest),
-              selectedColor:
-                  Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              selectedColor: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withAlpha((0.3 * 255).toInt()),
               checkmarkColor: Theme.of(context).colorScheme.primary,
             );
           }).toList(),
@@ -709,7 +710,8 @@ class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
         Container(
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            color:
+                Theme.of(context).primaryColor.withAlpha((0.1 * 255).toInt()),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: Theme.of(context).primaryColor),

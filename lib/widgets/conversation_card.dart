@@ -58,7 +58,7 @@ class ConversationCard extends StatelessWidget {
               // Profile picture
               CircleAvatar(
                 radius: 28,
-                backgroundColor: AppColors.primary.withOpacity(0.2),
+                backgroundColor: AppColors.primary.withAlpha(40),
                 backgroundImage: otherUser?.profilePictures?.isNotEmpty == true
                     ? NetworkImage(otherUser!.profilePictures!.first)
                     : null,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/premium_provider.dart';
 import '../../services/subscription_service.dart';
+import '../../utils/logger.dart';
 
 class PremiumScreen extends ConsumerStatefulWidget {
   const PremiumScreen({super.key});
@@ -16,10 +17,10 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
   Future<void> _subscribeToPremium() async {
     setState(() => _isLoading = true);
     try {
-      print('⟹ [PremiumScreen] Initiating premium subscription');
+      logger.info('⟹ [PremiumScreen] Initiating premium subscription');
       final subscriptionService = SubscriptionService();
       await subscriptionService.subscribeToPremium('monthly');
-      print('⟹ [PremiumScreen] Premium subscription successful');
+      logger.info('⟹ [PremiumScreen] Premium subscription successful');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -30,7 +31,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
         );
       }
     } catch (e) {
-      print('⟹ [PremiumScreen] Error subscribing to premium: $e');
+      logger.error('⟹ [PremiumScreen] Error subscribing to premium: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -371,7 +372,7 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen> {
             padding: const EdgeInsets.all(10.0),
             decoration: BoxDecoration(
               color: isActive
-                  ? const Color(0xFFFF5445).withOpacity(0.1)
+                  ? const Color(0xFFFF5445).withAlpha((0.1 * 255).toInt())
                   : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8.0),
             ),

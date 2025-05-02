@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart'; // Assuming you have AppColors defined
+import '../utils/logger.dart';
 
 class PremiumScreen extends StatelessWidget {
   const PremiumScreen({super.key});
@@ -223,7 +224,7 @@ class PremiumScreen extends StatelessWidget {
 
   // Placeholder purchase handler
   void _handlePurchase(BuildContext context, String planId) {
-    print("Attempting purchase for plan: $planId");
+    logger.debug("Attempting purchase for plan: $planId");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content:

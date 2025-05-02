@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/profile.dart';
 import '../utils/colors.dart';
-import '../widgets/profile_card.dart';
 import 'package:intl/intl.dart';
 
 class ProfileDetailsScreen extends StatefulWidget {
@@ -44,7 +43,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               ),
             ],
             leading: CircleAvatar(
-              backgroundColor: Colors.black.withOpacity(0.3),
+              backgroundColor: Colors.black.withAlpha(30),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
@@ -96,7 +95,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             decoration: BoxDecoration(
                               color: isActive
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.4),
+                                  : Colors.white.withAlpha((255 * 0.4).toInt()),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           );
@@ -113,7 +112,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withAlpha(50),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -174,7 +173,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          color: Colors.grey.withOpacity(0.15),
+                          color: Colors.grey.withAlpha(15),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -273,8 +272,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.primary.withOpacity(0.8),
-                                AppColors.primary.withOpacity(0.6),
+                                AppColors.primary
+                                    .withAlpha((255 * 0.8).toInt()),
+                                AppColors.primary
+                                    .withAlpha((255 * 0.6).toInt()),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -282,7 +283,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.primary
+                                    .withAlpha((255 * 0.3).toInt()),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -359,7 +361,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: color.withOpacity(0.2), width: 2),
+                border: Border.all(
+                    color: color.withAlpha((255 * 0.2).toInt()), width: 2),
               ),
               child: Center(
                 child: Icon(
@@ -478,7 +481,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withAlpha((255 * 0.1).toInt()),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -619,7 +622,7 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
               children: [
                 // Top bar
                 Container(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withAlpha(50),
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).padding.top,
                     left: 4,
@@ -661,7 +664,7 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                     padding: EdgeInsets.only(
                       bottom: MediaQuery.of(context).padding.bottom + 16,
                     ),
-                    color: Colors.black.withOpacity(0.4),
+                    color: Colors.black.withAlpha(50),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
@@ -676,7 +679,7 @@ class _FullscreenGalleryState extends State<_FullscreenGallery> {
                             decoration: BoxDecoration(
                               color: isActive
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.4),
+                                  : Colors.white.withAlpha((255 * 0.4).toInt()),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           );

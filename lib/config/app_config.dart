@@ -207,15 +207,15 @@ class AppConfig {
   ///
   /// The actual URL used is determined by the apiBaseUrl getter below,
   /// which selects the appropriate URL based on the build mode.
-  static const String _devApiBaseUrl =
-      'https://dapi.pulsetek.co.za:3000/api/v1';
+  // static const String _devApiBaseUrl =
+  //     'https://dapi.pulsetek.co.za:3000/api/v1';
   static const String _mockApiBaseUrl =
       'https://dapi.pulsetek.co.za:3000/api/v1';
   static const String _prodApiBaseUrl =
       'https://dapi.pulsetek.co.za:3000/api/v1';
 
   // WebSocket URLs for real-time features
-  static const String _devSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
+  // static const String _devSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
   static const String _mockSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
   static const String _prodSocketUrl = 'wss://dapi.pulsetek.co.za:3000';
 

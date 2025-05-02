@@ -80,17 +80,4 @@ class MatchCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildPlaceholderImage() {
-    return Container(
-      color: Colors.grey[300],
-      child: Center(
-        child: Icon(
-          Icons.person,
-          size: 50,
-          color: AppColors.primary,
-        ),
-      ),
-    );
-  }
 }

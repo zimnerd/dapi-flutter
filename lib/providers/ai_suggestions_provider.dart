@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import '../providers/providers.dart'; // To access authServiceProvider
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('AISuggestionsProvider');
 
 // Provider for AI icebreaker suggestions from server
 final icebreakerSuggestionsProvider = FutureProvider.autoDispose
@@ -10,7 +13,7 @@ final icebreakerSuggestionsProvider = FutureProvider.autoDispose
   final authService = ref.read(authServiceProvider);
 
   try {
-    print("Fetching AI Icebreaker suggestions for: $conversationId");
+    _logger.info('Fetching AI Icebreaker suggestions for: $conversationId');
 
     // Using Dio directly since this might be a separate endpoint
     final dio = Dio(BaseOptions(
@@ -38,12 +41,12 @@ final icebreakerSuggestionsProvider = FutureProvider.autoDispose
       final List<dynamic> data = response.data['data'] ?? response.data ?? [];
       return data.map((item) => item.toString()).toList();
     } else {
-      print("Failed to fetch AI suggestions: ${response.statusCode}");
+      _logger.error('Failed to fetch AI suggestions: ${response.statusCode}');
       // Fallback to default suggestions if server request fails
       return _getDefaultSuggestions();
     }
   } catch (e) {
-    print("Error fetching AI suggestions: $e");
+    _logger.error('Error fetching AI suggestions: $e');
     // Return fallback suggestions
     return _getDefaultSuggestions();
   }
@@ -67,7 +70,7 @@ final profileOptimizationTipsProvider =
   final authService = ref.read(authServiceProvider);
 
   try {
-    print("Fetching AI Profile Optimization Tips...");
+    _logger.info('Fetching AI Profile Optimization Tips...');
 
     // Using Dio directly since this might be a separate endpoint
     final dio = Dio(BaseOptions(
@@ -95,12 +98,12 @@ final profileOptimizationTipsProvider =
       final List<dynamic> data = response.data['data'] ?? response.data ?? [];
       return data.map((item) => item.toString()).toList();
     } else {
-      print("Failed to fetch profile tips: ${response.statusCode}");
+      _logger.error('Failed to fetch profile tips: ${response.statusCode}');
       // Fallback to default tips if server request fails
       return _getDefaultProfileTips();
     }
   } catch (e) {
-    print("Error fetching profile tips: $e");
+    _logger.error('Error fetching profile tips: $e');
     // Return fallback tips
     return _getDefaultProfileTips();
   }

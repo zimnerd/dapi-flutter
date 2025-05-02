@@ -9,6 +9,9 @@ import '../utils/colors.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/error_display.dart';
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('ConversationScreen');
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -64,7 +67,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             .read(chatServiceProvider)
             .getMessages(widget.conversation.id);
 
-        print('Received ${initialMessages.length} messages from API');
+        _logger.info('Received ${initialMessages.length} messages from API');
 
         // Safely convert messages to Message objects with error handling
         List<Message> parsedMessages = [];
@@ -97,10 +100,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               final message = Message.fromJson(data);
               parsedMessages.add(message);
             } else {
-              print('Skipping invalid message data: $data (not a Map)');
+              _logger.info('Skipping invalid message data: $data (not a Map)');
             }
           } catch (parseError) {
-            print('Error parsing individual message: $parseError');
+            _logger.info('Error parsing individual message: $parseError');
             // Skip this message but continue with others
           }
         }
@@ -110,7 +113,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           _isLoadingInitialMessages = false;
         });
       } catch (messagesError) {
-        print('Error fetching messages: $messagesError');
+        _logger.info('Error fetching messages: $messagesError');
         // Proceed with empty messages list rather than failing
         setState(() {
           _messages = [];
@@ -125,7 +128,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           .read(chatServiceProvider)
           .markConversationAsRead(widget.conversation.id);
     } catch (e) {
-      print('Error loading participant or initial messages: $e');
+      _logger.info('Error loading participant or initial messages: $e');
       setState(() {
         _isLoadingInitialMessages = false;
         _initialError = e.toString();
@@ -138,7 +141,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     chatService.initSocket(); // Initialize connection
 
     // Listen for incoming messages from the stream
-    final messageSubscription = ref.listenManual(messageStreamProvider,
+    ref.listenManual(messageStreamProvider,
         (prev, AsyncValue<Map<String, dynamic>> next) {
       next.whenData((messageData) {
         // Convert dynamic message to Message object
@@ -149,12 +152,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         String expectedConvId = widget.conversation.id;
 
         // Debug message for conversation ID comparison
-        print(
+        _logger.info(
             '📋 COMPARISON: Received ID: $receivedConvId vs Expected ID: $expectedConvId');
 
         // Check if the message belongs to this conversation
         if (receivedConvId == expectedConvId) {
-          print('✅ MATCH: Message belongs to this conversation');
+          _logger.info('✅ MATCH: Message belongs to this conversation');
           setState(() {
             // Remove any optimistic version of this message
             _messages.removeWhere((m) =>
@@ -177,15 +180,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 .markConversationAsRead(widget.conversation.id);
           }
         } else {
-          print('❌ NO MATCH: Message is for another conversation');
+          _logger.info('❌ NO MATCH: Message is for another conversation');
         }
       });
     });
 
     // Listen for typing status changes
-    final typingSubscription = ref
-        .listenManual(typingStatusProvider(widget.conversation.id),
-            (prev, AsyncValue<Map<String, bool>> next) {
+    ref.listenManual(typingStatusProvider(widget.conversation.id),
+        (prev, AsyncValue<Map<String, bool>> next) {
       next.whenData((typingStatusMap) {
         final otherUserId = _participant?.id;
         if (otherUserId != null) {
@@ -327,7 +329,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
             blurRadius: 4,
             offset: const Offset(0, -1),
           ),

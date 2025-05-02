@@ -35,17 +35,16 @@ class ProfileService {
         return Profile.fromJson(response.data);
       } else {
         _logger.warn('Failed to get profile: ${response.statusCode}');
-        throw ApiException(Constants.errorFailedToLoadProfile,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting current profile: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e, stackTrace) {
       _logger.error('Unexpected error getting current profile: $e');
       _logger.error('Stack trace: $stackTrace');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -63,20 +62,18 @@ class ProfileService {
         _logger
             .warn('Failed to get profile $profileId: ${response.statusCode}');
         if (response.statusCode == 404) {
-          throw ApiException(Constants.errorProfileNotFound,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         } else {
-          throw ApiException(Constants.errorFailedToLoadProfile,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         }
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting profile $profileId: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error getting profile $profileId: $e');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -132,8 +129,7 @@ class ProfileService {
             _logger.debug('Returning mock profiles in debug mode');
             return List.generate(10, (_) => _generateMockProfile());
           }
-          throw ApiException(Constants.errorFailedToLoadProfile,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         }
 
         final profiles =
@@ -148,12 +144,11 @@ class ProfileService {
           _logger.debug('Returning mock profiles in debug mode');
           return List.generate(10, (_) => _generateMockProfile());
         }
-        throw ApiException(Constants.errorFailedToLoadProfile,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting discover profiles: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadProfile);
+      _handleDioError(e, defaultMessage: errorGeneric);
 
       if (kDebugMode) {
         _logger.debug('Returning mock profiles in debug mode');
@@ -168,7 +163,7 @@ class ProfileService {
         _logger.debug('Returning mock profiles in debug mode');
         return List.generate(10, (_) => _generateMockProfile());
       } else {
-        throw ApiException(Constants.errorGeneric);
+        throw ApiException(errorGeneric);
       }
     }
   }
@@ -186,16 +181,15 @@ class ProfileService {
         return Profile.fromJson(response.data);
       } else {
         _logger.warn('Failed to create profile: ${response.statusCode}');
-        throw ApiException(Constants.errorProfileUpdateFailed,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error creating profile: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error creating profile: $e');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -214,16 +208,15 @@ class ProfileService {
       } else {
         _logger.warn(
             'Failed to update profile $profileId: ${response.statusCode}');
-        throw ApiException(Constants.errorProfileUpdateFailed,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error updating profile $profileId: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorProfileUpdateFailed);
+      _handleDioError(e, defaultMessage: errorGeneric);
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error updating profile $profileId: $e');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -252,7 +245,7 @@ class ProfileService {
       rethrow;
     } catch (e) {
       _logger.error("General error liking profile $profileId: $e");
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -281,7 +274,7 @@ class ProfileService {
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error disliking profile $profileId: $e');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -311,7 +304,7 @@ class ProfileService {
       rethrow;
     } catch (e) {
       _logger.error('Unexpected error superliking profile $profileId: $e');
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
@@ -330,11 +323,11 @@ class ProfileService {
       return {
         'status': 'pending',
         'message': 'Your verification is being processed.',
-        'error': Constants.errorVerification
+        'error': errorVerification
       };
     } catch (e) {
       _logger.error('Unexpected error checking verification status: $e');
-      return {'status': 'error', 'message': Constants.errorVerification};
+      return {'status': 'error', 'message': errorVerification};
     }
   }
 
@@ -354,11 +347,11 @@ class ProfileService {
         'status': 'requested',
         'token': 'mock-verification-token',
         'message': 'Verification has been requested successfully.',
-        'error': Constants.errorVerification
+        'error': errorVerification
       };
     } catch (e) {
       _logger.error('Unexpected error requesting verification: $e');
-      return {'status': 'error', 'message': Constants.errorVerification};
+      return {'status': 'error', 'message': errorVerification};
     }
   }
 
@@ -387,12 +380,12 @@ class ProfileService {
       // Return mock data for testing
       return {
         'status': 'error',
-        'message': Constants.errorVerification,
+        'message': errorVerification,
         'details': e.message
       };
     } catch (e) {
       _logger.error('Unexpected error completing verification: $e');
-      return {'status': 'error', 'message': Constants.errorVerification};
+      return {'status': 'error', 'message': errorVerification};
     }
   }
 
@@ -419,11 +412,10 @@ class ProfileService {
         _logger.warn(
             "Failed to undo last action: ${response.statusCode} - ${response.data?['message']}");
         if (response.statusCode == 403) {
-          throw ApiException(Constants.errorInsufficientPermissions,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         } else if (response.statusCode == 404) {
-          throw ApiException(Constants.errorNoActionToUndo,
-              statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
+          throw ApiException(errorGeneric, statusCode: response.statusCode);
         }
         throw ApiException(response.data?['message'] ?? 'Failed to undo action',
             statusCode: response.statusCode);
@@ -434,29 +426,29 @@ class ProfileService {
       rethrow;
     } catch (e) {
       _logger.error("Unexpected error undoing last action: $e");
-      throw ApiException(Constants.errorGeneric);
+      throw ApiException(errorGeneric);
     }
   }
 
   // Helper function to standardize Dio error handling
   void _handleDioError(DioException e, {String? defaultMessage}) {
-    String errorMessage = defaultMessage ?? Constants.errorGeneric;
+    String errorMessage = defaultMessage ?? errorGeneric;
     int? statusCode = e.response?.statusCode;
 
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
-      errorMessage = Constants.errorTimeout;
+      errorMessage = errorTimeout;
     } else if (e.type == DioExceptionType.connectionError) {
-      errorMessage = Constants.errorNetwork;
+      errorMessage = errorNetwork;
     } else if (statusCode == 401) {
-      errorMessage = Constants.errorAuth;
+      errorMessage = errorAuth;
     } else if (statusCode == 403) {
-      errorMessage = Constants.errorInsufficientPermissions;
+      errorMessage = errorGeneric;
     } else if (statusCode == 404) {
-      errorMessage = Constants.errorNotFound;
+      errorMessage = errorGeneric;
     } else if (statusCode != null && statusCode >= 500) {
-      errorMessage = Constants.errorServer;
+      errorMessage = errorServer;
     }
 
     // Prefer server message if available
@@ -567,7 +559,7 @@ class ProfileService {
         } else {
           _logger.error(
               'Unexpected response format for mutual matches: ${response.data.runtimeType}');
-          throw ApiException(Constants.errorFailedToLoadMatches);
+          throw ApiException(errorGeneric);
         }
 
         final profiles =
@@ -577,12 +569,11 @@ class ProfileService {
         return profiles;
       } else {
         _logger.warn('Failed to get mutual matches: ${response.statusCode}');
-        throw ApiException(Constants.errorFailedToLoadMatches,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting mutual matches: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      _handleDioError(e, defaultMessage: errorGeneric);
 
       if (kDebugMode) {
         _logger
@@ -599,7 +590,7 @@ class ProfileService {
             .debug('Returning mock profiles for mutual matches in debug mode');
         return List.generate(5, (_) => _generateMockProfile());
       } else {
-        throw ApiException(Constants.errorGeneric);
+        throw ApiException(errorGeneric);
       }
     }
   }
@@ -627,7 +618,7 @@ class ProfileService {
         } else {
           _logger.error(
               'Unexpected response format for likes received: ${response.data.runtimeType}');
-          throw ApiException(Constants.errorFailedToLoadMatches);
+          throw ApiException(errorGeneric);
         }
 
         final profiles =
@@ -638,12 +629,11 @@ class ProfileService {
       } else {
         _logger.warn(
             'Failed to get profiles who liked me: ${response.statusCode}');
-        throw ApiException(Constants.errorFailedToLoadMatches,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting profiles who liked me: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      _handleDioError(e, defaultMessage: errorGeneric);
 
       if (kDebugMode) {
         _logger
@@ -660,7 +650,7 @@ class ProfileService {
             .debug('Returning mock profiles for likes received in debug mode');
         return List.generate(3, (_) => _generateMockProfile());
       } else {
-        throw ApiException(Constants.errorGeneric);
+        throw ApiException(errorGeneric);
       }
     }
   }
@@ -688,7 +678,7 @@ class ProfileService {
         } else {
           _logger.error(
               'Unexpected response format for likes sent: ${response.data.runtimeType}');
-          throw ApiException(Constants.errorFailedToLoadMatches);
+          throw ApiException(errorGeneric);
         }
 
         final profiles =
@@ -698,12 +688,11 @@ class ProfileService {
         return profiles;
       } else {
         _logger.warn('Failed to get profiles I liked: ${response.statusCode}');
-        throw ApiException(Constants.errorFailedToLoadMatches,
-            statusCode: response.statusCode);
+        throw ApiException(errorGeneric, statusCode: response.statusCode);
       }
     } on DioException catch (e) {
       _logger.error('Dio error getting profiles I liked: ${e.message}');
-      _handleDioError(e, defaultMessage: Constants.errorFailedToLoadMatches);
+      _handleDioError(e, defaultMessage: errorGeneric);
 
       if (kDebugMode) {
         _logger.debug('Returning mock profiles for likes sent in debug mode');
@@ -718,7 +707,7 @@ class ProfileService {
         _logger.debug('Returning mock profiles for likes sent in debug mode');
         return List.generate(4, (_) => _generateMockProfile());
       } else {
-        throw ApiException(Constants.errorGeneric);
+        throw ApiException(errorGeneric);
       }
     }
   }

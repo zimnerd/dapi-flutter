@@ -243,7 +243,7 @@ class AppTheme {
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return AppColors.primary.withOpacity(0.4);
+          return AppColors.primary.withAlpha((0.4 * 255).toInt());
         }
         return AppColors.divider;
       }),
@@ -284,7 +284,7 @@ class AppTheme {
       activeTrackColor: AppColors.primary,
       inactiveTrackColor: AppColors.divider,
       thumbColor: AppColors.primary,
-      overlayColor: AppColors.primary.withOpacity(0.2),
+      overlayColor: AppColors.primary.withAlpha((0.2 * 255).toInt()),
       valueIndicatorColor: AppColors.primary,
       valueIndicatorTextStyle: TextStyle(
         color: Colors.white,
@@ -424,9 +424,9 @@ class AppTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.primaryLight.withOpacity(0.4);
+            return AppColors.primaryLight.withAlpha((0.4 * 255).toInt());
           }
-          return AppColors.dividerDark.withOpacity(0.6);
+          return AppColors.dividerDark.withAlpha((0.6 * 255).toInt());
         }),
       ),
       checkboxTheme: _checkboxTheme.copyWith(
@@ -450,7 +450,7 @@ class AppTheme {
           activeTrackColor: AppColors.primaryLight,
           inactiveTrackColor: AppColors.dividerDark,
           thumbColor: AppColors.primaryLight,
-          overlayColor: AppColors.primaryLight.withOpacity(0.2),
+          overlayColor: AppColors.primaryLight.withAlpha((0.2 * 255).toInt()),
           valueIndicatorColor: AppColors.primaryLight,
           valueIndicatorTextStyle: TextStyle(
             color: AppColors.backgroundDark, // Dark text on light indicator

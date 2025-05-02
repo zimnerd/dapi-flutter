@@ -7,6 +7,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:image_cropper_platform_interface/src/models/cropped_file/base.dart';
+import 'logger.dart';
 
 /// A CroppedFile that works on web.
 ///
@@ -63,7 +64,7 @@ Future<CroppedFile?> safeCropImage(XFile? source) async {
     return croppedFile != null ? CroppedFile(croppedFile.path) : null;
   } catch (e) {
     // If it fails, just return the original file
-    print('Image cropper failed: $e - returning original file');
+    logger.error('Image cropper failed: $e - returning original file');
     return MockCroppedFile(source.path);
   }
 }

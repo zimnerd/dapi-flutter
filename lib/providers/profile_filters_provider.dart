@@ -15,11 +15,12 @@ class ProfileFilters {
 
   // Initial state with default values
   factory ProfileFilters.initial() {
-      return ProfileFilters(
-        maxDistance: AppConfig.maxDistance,
-        ageRange: RangeValues(AppConfig.minAge.toDouble(), AppConfig.maxAge.toDouble()),
-        genderPreference: 'All',
-      );
+    return ProfileFilters(
+      maxDistance: AppConfig.maxDistance,
+      ageRange:
+          RangeValues(AppConfig.minAge.toDouble(), AppConfig.maxAge.toDouble()),
+      genderPreference: 'All',
+    );
   }
 
   // CopyWith method for immutability
@@ -77,6 +78,7 @@ class ProfileFiltersNotifier extends StateNotifier<ProfileFilters> {
 }
 
 // Provider for profile filters
-final profileFiltersProvider = StateNotifierProvider<ProfileFiltersNotifier, ProfileFilters>((ref) {
+final profileFiltersProvider =
+    StateNotifierProvider<ProfileFiltersNotifier, ProfileFilters>((ref) {
   return ProfileFiltersNotifier();
-}); 
+});

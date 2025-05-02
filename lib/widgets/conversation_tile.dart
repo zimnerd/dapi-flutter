@@ -27,7 +27,7 @@ class ConversationTile extends StatelessWidget {
             : null,
         backgroundColor: otherUser.profilePictures == null ||
                 otherUser.profilePictures!.isEmpty
-            ? AppColors.primary.withOpacity(0.2)
+            ? AppColors.primary.withAlpha((0.2 * 255).toInt())
             : null,
         child: otherUser.profilePictures == null ||
                 otherUser.profilePictures!.isEmpty

@@ -4,6 +4,7 @@ import '../../providers/providers.dart';
 import '../../models/profile.dart';
 import '../../widgets/profile_card.dart';
 import '../../utils/colors.dart';
+import '../../utils/logger.dart';
 
 // Filter provider definition
 final profileFiltersProvider = StateProvider<Map<String, dynamic>>((ref) {
@@ -110,7 +111,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 
     // In a real app, send like to API
     final currentProfile = _profiles[_currentProfileIndex];
-    print('Liked profile: ${currentProfile.name}');
+    logger.debug('Liked profile: ${currentProfile.name}');
   }
 
   void _handleDislike() {
@@ -127,7 +128,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 
     // In a real app, send dislike to API
     final currentProfile = _profiles[_currentProfileIndex];
-    print('Disliked profile: ${currentProfile.name}');
+    logger.debug('Disliked profile: ${currentProfile.name}');
   }
 
   @override
@@ -243,7 +244,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.1),
+        color: color.withAlpha((0.1 * 255).toInt()),
       ),
       child: IconButton(
         icon: Icon(icon, color: color, size: 32),

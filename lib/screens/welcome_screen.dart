@@ -89,7 +89,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 width: size.width * 0.6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -101,7 +101,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 width: size.width * 0.4,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.secondary.withOpacity(0.1),
+                  color: AppColors.secondary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -142,7 +142,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                         boxShadow: [
                                           BoxShadow(
                                             color: AppColors.primary
-                                                .withOpacity(0.3),
+                                                .withAlpha((0.3 * 255).toInt()),
                                             blurRadius: 15,
                                             offset: Offset(0, 5),
                                           ),
@@ -171,14 +171,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   height: 280,
                                   width: 280,
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.1),
+                                    color: AppColors.primary
+                                        .withAlpha((0.1 * 255).toInt()),
                                     borderRadius: BorderRadius.circular(24),
                                   ),
                                   alignment: Alignment.center,
                                   child: Icon(
                                     _getIconForSlide(_slides.indexOf(slide)),
                                     size: 100,
-                                    color: AppColors.primary.withOpacity(0.8),
+                                    color: AppColors.primary
+                                        .withAlpha((0.8 * 255).toInt()),
                                   ),
                                 ),
                                 SizedBox(height: 40),
@@ -229,7 +231,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 shape: BoxShape.circle,
                                 color: _currentIndex == entry.key
                                     ? AppColors.primary
-                                    : AppColors.primary.withOpacity(0.3),
+                                    : AppColors.primary
+                                        .withAlpha((0.3 * 255).toInt()),
                               ),
                             );
                           }).toList(),

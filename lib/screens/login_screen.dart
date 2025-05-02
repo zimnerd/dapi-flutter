@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/colors.dart';
@@ -204,7 +203,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 width: size.width * 0.6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -216,7 +215,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 width: size.width * 0.4,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.secondary.withOpacity(0.1),
+                  color: AppColors.secondary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -351,8 +350,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       isLoading ? null : _loginWithBiometrics,
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(
-                                        color:
-                                            AppColors.primary.withOpacity(0.5)),
+                                        color: AppColors.primary
+                                            .withAlpha((0.5 * 255).toInt())),
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),
                                     shape: RoundedRectangleBorder(

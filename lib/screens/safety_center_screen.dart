@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart'; // For launching URLs
+import '../utils/logger.dart'; // Use project Logger utility
 // Assuming AppColors
 
 class SafetyCenterScreen extends StatelessWidget {
@@ -10,7 +11,7 @@ class SafetyCenterScreen extends StatelessWidget {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       // Handle error: could not launch URL
-      print('Could not launch $urlString');
+      logger.error('Could not launch $urlString');
       // Optionally show a snackbar to the user
     }
   }
@@ -32,8 +33,10 @@ class SafetyCenterScreen extends StatelessWidget {
           Text(
             'Your safety is our priority. Find resources and tips below.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withAlpha((0.5 * 255).toInt()),
                 ),
             textAlign: TextAlign.center,
           ),
@@ -48,7 +51,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Learn how to report inappropriate behavior.',
             onTap: () {
               // TODO: Navigate to a detailed reporting guide or show info dialog
-              print('Reporting Users tapped');
             },
           ),
           _buildSafetyTile(
@@ -58,7 +60,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Manage users you have blocked.',
             onTap: () {
               // TODO: Navigate to blocked users list screen
-              print('Blocking Users tapped');
             },
           ),
           _buildSafetyTile(
@@ -68,7 +69,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Learn about our verification process.',
             onTap: () {
               // TODO: Navigate to verification info/start screen
-              print('Profile Verification tapped');
             },
           ),
           const Divider(height: 32),
@@ -82,7 +82,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Advice for meeting online matches safely.',
             onTap: () {
               // TODO: Navigate to safe dating tips screen/article
-              print('Safe Dating Tips tapped');
             },
           ),
           _buildSafetyTile(
@@ -92,7 +91,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Protecting your personal information.',
             onTap: () {
               // TODO: Navigate to online safety guide screen/article
-              print('Online Safety Guide tapped');
             },
           ),
           _buildSafetyTile(
@@ -102,7 +100,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Our rules for respectful interaction.',
             onTap: () {
               // TODO: Navigate to community guidelines screen/page
-              print('Community Guidelines tapped');
             },
           ),
           const Divider(height: 32),
@@ -117,7 +114,6 @@ class SafetyCenterScreen extends StatelessWidget {
             onTap: () {
               // TODO: Link to relevant external emergency resources (e.g., RAINN, local hotlines)
               // Example: _launchURL('https://www.rainn.org');
-              print('Emergency Help tapped');
               _launchURL(
                   'https://www.google.com/search?q=emergency+help+resources'); // Placeholder Search
             },
@@ -129,7 +125,6 @@ class SafetyCenterScreen extends StatelessWidget {
             subtitle: 'Resources for mental and sexual health.',
             onTap: () {
               // TODO: Link to relevant external health resources
-              print('Health & Wellbeing tapped');
               _launchURL(
                   'https://www.google.com/search?q=mental+sexual+health+resources'); // Placeholder Search
             },
@@ -167,7 +162,10 @@ class SafetyCenterScreen extends StatelessWidget {
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(subtitle,
           style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withAlpha((0.5 * 255).toInt()))),
       onTap: onTap,
       contentPadding:
           const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),

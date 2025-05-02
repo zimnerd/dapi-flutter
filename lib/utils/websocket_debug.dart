@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'logger.dart';
 
 /// A utility class to monitor, log, and debug WebSocket traffic
 class WebSocketDebug {
@@ -96,7 +97,7 @@ class WebSocketDebug {
           mode: FileMode.append);
     } catch (e) {
       // Don't use logError here to avoid infinite loop
-      print('Error writing to log file: $e');
+      logger.error('Error writing to log file: $e');
     }
   }
 

@@ -1,32 +1,23 @@
+// --- IMPORTS ---
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Import services
-import '../services/api_client.dart';
-import '../services/auth_service.dart';
-import '../services/chat_service.dart';
-import '../services/profile_service.dart';
+import '../models/conversation.dart';
+import '../utils/logger.dart';
+import './auth_provider.dart';
 import '../services/storage_service.dart';
 import '../config/app_config.dart';
+import '../services/chat_service.dart';
+import '../services/profile_service.dart';
+import '../services/api_client.dart';
+import '../services/auth_service.dart';
 
-// Import auth provider
-import './auth_provider.dart';
-
-// Import models
-import '../models/conversation.dart';
-
-// Export auth providers
+// --- EXPORTS ---
 export './auth_provider.dart'
-    show
-        AuthState,
-        AuthNotifier,
-        AuthStatus,
-        authStateProvider,
-        userIdProvider,
-        userEmailProvider,
-        userNameProvider;
+    show AuthState, AuthNotifier, AuthStatus, authStateProvider;
+
+final Logger _logger = Logger('Providers');
 
 // --- Core Services ---
 
@@ -70,7 +61,8 @@ final dioProvider = Provider<Dio>((ref) {
 
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
-          print('⟹ [Dio] Adding auth token to request: ${maskToken(token)}');
+          _logger.info(
+              '⟹ [Dio] Adding auth token to request: ${maskToken(token)}');
         }
 
         // Fix double slashes in URL
@@ -78,12 +70,12 @@ final dioProvider = Provider<Dio>((ref) {
           options.path = options.path.substring(1);
         }
 
-        print('⟹ [Dio] Request URL: ${options.baseUrl}${options.path}');
+        _logger.info('⟹ [Dio] Request URL: ${options.baseUrl}${options.path}');
         return handler.next(options);
       },
       onError: (DioException error, handler) async {
         if (error.response?.statusCode == 401) {
-          print(
+          _logger.info(
               '⟹ [Dio] Received 401 error for ${error.requestOptions.path}, attempting token refresh');
 
           try {
@@ -92,12 +84,12 @@ final dioProvider = Provider<Dio>((ref) {
                 await secureStorage.read(key: AppStorageKeys.refreshToken);
 
             if (refreshToken == null || refreshToken.isEmpty) {
-              print('⟹ [Dio] No refresh token available');
+              _logger.info('⟹ [Dio] No refresh token available');
               // Directly remove tokens from secure storage instead of calling logout
               await secureStorage.delete(key: AppStorageKeys.accessToken);
               await secureStorage.delete(key: AppStorageKeys.refreshToken);
               await secureStorage.delete(key: AppStorageKeys.token);
-              print('⟹ [Dio] Tokens cleared from secure storage');
+              _logger.info('⟹ [Dio] Tokens cleared from secure storage');
               return handler.next(error);
             }
 
@@ -116,7 +108,7 @@ final dioProvider = Provider<Dio>((ref) {
 
             // Attempt to refresh token - using the path from AppEndpoints
             final refreshUrl = AppEndpoints.refresh;
-            print(
+            _logger.info(
                 '⟹ [Dio] Making token refresh request to: ${refreshDio.options.baseUrl}$refreshUrl');
 
             final response = await refreshDio.post(
@@ -126,7 +118,7 @@ final dioProvider = Provider<Dio>((ref) {
               },
             );
 
-            print(
+            _logger.info(
                 '⟹ [Dio] Token refresh response status: ${response.statusCode}');
 
             // Check response and handle all possible token formats
@@ -152,7 +144,8 @@ final dioProvider = Provider<Dio>((ref) {
                 await secureStorage.write(
                     key: AppStorageKeys.accessToken, value: newToken);
 
-                print('⟹ [Dio] Token refresh successful, retrying request');
+                _logger
+                    .info('⟹ [Dio] Token refresh successful, retrying request');
 
                 // Clone the original request with the new token
                 error.requestOptions.headers['Authorization'] =
@@ -173,12 +166,13 @@ final dioProvider = Provider<Dio>((ref) {
 
                 return handler.resolve(retryResponse);
               } else {
-                print(
+                _logger.info(
                     '⟹ [Dio] Token refresh failed - missing token in response');
-                print('⟹ [Dio] Response data keys: ${data.keys.toList()}');
+                _logger
+                    .info('⟹ [Dio] Response data keys: ${data.keys.toList()}');
               }
             } else {
-              print(
+              _logger.info(
                   '⟹ [Dio] Token refresh failed with status: ${response.statusCode}');
             }
 
@@ -186,18 +180,18 @@ final dioProvider = Provider<Dio>((ref) {
             await secureStorage.delete(key: AppStorageKeys.accessToken);
             await secureStorage.delete(key: AppStorageKeys.refreshToken);
             await secureStorage.delete(key: AppStorageKeys.token);
-            print(
+            _logger.info(
                 '⟹ [Dio] Tokens cleared from secure storage after failed refresh');
           } catch (e) {
-            print('⟹ [Dio] Error during token refresh: $e');
+            _logger.error('⟹ [Dio] Error during token refresh: $e');
             // Also clean tokens on any error during refresh process
             try {
               await secureStorage.delete(key: AppStorageKeys.accessToken);
               await secureStorage.delete(key: AppStorageKeys.refreshToken);
               await secureStorage.delete(key: AppStorageKeys.token);
-              print('⟹ [Dio] Tokens cleared after refresh error');
+              _logger.info('⟹ [Dio] Tokens cleared after refresh error');
             } catch (cleanupError) {
-              print('⟹ [Dio] Error cleaning up tokens: $cleanupError');
+              _logger.error('⟹ [Dio] Error cleaning up tokens: $cleanupError');
             }
           }
         }
@@ -215,7 +209,7 @@ final dioProvider = Provider<Dio>((ref) {
     responseHeader: false,
     responseBody: true,
     error: true,
-    logPrint: (object) => print('⟹ [Dio] $object'),
+    logPrint: (object) => _logger.info('⟹ [Dio] $object'),
   ));
 
   return dio;
@@ -264,7 +258,7 @@ final chatServiceProvider = Provider<ChatService>((ref) {
 
   // Initialize right away with the auth service
   chatService.initializeAuthService(authService);
-  print('ChatService initialized with AuthService in provider');
+  _logger.info('ChatService initialized with AuthService in provider');
 
   return chatService;
 });
@@ -297,7 +291,7 @@ final typingStatusProvider = StreamProvider.autoDispose
             .id;
       } catch (e) {
         // Handle cases where current user might be the only participant listed, or list is malformed
-        print(
+        _logger.info(
             "Could not find other participant in conversation ${conversation.id}: $e");
         // Optionally, take the first participant if only one exists
         if (conversation.participants.length == 1 &&

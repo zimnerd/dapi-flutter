@@ -40,7 +40,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _textController.addListener(_textFieldListener);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _conversationId.isNotEmpty) {
-        print("Marking messages as read for $_conversationId");
         ChatMessageActions.markMessagesAsRead(ref, _conversationId);
         _scrollToBottom();
       }
@@ -111,7 +110,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         apiKey: AppConfig.giphyApiKey,
       );
     } catch (e) {
-      print("Error picking GIF: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open GIF picker: ${e.toString()}')),
       );
@@ -119,11 +117,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     if (gif != null && gif.images.original != null) {
       final gifUrl = gif.images.original!.url;
-      print("Selected GIF URL: $gifUrl");
       ChatMessageActions.addMessage(ref, _conversationId, "GIF: $gifUrl");
       _scrollToBottom(jump: true);
-    } else {
-      print("GIF selection cancelled or failed.");
     }
   }
 
@@ -179,7 +174,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'Start Video Call',
             onPressed: () {
               // TODO: Implement video call initiation
-              print("Video call pressed - Placeholder");
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text('In-app video calls coming soon!'),
@@ -192,7 +186,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'Start Audio Call',
             onPressed: () {
               // TODO: Implement audio call initiation
-              print("Audio call pressed - Placeholder");
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text('In-app audio calls coming soon!'),
@@ -307,8 +300,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     required String? participantAvatarUrl,
     required String conversationId,
   }) {
-    // Temporarily hardcode this value until we fix the premium providers
-    final isPremium = false; // TODO: Fix premium provider reference
     final currentUserId = ref.read(userIdProvider) ?? 'unknown_user';
     final isFromCurrentUser = message.isFromCurrentUserId(currentUserId);
     final bool showReactionsPicker = _reactingToMessageId == message.id;
@@ -431,7 +422,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 if (isFromCurrentUser)
                   Padding(
                     padding: const EdgeInsets.only(left: 4.0),
-                    child: _buildReadReceiptIcon(message.status, isPremium),
+                    child: _buildReadReceiptIcon(message.status),
                   )
               ],
             ),
@@ -441,8 +432,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildReadReceiptIcon(MessageStatus status, bool isPremium) {
-    // Initialize with default values
+  Widget _buildReadReceiptIcon(MessageStatus status) {
     IconData iconData = Icons.help_outline;
     Color iconColor = Colors.grey[500]!;
     double iconSize = 14.0;
@@ -462,7 +452,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         break;
       case MessageStatus.read:
         iconData = Icons.done_all;
-        iconColor = isPremium ? Colors.blue[400]! : Colors.grey[500]!;
+        iconColor = Colors.grey[500]!;
         break;
       case MessageStatus.failed:
         iconData = Icons.error_outline;
@@ -496,7 +486,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         .textTheme
                         .bodySmall
                         ?.color
-                        ?.withOpacity(0.7),
+                        ?.withAlpha((0.7 * 255).toInt()),
                   ),
             ),
           ),
@@ -526,7 +516,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       backgroundColor: Theme.of(context)
                           .colorScheme
                           .secondary
-                          .withOpacity(0.1),
+                          .withAlpha((0.1 * 255).toInt()),
                       labelStyle: TextStyle(
                         color: Theme.of(context).colorScheme.secondary,
                         fontSize: 13,
@@ -538,7 +528,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .secondary
-                                .withOpacity(0.3)),
+                                .withAlpha((0.3 * 255).toInt())),
                       ),
                     );
                   },
@@ -578,7 +568,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           BoxShadow(
             offset: const Offset(0, -1),
             blurRadius: 4,
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
           ),
         ],
       ),
@@ -587,17 +577,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: <Widget>[
             IconButton(
               icon: Icon(Icons.gif_box_outlined,
-                  color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
+                  color: Theme.of(context)
+                      .iconTheme
+                      .color
+                      ?.withAlpha((0.7 * 255).toInt())),
               tooltip: 'Send GIF',
               onPressed: _pickGif,
             ),
             IconButton(
               icon: Icon(Icons.mic_none_outlined,
-                  color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
+                  color: Theme.of(context)
+                      .iconTheme
+                      .color
+                      ?.withAlpha((0.7 * 255).toInt())),
               tooltip: 'Send Voice Message',
               onPressed: () {
                 // TODO: Implement voice message recording
-                print("Voice message button pressed");
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                       content: Text('Voice messages not implemented yet.'),
@@ -609,7 +604,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withAlpha((0.8 * 255).toInt()),
                   borderRadius: BorderRadius.circular(25.0),
                 ),
                 child: TextField(
@@ -645,10 +643,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           color: Theme.of(context)
                               .iconTheme
                               .color
-                              ?.withOpacity(0.7)),
+                              ?.withAlpha((0.7 * 255).toInt())),
                       onPressed: () {
                         // TODO: Implement attachment logic
-                        print("Attach file button pressed");
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                               content: Text('Attachments not implemented yet.'),
@@ -700,8 +697,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (confirmed == true) {
-      print("Unmatch confirmed for $userName");
-      // Simulate API call
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Show success message and navigate back
@@ -806,11 +801,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (confirmed == true && selectedReason != null) {
       final reportDetails =
           selectedReason == 'Other' ? detailsController.text : null;
-      print("Report confirmed for $userName");
-      print("  Reason: $selectedReason");
-      if (reportDetails != null && reportDetails.isNotEmpty) {
-        print("  Details: $reportDetails");
-      }
+      if (reportDetails != null && reportDetails.isNotEmpty) {}
 
       // Simulate API call
       await Future.delayed(const Duration(milliseconds: 500));

@@ -88,7 +88,8 @@ class InterestBadge extends StatelessWidget {
     final icon = _getIconForInterest(interest);
 
     // Define badge style
-    final Color backgroundColor = AppColors.primaryLight.withOpacity(0.6);
+    final Color backgroundColor =
+        AppColors.primaryLight.withAlpha((0.6 * 255).toInt());
     final Color foregroundColor = AppColors.primary; // Or AppColors.textDark?
     final double borderRadius = 16.0;
     final double paddingHorizontal =
@@ -132,7 +133,7 @@ class InterestBadge extends StatelessWidget {
         backgroundColor: backgroundColor,
         onDeleted: onDeleted,
         deleteIcon: Icon(Icons.close,
-            size: 16, color: foregroundColor.withOpacity(0.7)),
+            size: 16, color: foregroundColor.withAlpha((0.7 * 255).toInt())),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
           side:

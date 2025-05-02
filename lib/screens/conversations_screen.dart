@@ -4,6 +4,7 @@ import '../models/conversation.dart';
 import '../utils/colors.dart';
 import '../providers/providers.dart';
 import '../widgets/conversation_list_item.dart';
+import '../utils/logger.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
@@ -38,7 +39,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         _currentUserId = user.id;
       });
     } catch (e) {
-      print('Error getting current user: $e');
+      logger.error('Error getting current user: $e');
     }
   }
 
@@ -70,7 +71,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading conversations: $e');
+      logger.error('Error loading conversations: $e');
       setState(() {
         _errorMessage = 'Could not load conversations';
         _isLoading = false;
@@ -149,7 +150,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: AppColors.primary.withOpacity(0.5),
+              color: AppColors.primary.withAlpha((0.5 * 255).toInt()),
             ),
             const SizedBox(height: 16),
             Text(

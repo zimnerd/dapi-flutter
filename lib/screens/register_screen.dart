@@ -9,10 +9,10 @@ class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  RegisterScreenState createState() => RegisterScreenState();
 }
 
-class _RegisterScreenState extends ConsumerState<RegisterScreen>
+class RegisterScreenState extends ConsumerState<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -215,7 +215,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha((0.05 * 255).toInt()),
               blurRadius: 8,
               offset: Offset(0, 2),
             ),
@@ -289,7 +289,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 width: MediaQuery.of(context).size.width * 0.6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -301,7 +301,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 width: MediaQuery.of(context).size.width * 0.4,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.secondary.withOpacity(0.1),
+                  color: AppColors.secondary.withAlpha((0.1 * 255).toInt()),
                 ),
               ),
             ),
@@ -334,7 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         boxShadow: [
                                           BoxShadow(
                                             color: AppColors.primary
-                                                .withOpacity(0.3),
+                                                .withAlpha((0.3 * 255).toInt()),
                                             blurRadius: 15,
                                             offset: Offset(0, 5),
                                           ),
@@ -373,7 +373,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black
+                                        .withAlpha((0.05 * 255).toInt()),
                                     blurRadius: 20,
                                     offset: Offset(0, 5),
                                   ),

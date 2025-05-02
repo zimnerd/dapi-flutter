@@ -4,6 +4,9 @@ import '../models/profile.dart';
 import '../services/profile_service.dart'; // Import ProfileService
 // Import providers from central providers file
 import 'providers.dart' show profileServiceProvider, premiumProvider;
+import '../utils/logger.dart';
+
+final Logger _logger = Logger('DiscoverProvider');
 
 // Define state class with immutable properties
 class DiscoverState {
@@ -93,12 +96,12 @@ class DiscoverNotifier extends StateNotifier<DiscoverState> {
     final profileToRestore = state.lastRemovedProfile;
 
     if (!isPremium) {
-      print('Premium required for undo feature');
+      _logger.warn('Premium required for undo feature');
       return false;
     }
 
     if (profileToRestore == null) {
-      print('No profile to restore');
+      _logger.info('No profile to restore');
       return false;
     }
 
@@ -125,13 +128,6 @@ final discoverServiceProvider = Provider<ProfileService>((ref) {
   return ref.watch(profileServiceProvider);
 });
 
-// Removed the old FutureProvider
-// final discoverProfilesProvider = FutureProvider.autoDispose<List<Profile>>((ref) async { ... });
-
-// TODO: Optionally, create a provider for filters if complex
-// final discoverFiltersProvider = StateNotifierProvider<...> ...
-
 final discoverProvider = Provider<ProfileService>((ref) {
-  final profileService = ref.watch(profileServiceProvider); // Updated reference
-  return profileService;
+  return ref.watch(profileServiceProvider);
 });

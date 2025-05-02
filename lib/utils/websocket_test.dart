@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:dio/dio.dart';
+import 'logger.dart';
 
 /// A utility class for testing WebSocket connections with the mock server
 class WebSocketTest {
   // Socket.IO instance
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   // Server configuration
   final String serverUrl;
@@ -153,9 +154,9 @@ class WebSocketTest {
 
     Completer<bool> completer = Completer<bool>();
 
-    _socket = IO.io(
+    _socket = io.io(
       serverUrl,
-      IO.OptionBuilder()
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': _authToken})
           .enableForceNew()
@@ -191,9 +192,9 @@ class WebSocketTest {
 
     Completer<bool> completer = Completer<bool>();
 
-    _socket = IO.io(
+    _socket = io.io(
       serverUrl,
-      IO.OptionBuilder()
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .setExtraHeaders({'Authorization': 'Bearer $_authToken'})
           .enableForceNew()
@@ -229,9 +230,9 @@ class WebSocketTest {
 
     Completer<bool> completer = Completer<bool>();
 
-    _socket = IO.io(
+    _socket = io.io(
       '$serverUrl?token=$_authToken',
-      IO.OptionBuilder().setTransports(['websocket']).enableForceNew().build(),
+      io.OptionBuilder().setTransports(['websocket']).enableForceNew().build(),
     );
 
     // Listen for connection events
@@ -259,7 +260,7 @@ class WebSocketTest {
 
   /// Log a message and add it to the log stream
   void log(String message) {
-    print('⟹ [WebSocketTest] $message');
+    logger.debug(message);
     _logController.add(message);
   }
 
