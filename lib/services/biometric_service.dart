@@ -5,8 +5,8 @@ import '../utils/logger.dart';
 
 class BiometricService {
   final LocalAuthentication _localAuth = LocalAuthentication();
-  static const String BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
-  static const String BIOMETRIC_USER_EMAIL_KEY = 'biometric_user_email';
+  static const String biometricEnabledKey = 'biometric_enabled';
+  static const String biometricUserEmailKey = 'biometric_user_email';
 
   // Check if device supports biometric authentication
   Future<bool> isBiometricAvailable() async {
@@ -54,8 +54,8 @@ class BiometricService {
   Future<bool> enableBiometrics(String userEmail) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(BIOMETRIC_ENABLED_KEY, true);
-      await prefs.setString(BIOMETRIC_USER_EMAIL_KEY, userEmail);
+      await prefs.setBool(biometricEnabledKey, true);
+      await prefs.setString(biometricUserEmailKey, userEmail);
       return true;
     } catch (e) {
       logger.error('Error enabling biometrics: $e');
@@ -67,8 +67,8 @@ class BiometricService {
   Future<bool> disableBiometrics() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(BIOMETRIC_ENABLED_KEY, false);
-      await prefs.remove(BIOMETRIC_USER_EMAIL_KEY);
+      await prefs.setBool(biometricEnabledKey, false);
+      await prefs.remove(biometricUserEmailKey);
       return true;
     } catch (e) {
       logger.error('Error disabling biometrics: $e');
@@ -80,7 +80,7 @@ class BiometricService {
   Future<bool> isBiometricEnabled() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(BIOMETRIC_ENABLED_KEY) ?? false;
+      return prefs.getBool(biometricEnabledKey) ?? false;
     } catch (e) {
       logger.error('Error checking if biometric is enabled: $e');
       return false;
@@ -91,7 +91,7 @@ class BiometricService {
   Future<String?> getBiometricUserEmail() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(BIOMETRIC_USER_EMAIL_KEY);
+      return prefs.getString(biometricUserEmailKey);
     } catch (e) {
       logger.error('Error getting biometric user email: $e');
       return null;

@@ -105,11 +105,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _pickGif() async {
     GiphyGif? gif;
     try {
+      final ctx = context;
       gif = await GiphyPicker.pickGif(
-        context: context,
+        context: ctx,
         apiKey: AppConfig.giphyApiKey,
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open GIF picker: ${e.toString()}')),
       );

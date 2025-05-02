@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/providers.dart';
 import '../../utils/colors.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
@@ -16,7 +15,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   void _handleSubmit() async {
     try {
       setState(() => _isLoading = true);
-      final profileService = ref.read(profileServiceProvider);
 
       // Placeholder for profile update logic
       // ... rest of the method

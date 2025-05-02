@@ -111,7 +111,6 @@ class UiHelpers {
           icon: Icons.warning,
         );
       case SnackBarType.info:
-      default:
         return _SnackBarColors(
           backgroundColor: Colors.blue[700]!,
           contentColor: Colors.white,

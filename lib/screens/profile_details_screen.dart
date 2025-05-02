@@ -12,10 +12,10 @@ class ProfileDetailsScreen extends StatefulWidget {
   });
 
   @override
-  _ProfileDetailsScreenState createState() => _ProfileDetailsScreenState();
+  ProfileDetailsScreenState createState() => ProfileDetailsScreenState();
 }
 
-class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
+class ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   int _currentPhotoIndex = 0;
   final PageController _photoController = PageController();
 

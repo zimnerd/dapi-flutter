@@ -1,10 +1,10 @@
 import 'package:dating_app/services/api_client.dart';
 
 enum MatchStatus {
-  PENDING,
-  ACCEPTED,
-  REJECTED,
-  EXPIRED,
+  pending,
+  accepted,
+  rejected,
+  expired,
 }
 
 class Match {

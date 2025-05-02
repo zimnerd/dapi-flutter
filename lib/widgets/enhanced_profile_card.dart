@@ -32,10 +32,10 @@ class EnhancedProfileCard extends StatefulWidget {
   });
 
   @override
-  _EnhancedProfileCardState createState() => _EnhancedProfileCardState();
+  EnhancedProfileCardState createState() => EnhancedProfileCardState();
 }
 
-class _EnhancedProfileCardState extends State<EnhancedProfileCard> {
+class EnhancedProfileCardState extends State<EnhancedProfileCard> {
   late CardSwiperController controller;
   int currentIndex = 0;
 

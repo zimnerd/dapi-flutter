@@ -166,7 +166,6 @@ class MyApp extends ConsumerWidget {
       case AuthStatus.unauthenticated:
         appLogger.info('User is unauthenticated, showing WelcomeScreen');
         return WelcomeScreen();
-      case AuthStatus.unknown:
       default:
         return const Scaffold(
           body: Center(

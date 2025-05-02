@@ -1,10 +1,10 @@
 import 'package:dating_app/services/api_client.dart';
 
 enum NotificationType {
-  MATCH,
-  MESSAGE,
-  LIKE,
-  SYSTEM,
+  match,
+  message,
+  like,
+  system,
 }
 
 class Notification {

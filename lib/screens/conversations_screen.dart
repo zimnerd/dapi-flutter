@@ -192,8 +192,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     // Sort conversations by the most recent message
     final sortedConversations = List<Conversation>.from(_conversations!)
       ..sort((a, b) {
-        final aTime = a.lastMessage?.timestamp ?? a.updatedAt ?? a.createdAt;
-        final bTime = b.lastMessage?.timestamp ?? b.updatedAt ?? b.createdAt;
+        final aTime =
+            a.lastMessage != null ? a.lastMessage!.timestamp : a.updatedAt;
+        final bTime =
+            b.lastMessage != null ? b.lastMessage!.timestamp : b.updatedAt;
         return bTime.compareTo(aTime); // Descending: most recent first
       });
 

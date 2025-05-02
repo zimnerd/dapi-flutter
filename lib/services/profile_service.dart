@@ -415,7 +415,6 @@ class ProfileService {
           throw ApiException(errorGeneric, statusCode: response.statusCode);
         } else if (response.statusCode == 404) {
           throw ApiException(errorGeneric, statusCode: response.statusCode);
-          throw ApiException(errorGeneric, statusCode: response.statusCode);
         }
         throw ApiException(response.data?['message'] ?? 'Failed to undo action',
             statusCode: response.statusCode);
@@ -713,5 +712,4 @@ class ProfileService {
   }
 }
 
-// Provider is now defined in profile_service_provider.dart
 // Provider is now defined in profile_service_provider.dart

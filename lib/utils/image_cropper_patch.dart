@@ -6,22 +6,18 @@ import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:image_cropper_platform_interface/src/models/cropped_file/base.dart';
 import 'logger.dart';
 
 /// A CroppedFile that works on web.
 ///
 /// It wraps the bytes of a selected file.
-class CroppedFile extends CroppedFileBase {
+class CroppedFile {
   /// Construct a CroppedFile object from its ObjectUrl.
   ///
   /// Optionally, this can be initialized with `bytes`
   /// so no http requests are performed to retrieve files later.
-  const CroppedFile(this.path, {Uint8List? bytes})
-      : _initBytes = bytes,
-        super(path);
+  const CroppedFile(this.path, {Uint8List? bytes}) : _initBytes = bytes;
 
-  @override
   final String path;
   final Uint8List? _initBytes;
 
@@ -33,12 +29,10 @@ class CroppedFile extends CroppedFileBase {
     return http.readBytes(Uri.parse(path));
   }
 
-  @override
   Future<String> readAsString({Encoding encoding = utf8}) async {
     return encoding.decode(await _bytes);
   }
 
-  @override
   Future<Uint8List> readAsBytes() async {
     return _bytes;
   }

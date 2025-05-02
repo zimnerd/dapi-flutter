@@ -5,10 +5,10 @@ class WebSocketTestScreen extends StatefulWidget {
   const WebSocketTestScreen({super.key});
 
   @override
-  _WebSocketTestScreenState createState() => _WebSocketTestScreenState();
+  WebsocketTestScreenState createState() => WebsocketTestScreenState();
 }
 
-class _WebSocketTestScreenState extends State<WebSocketTestScreen> {
+class WebsocketTestScreenState extends State<WebSocketTestScreen> {
   final _serverUrlController =
       TextEditingController(text: 'https://dapi.pulsetek.co.za:3000');
   final _emailController =

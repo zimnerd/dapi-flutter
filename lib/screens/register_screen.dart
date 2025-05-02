@@ -124,22 +124,23 @@ class RegisterScreenState extends ConsumerState<RegisterScreen>
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
+      final ctx = context;
       if (_passwordController.text != _confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(content: Text('Passwords do not match')),
         );
         return;
       }
 
       if (_selectedDate == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(content: Text('Please select your date of birth')),
         );
         return;
       }
 
       if (!_acceptedTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(content: Text('Please accept the Terms and Privacy Policy')),
         );
         return;
@@ -153,8 +154,9 @@ class RegisterScreenState extends ConsumerState<RegisterScreen>
               _selectedDate,
               _selectedGender,
             );
+        if (!mounted) return;
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
               content: Text('Registration failed: $e'),
               backgroundColor: Colors.red),

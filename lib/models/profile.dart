@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart' show immutable;
+import 'package:flutter/foundation.dart' show immutable, listEquals;
 import '../utils/logger.dart';
-import 'package:collection/collection.dart';
 
 final Logger _logger = Logger('ProfileModel');
 
@@ -263,11 +262,9 @@ class Profile {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    final listEquals = const DeepCollectionEquality().equals;
 
     return other is Profile &&
         other.id == id &&
-        other.userId == userId &&
         other.name == name &&
         other.birthDate == birthDate &&
         other.gender == gender &&
@@ -275,8 +272,6 @@ class Profile {
         listEquals(other.interests, interests) &&
         other.location == location &&
         other.distance == distance &&
-        other.occupation == occupation &&
-        other.education == education &&
         other.bio == bio &&
         other.isVerified == isVerified &&
         listEquals(other.prompts, prompts) &&
@@ -294,8 +289,7 @@ class Profile {
     return Object.hash(
       id,
       name,
-      bio,
-      age,
+      birthDate,
       gender,
       Object.hashAll(interests),
       location,

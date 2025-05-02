@@ -9,10 +9,8 @@ class MockSharedPreferences implements SharedPreferences {
   final Map<String, Object> _data = HashMap<String, Object>();
   final _logger = Logger('MockPrefs');
 
-  @override
   bool get isEmpty => _data.isEmpty;
 
-  @override
   bool get isNotEmpty => _data.isNotEmpty;
 
   @override
@@ -123,8 +121,4 @@ class MockSharedPreferences implements SharedPreferences {
     _logger.debug('commit() - no-op in mock implementation');
     return true;
   }
-
-  bool get isMock => true;
-
-  bool get isFake => true;
 }

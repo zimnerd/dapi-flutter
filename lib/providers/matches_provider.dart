@@ -62,7 +62,7 @@ class MatchesNotifier extends StateNotifier<AsyncValue<List<Match>>> {
         id: serviceMatch.id,
         matchedUser: profile,
         matchedAt: serviceMatch.createdAt,
-        isNew: serviceMatch.status == service.MatchStatus.PENDING,
+        isNew: serviceMatch.status == service.MatchStatus.pending,
         // These will be populated when we implement chat functionality
         lastMessage: null,
         lastMessageAt: null,

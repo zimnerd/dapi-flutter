@@ -15,10 +15,10 @@ class AnimatedTapFeedback extends StatefulWidget {
   });
 
   @override
-  _AnimatedTapFeedbackState createState() => _AnimatedTapFeedbackState();
+  AnimatedTapFeedbackState createState() => AnimatedTapFeedbackState();
 }
 
-class _AnimatedTapFeedbackState extends State<AnimatedTapFeedback>
+class AnimatedTapFeedbackState extends State<AnimatedTapFeedback>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;

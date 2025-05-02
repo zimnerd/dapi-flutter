@@ -80,7 +80,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
 
   // NEW: State variable to store the last swiped profile info
   // LastSwipeInfo? _lastSwipe;
-  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -335,7 +334,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   Widget build(BuildContext context) {
     // Watch the provider for discover profiles
     final discoverState = ref.watch(discoverProfilesProvider);
-    final isPremiumAsync = ref.watch(premiumProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -353,7 +351,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: _isLoading ? null : _refreshProfiles,
+            onPressed:
+                discoverState.profiles.isLoading ? null : _refreshProfiles,
             tooltip: 'Refresh Profiles',
           ),
           // Filter button
@@ -770,7 +769,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   Future<void> _autoLogin() async {
     try {
       logger.info('Checking authentication status');
-      final authState = ref.read(authStateProvider.notifier);
 
       // Check if already authenticated
       final currentStatus = ref.read(authStateProvider).status;

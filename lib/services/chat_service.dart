@@ -108,19 +108,10 @@ class ChatService {
       _roomUpdatesController.stream;
 
   // Socket connection status
-  bool get isConnected => _socket?.connected ?? false;
+  bool get isConnected => _socket != null && _socket!.connected;
 
   /// Initialize the WebSocket connection
   Future<void> initSocket() async {
-    if (_authService == null) {
-      _logger.error(
-          'AuthService not initialized. Call initializeAuthService() first.');
-      _errorController
-          .add('Authentication service not available. Please restart the app.');
-      _debug.logError('AuthService not initialized');
-      return;
-    }
-
     try {
       final token = await _authService.getAccessToken();
       _logger.info(
@@ -184,6 +175,29 @@ class ChatService {
       _errorController.add('Failed to initialize chat connection: $e');
       _debug.logError('Error initializing WebSocket: $e');
     }
+
+    String currentUserId = 'currentUserId';
+    try {
+      // The method to get user ID will depend on how your AuthService is implemented
+      // This is a safe fallback approach
+      currentUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+    } catch (e) {
+      _logger.error('Error getting current user ID: $e');
+    }
+
+    // Emit a local message to our own stream for immediate UI update
+    // This ensures the UI updates even if the server doesn't send confirmation
+    final localMessage = {
+      'id': 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      'conversationId': 'conv_with_$currentUserId',
+      'senderId': currentUserId, // Use the retrieved user ID
+      'text': '',
+      'timestamp': DateTime.now().toIso8601String(),
+      'status': 'sending'
+    };
+
+    _messagesController.add(localMessage);
+    _debug.logStatus('Added local message to UI: ${localMessage['id']}');
   }
 
   /// Connect to the WebSocket server
@@ -366,12 +380,9 @@ class ChatService {
     // Get the current user ID if available
     String currentUserId = 'currentUserId';
     try {
-      // Try to get user ID from auth service
-      if (_authService != null) {
-        // The method to get user ID will depend on how your AuthService is implemented
-        // This is a safe fallback approach
-        currentUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
-      }
+      // The method to get user ID will depend on how your AuthService is implemented
+      // This is a safe fallback approach
+      currentUserId = 'user-${DateTime.now().millisecondsSinceEpoch}';
     } catch (e) {
       _logger.error('Error getting current user ID: $e');
     }
@@ -504,11 +515,6 @@ class ChatService {
   /// Private method to fetch conversations via HTTP
   Future<List<dynamic>> _getConversationsHttp() async {
     try {
-      if (_authService == null) {
-        _logger.error('AuthService not initialized yet');
-        throw Exception('Authentication service not available');
-      }
-
       final token = await _authService.getAccessToken();
 
       if (token == null) {
@@ -600,11 +606,6 @@ class ChatService {
   /// Private method to fetch messages via HTTP
   Future<List<dynamic>> _getMessagesHttp(String conversationId) async {
     try {
-      if (_authService == null) {
-        _logger.error('AuthService not initialized yet');
-        throw Exception('Authentication service not available');
-      }
-
       final token = await _authService.getAccessToken();
 
       if (token == null) {
@@ -729,11 +730,6 @@ class ChatService {
   /// Private method to mark conversation as read via HTTP
   Future<bool> _markConversationAsReadHttp(String conversationId) async {
     try {
-      if (_authService == null) {
-        _logger.error('AuthService not initialized yet');
-        throw Exception('Authentication service not available');
-      }
-
       final token = await _authService.getAccessToken();
 
       if (token == null) {
@@ -770,11 +766,6 @@ class ChatService {
   /// Create a new conversation
   Future<dynamic> createConversation(String recipientId) async {
     try {
-      if (_authService == null) {
-        _logger.error('AuthService not initialized yet');
-        throw Exception('Authentication service not available');
-      }
-
       final token = await _authService.getAccessToken();
 
       if (token == null) {
@@ -820,11 +811,6 @@ class ChatService {
   /// Delete a conversation
   Future<bool> deleteConversation(String conversationId) async {
     try {
-      if (_authService == null) {
-        _logger.error('AuthService not initialized yet');
-        throw Exception('Authentication service not available');
-      }
-
       final token = await _authService.getAccessToken();
 
       if (token == null) {

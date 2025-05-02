@@ -11,10 +11,10 @@ class ProfileCreationScreen extends ConsumerStatefulWidget {
   const ProfileCreationScreen({super.key});
 
   @override
-  _ProfileCreationScreenState createState() => _ProfileCreationScreenState();
+  ProfileCreationScreenState createState() => ProfileCreationScreenState();
 }
 
-class _ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
+class ProfileCreationScreenState extends ConsumerState<ProfileCreationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();

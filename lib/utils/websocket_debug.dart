@@ -179,10 +179,10 @@ class WebSocketDebugMonitor extends StatefulWidget {
   const WebSocketDebugMonitor({super.key});
 
   @override
-  _WebSocketDebugMonitorState createState() => _WebSocketDebugMonitorState();
+  WebSocketDebugMonitorState createState() => WebSocketDebugMonitorState();
 }
 
-class _WebSocketDebugMonitorState extends State<WebSocketDebugMonitor> {
+class WebSocketDebugMonitorState extends State<WebSocketDebugMonitor> {
   final _debug = WebSocketDebug();
 
   @override
@@ -213,9 +213,11 @@ class _WebSocketDebugMonitorState extends State<WebSocketDebugMonitor> {
             IconButton(
               icon: const Icon(Icons.save),
               onPressed: () async {
+                final ctx = context;
                 final result =
                     await _debug.exportLogs('/tmp/websocket_debug.log');
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                ScaffoldMessenger.of(ctx).showSnackBar(
                   SnackBar(content: Text(result)),
                 );
               },

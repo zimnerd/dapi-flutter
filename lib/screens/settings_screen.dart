@@ -11,10 +11,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  SettingsScreenState createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class SettingsScreenState extends ConsumerState<SettingsScreen> {
   final BiometricService _biometricService = BiometricService();
 
   bool _darkModeEnabled = false;

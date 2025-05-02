@@ -15,10 +15,10 @@ class ProfileCard extends StatefulWidget {
   });
 
   @override
-  _ProfileCardState createState() => _ProfileCardState();
+  ProfileCardState createState() => ProfileCardState();
 }
 
-class _ProfileCardState extends State<ProfileCard> {
+class ProfileCardState extends State<ProfileCard> {
   int _selectedPhotoIndex = 0;
   final Logger _logger = Logger('ProfileCard');
 
@@ -167,11 +167,11 @@ class _ProfileCardState extends State<ProfileCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "${widget.profile.name ?? 'N/A'}, ${widget.profile.age ?? 'N/A'}",
+                  "${widget.profile.name}, ${widget.profile.age ?? 'N/A'}",
                   style: Theme.of(context)
                       .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                      .headlineSmall!
+                      .copyWith(fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

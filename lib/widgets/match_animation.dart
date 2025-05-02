@@ -19,10 +19,10 @@ class MatchAnimation extends StatefulWidget {
   });
 
   @override
-  _MatchAnimationState createState() => _MatchAnimationState();
+  MatchAnimationState createState() => MatchAnimationState();
 }
 
-class _MatchAnimationState extends State<MatchAnimation>
+class MatchAnimationState extends State<MatchAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
